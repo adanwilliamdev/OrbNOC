@@ -78,7 +78,7 @@ A plataforma oferece monitoramento contínuo, geração de alertas, análise de 
 
 ## Dashboard Principal
 
-<img src="./frontend/public/assets/images/dashboard-1.png" alt="OrbNOC Dashboard" width="100%">
+![Dashboard OrbNOC](frontend/public/assets/images/dashboard-1.png)
 
 ---
 
