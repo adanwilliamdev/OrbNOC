@@ -1,0 +1,45 @@
+spring:
+  datasource:
+    url: ${DATABASE_URL}
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      connection-timeout: 30000
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        jdbc:
+          lob:
+            non_contextual_creation: true
+
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT}
+      password: ${REDIS_PASSWORD}
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+
+server:
+  port: 8080
+  forward-headers-strategy: framework
+
+monitoring:
+  ping:
+    interval: 10000
+    timeout: 3000
+
+logging:
+  level:
+    com.orbnoc: INFO
+  pattern:
+    console: "%d{HH:mm:ss} - %msg%n"

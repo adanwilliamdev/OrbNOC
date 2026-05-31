@@ -1,0 +1,120 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer utilities {
+  .animate-fade-in {
+    animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  .animate-scale-up {
+    animation: scaleUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  }
+
+  .animate-slide-in {
+    animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scaleUp {
+  from { opacity: 0; transform: scale(0.95) translateY(10px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/* Animações para o ícone de rede ╱╲╱╲╱╲ */
+@keyframes line-draw {
+  0% {
+    stroke-dasharray: 30;
+    stroke-dashoffset: 30;
+    opacity: 0;
+  }
+  20% {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+  80% {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+  100% {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+}
+
+@keyframes pulse-dot {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.3;
+    transform: scale(0.5);
+  }
+}
+
+@keyframes shine {
+  0% {
+    transform: translateX(-100%) skewX(-12deg);
+  }
+  100% {
+    transform: translateX(100%) skewX(-12deg);
+  }
+}
+
+/* Classes de animação para as linhas */
+.animate-line-1 {
+  animation: line-draw 3s ease-in-out infinite;
+}
+
+.animate-line-2 {
+  animation: line-draw 3s ease-in-out infinite 0.3s;
+}
+
+.animate-line-3 {
+  animation: line-draw 3s ease-in-out infinite 0.6s;
+}
+
+.animate-line-4 {
+  animation: line-draw 3s ease-in-out infinite 0.9s;
+}
+
+.animate-line-5 {
+  animation: line-draw 4s ease-in-out infinite 1.2s;
+}
+
+.animate-line-6 {
+  animation: line-draw 4s ease-in-out infinite 1.5s;
+}
+
+/* Pontos pulsantes */
+.animate-pulse-dot {
+  animation: pulse-dot 1.5s ease-in-out infinite;
+}
+
+.delay-100 {
+  animation-delay: 0.5s;
+}
+
+.delay-200 {
+  animation-delay: 1s;
+}
+
+.delay-300 {
+  animation-delay: 1.5s;
+}
+
+/* Efeito de brilho */
+.animate-shine {
+  animation: shine 3s infinite;
+}

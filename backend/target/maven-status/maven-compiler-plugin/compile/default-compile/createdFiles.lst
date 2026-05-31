@@ -1,0 +1,9 @@
+com\orbnoc\repository\DeviceRepository.class
+com\orbnoc\service\PingService$PingResult.class
+com\orbnoc\OrbNOCApplication.class
+com\orbnoc\domain\Device.class
+com\orbnoc\domain\DeviceStatus.class
+com\orbnoc\web\DeviceController.class
+com\orbnoc\service\MonitoringService.class
+com\orbnoc\config\WebSocketConfig.class
+com\orbnoc\service\PingService.class
