@@ -1,9 +1,5 @@
 # 🛰️ OrbNOC
 
-<p align="center">
-  <img src="./docs/banner.png" alt="OrbNOC Banner" width="100%">
-</p>
-
 <h3 align="center">
 Enterprise Network Operations Center Platform
 </h3>
@@ -82,15 +78,7 @@ A plataforma oferece monitoramento contínuo, geração de alertas, análise de 
 
 ## Dashboard Principal
 
-![Dashboard](./docs/dashboard.png)
-
-## Monitoramento
-
-![Monitoring](./docs/monitoring.png)
-
-## Histórico de Alertas
-
-![Alerts](./docs/alerts.png)
+<img src="./frontend/public/assets/images/dashboard-1.png" alt="OrbNOC Dashboard" width="100%">
 
 ---
 
