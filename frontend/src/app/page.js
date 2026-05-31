@@ -37,6 +37,7 @@ export default function Home() {
   const [realtimeLatencyData, setRealtimeLatencyData] = useState({});
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [expandedDevice, setExpandedDevice] = useState(null);
+  const [showExportMenu, setShowExportMenu] = useState(false);
 
   const [widgetLayout, setWidgetLayout] = useState({
     showStats: true,
@@ -56,6 +57,17 @@ export default function Home() {
   const alertThresholdsRef = useRef(alertThresholds);
   const portConfigsRef = useRef(portConfigs);
   const devicesRef = useRef(devices);
+
+  // Fechar dropdown ao clicar fora
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (showExportMenu && !e.target.closest('.export-dropdown')) {
+        setShowExportMenu(false);
+      }
+    };
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [showExportMenu]);
 
   useEffect(() => { alertThresholdsRef.current = alertThresholds; }, [alertThresholds]);
   useEffect(() => { portConfigsRef.current = portConfigs; }, [portConfigs]);
@@ -157,6 +169,7 @@ export default function Home() {
   const generatePDF = async () => {
     if (typeof window === 'undefined') return;
     setIsGeneratingPDF(true);
+    setShowExportMenu(false);
     try {
       const { default: jsPDF } = await import('jspdf');
       const html2canvas = (await import('html2canvas')).default;
@@ -363,6 +376,7 @@ export default function Home() {
     XLSX.utils.book_append_sheet(wb, ws, 'Dispositivos');
     XLSX.writeFile(wb, `orbnoc-inventario.xlsx`);
     addAlert('📊 Planilha Excel exportada!', 'success');
+    setShowExportMenu(false);
   };
 
   const toggleWidget = (widgetName) => {
@@ -533,30 +547,19 @@ export default function Home() {
                   <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg overflow-hidden">
                     <div className="relative w-full h-full flex items-center justify-center">
                       <svg className="w-7 h-7 text-white" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        {/* Padrão ╱╲╱╲╱╲ - Linhas diagonais animadas */}
                         <g>
-                          {/* Linha 1 */}
                           <line x1="4" y1="6" x2="10" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="animate-line-1"/>
-                          {/* Linha 2 */}
                           <line x1="10" y1="12" x2="4" y2="18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="animate-line-2"/>
-                          {/* Linha 3 */}
                           <line x1="12" y1="8" x2="18" y2="14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="animate-line-3"/>
-                          {/* Linha 4 */}
                           <line x1="18" y1="14" x2="12" y2="20" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="animate-line-4"/>
-                          {/* Linha 5 - adicional para o padrão */}
                           <line x1="8" y1="4" x2="20" y2="16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" opacity="0.5" className="animate-line-5"/>
-                          {/* Linha 6 */}
                           <line x1="4" y1="16" x2="16" y2="4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" opacity="0.5" className="animate-line-6"/>
-
-                          {/* Pontos de conexão pulsantes */}
                           <circle cx="10" cy="12" r="1.5" fill="currentColor" className="animate-pulse-dot"/>
                           <circle cx="18" cy="14" r="1.5" fill="currentColor" className="animate-pulse-dot delay-100"/>
                           <circle cx="4" cy="18" r="1" fill="currentColor" className="animate-pulse-dot delay-200"/>
                           <circle cx="12" cy="20" r="1" fill="currentColor" className="animate-pulse-dot delay-300"/>
                         </g>
                       </svg>
-
-                      {/* Efeito de brilho */}
                       <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shine"></div>
                     </div>
                   </div>
@@ -583,17 +586,44 @@ export default function Home() {
                   </span>
                 </button>
 
-                <div className="relative group">
-                  <button className="px-4 py-2 bg-slate-800/50 hover:bg-slate-700/50 rounded-xl border border-slate-700/50 transition-all duration-200">
-                    <span className="text-sm">📊 Exportar ▼</span>
+                {/* Dropdown de Exportação Simplificado */}
+                <div className="relative">
+                  <button
+                    onClick={() => setShowExportMenu(!showExportMenu)}
+                    className="px-4 py-2 bg-slate-800/50 hover:bg-slate-700/50 rounded-xl border border-slate-700/50 transition-all duration-200 flex items-center gap-2"
+                  >
+                    <span className="text-sm">📊 Exportar</span>
+                    <svg className={`w-3 h-3 transition-transform ${showExportMenu ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
                   </button>
-                  <div className="absolute right-0 mt-2 w-40 bg-slate-800 rounded-xl shadow-xl overflow-hidden z-10 hidden group-hover:block border border-slate-700/50">
-                    <button onClick={exportToCSV} className="w-full text-left px-4 py-2 text-sm hover:bg-slate-700 transition-colors">📥 Exportar CSV</button>
-                    <button onClick={generatePDF} disabled={isGeneratingPDF} className="w-full text-left px-4 py-2 text-sm hover:bg-slate-700 transition-colors">📄 Exportar PDF</button>
-                  </div>
+
+                  {showExportMenu && (
+                    <div className="absolute right-0 top-full mt-2 bg-slate-800 rounded-xl shadow-xl z-[200] border border-slate-700/50 min-w-[180px]">
+                      <button
+                        onClick={() => {
+                          exportToCSV();
+                          setShowExportMenu(false);
+                        }}
+                        className="w-full text-left px-4 py-2.5 text-sm hover:bg-slate-700 transition-colors rounded-t-xl flex items-center gap-2"
+                      >
+                        <span>📥</span> Exportar CSV
+                      </button>
+                      <button
+                        onClick={() => {
+                          generatePDF();
+                          setShowExportMenu(false);
+                        }}
+                        disabled={isGeneratingPDF}
+                        className="w-full text-left px-4 py-2.5 text-sm hover:bg-slate-700 transition-colors rounded-b-xl flex items-center gap-2 border-t border-slate-700/50"
+                      >
+                        <span>📄</span> {isGeneratingPDF ? 'Gerando...' : 'Exportar PDF'}
+                      </button>
+                    </div>
+                  )}
                 </div>
 
-                <button onClick={() => toggleWidget('showTelegramConfig')} className={`px-4 py-2 rounded-xl border transition-all duration-200 ${
+                <button onClick={() => toggleWidget('showTelegramConfig')} className={`px-4 py-2 rounded-xl border transition-all duration-200 min-w-[140px] ${
                   telegramConfig.enabled ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-400' : 'bg-slate-800/50 border-slate-700/50 text-slate-400'
                 }`}>
                   {telegramConfig.enabled ? '📱 Telegram ON' : '📱 Telegram OFF'}
