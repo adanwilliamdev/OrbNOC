@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useRef, Fragment } from 'react';
+import React, { useEffect, useState, useRef, Fragment, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import * as XLSX from 'xlsx';
@@ -38,6 +38,7 @@ export default function Home() {
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [expandedDevice, setExpandedDevice] = useState(null);
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const [lastUpdateTime, setLastUpdateTime] = useState(null);
 
   const [widgetLayout, setWidgetLayout] = useState({
     showStats: true,
@@ -349,16 +350,20 @@ export default function Home() {
 
       if (threshold && data.latency_ms > threshold && data.status === 'online') {
         addAlert(`⚠️ Latência Crítica: ${data.name} atingiu ${data.latency_ms}ms`, 'warning');
+      } else if (data.status === 'online') {
+        addAlert(`📡 ${data.name}: ${data.latency_ms || 'N/A'}ms`, 'success');
       } else {
-        addAlert(`📡 ${data.name}: ${data.latency_ms || 'N/A'}ms [${data.status.toUpperCase()}]`, data.status === 'online' ? 'success' : 'error');
+        addAlert(`🔴 ${data.name}: Host offline`, 'error');
       }
 
       setRealtimeLatencyData(prev => {
         const dData = prev[deviceId] || [];
-        return { ...prev, [deviceId]: [...dData, { timestamp: Date.now(), latency: data.latency_ms }].slice(-50) };
+        const newData = [...dData, { timestamp: Date.now(), latency: data.latency_ms }].slice(-50);
+        return { ...prev, [deviceId]: newData };
       });
 
       setDevices(prev => prev.map(d => d.id === deviceId ? { ...d, latency: data.latency_ms, status: data.status, last_check: data.timestamp } : d));
+      setLastUpdateTime(new Date());
     } catch (error) {
       addAlert('❌ Falha na requisição de ping', 'error');
     } finally {
@@ -387,6 +392,7 @@ export default function Home() {
     });
   };
 
+  // WebSocket connection for real-time updates
   useEffect(() => {
     if (!isAuthenticated) return;
     fetchDevices();
@@ -400,26 +406,54 @@ export default function Home() {
           transports: ['websocket', 'polling'],
           auth: { token }
         });
-        socket.on('connect', () => setConnected(true));
+
+        socket.on('connect', () => {
+          setConnected(true);
+          console.log('✅ WebSocket conectado');
+        });
+
         socket.on('devices_update', (updatedDevices) => {
+          console.log('📡 Atualização recebida via WebSocket:', updatedDevices.length, 'dispositivos');
+
+          // Atualizar o histórico de latência em tempo real para cada dispositivo
           updatedDevices.forEach(device => {
+            if (device.latency) {
+              setRealtimeLatencyData(prev => {
+                const dData = prev[device.id] || [];
+                const newData = [...dData, { timestamp: Date.now(), latency: device.latency }].slice(-50);
+                return { ...prev, [device.id]: newData };
+              });
+            }
+
             const old = devicesRef.current.find(d => d.id === device.id);
             if (old && old.status !== device.status) {
               addAlert(`${device.status === 'offline' ? '🔴 Host Down' : '🟢 Host Up'}: ${device.name}`, device.status === 'offline' ? 'error' : 'success');
             }
+
             const threshold = alertThresholdsRef.current[device.id];
             if (threshold && device.latency > threshold && device.status === 'online') {
               addAlert(`⚠️ ALERTA SLA: ${device.name} está com ${device.latency}ms (> ${threshold}ms)`, 'warning');
             }
           });
+
           setDevices(updatedDevices);
+          setLastUpdateTime(new Date());
           saveToHistory(updatedDevices);
         });
-        socket.on('disconnect', () => setConnected(false));
-      } catch (err) { console.error(err); }
+
+        socket.on('disconnect', () => {
+          setConnected(false);
+          console.log('❌ WebSocket desconectado');
+        });
+      } catch (err) {
+        console.error('Erro ao conectar WebSocket:', err);
+      }
     };
+
     initSocket();
-    return () => { if (socket) socket.disconnect(); };
+    return () => {
+      if (socket) socket.disconnect();
+    };
   }, [isAuthenticated]);
 
   const addDevice = async (e) => {
@@ -491,6 +525,40 @@ export default function Home() {
     return filtered;
   };
 
+  // Função para preparar dados do gráfico em tempo real
+  const getRealtimeChartData = useCallback(() => {
+    const onlineDevices = getFilteredAndSortedDevices().filter(d => d.status === 'online').slice(0, 5);
+    if (onlineDevices.length === 0) return [];
+
+    // Coletar todos os timestamps únicos dos últimos 20 pontos
+    const allPoints = [];
+    onlineDevices.forEach(device => {
+      const history = realtimeLatencyData[device.id] || [];
+      history.slice(-20).forEach(point => {
+        if (point && point.latency) {
+          allPoints.push({
+            deviceId: device.id,
+            deviceName: device.name,
+            time: new Date(point.timestamp).toLocaleTimeString().slice(0, 5),
+            latency: point.latency
+          });
+        }
+      });
+    });
+
+    // Agrupar por timestamp
+    const groupedByTime = {};
+    allPoints.forEach(point => {
+      if (!groupedByTime[point.time]) {
+        groupedByTime[point.time] = { time: point.time };
+      }
+      groupedByTime[point.time][point.deviceName] = point.latency;
+    });
+
+    // Ordenar por tempo
+    return Object.values(groupedByTime).sort((a, b) => a.time.localeCompare(b.time));
+  }, [devices, realtimeLatencyData, getFilteredAndSortedDevices]);
+
   if (!isAuthenticated || loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
@@ -514,6 +582,7 @@ export default function Home() {
     : 0;
   const chartData = getChartData();
   const unreadAlerts = alertHistory.filter(a => !a.read).length;
+  const realtimeChartData = getRealtimeChartData();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-200" ref={dashboardRef}>
@@ -542,7 +611,6 @@ export default function Home() {
           <div className="relative p-6">
             <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
               <div className="flex items-center gap-4">
-                {/* Ícone de Rede Animado - Estilo ╱╲╱╲╱╲ */}
                 <div className="relative">
                   <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg overflow-hidden">
                     <div className="relative w-full h-full flex items-center justify-center">
@@ -586,7 +654,6 @@ export default function Home() {
                   </span>
                 </button>
 
-                {/* Dropdown de Exportação Simplificado */}
                 <div className="relative">
                   <button
                     onClick={() => setShowExportMenu(!showExportMenu)}
@@ -635,14 +702,13 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Status Bar */}
             <div className="flex flex-wrap gap-4 mt-6 pt-4 border-t border-slate-800/50">
               <div className="flex items-center gap-2">
                 <div className={`w-2 h-2 rounded-full ${connected ? 'bg-emerald-500' : 'bg-rose-500'} animate-pulse`}></div>
                 <span className="text-xs text-slate-400">{connected ? 'WebSocket Conectado' : 'WebSocket Desconectado'}</span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-xs text-slate-400">🕒 Última atualização: {new Date().toLocaleTimeString()}</span>
+                <span className="text-xs text-slate-400">🕒 Última atualização: {lastUpdateTime ? lastUpdateTime.toLocaleTimeString() : new Date().toLocaleTimeString()}</span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-xs text-slate-400">📡 Dispositivos monitorados: {devices.length}</span>
@@ -727,7 +793,6 @@ export default function Home() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Column - Device Table */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Add Device Button */}
             <div className="flex justify-between items-center">
               <h2 className="text-lg font-semibold text-slate-300 flex items-center gap-2">
                 <span className="w-1 h-6 bg-gradient-to-b from-indigo-500 to-purple-500 rounded-full"></span>
@@ -738,7 +803,6 @@ export default function Home() {
               </button>
             </div>
 
-            {/* Add Device Form */}
             {showForm && (
               <form onSubmit={addDevice} className="bg-slate-900/60 backdrop-blur-sm p-5 rounded-xl border border-indigo-500/30">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -752,7 +816,6 @@ export default function Home() {
               </form>
             )}
 
-            {/* Devices Table */}
             <div className="bg-slate-900/40 rounded-xl border border-slate-800/50 overflow-hidden backdrop-blur-sm">
               <div className="overflow-x-auto">
                 <table className="w-full">
@@ -874,39 +937,92 @@ export default function Home() {
 
           {/* Right Column - Analytics & Alerts */}
           <div className="space-y-6">
-            {/* Latency Chart */}
+            {/* Real-time Multi-Device Latency Dashboard - Apenas Gráfico */}
             <div className="bg-slate-900/40 rounded-xl border border-slate-800/50 p-5 backdrop-blur-sm">
-              <h3 className="text-sm font-semibold text-slate-300 mb-4 flex items-center gap-2">
-                <span className="w-1 h-5 bg-gradient-to-b from-indigo-500 to-purple-500 rounded-full"></span>
-                Monitor de Latência em Tempo Real
-              </h3>
-              {selectedDevice ? (
-                <div className="h-[200px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={(realtimeLatencyData[selectedDevice.id] || []).map(d => ({ time: new Date(d.timestamp).toLocaleTimeString(), latency: d.latency }))}>
-                      <defs>
-                        <linearGradient id="latencyGradient" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3}/>
-                          <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
-                      <XAxis dataKey="time" stroke="#64748b" fontSize={10} tickLine={false} />
-                      <YAxis stroke="#64748b" fontSize={10} tickLine={false} />
-                      <Tooltip contentStyle={{ backgroundColor: '#1e293b', borderRadius: '8px', border: '1px solid #334155' }} />
-                      <Area type="monotone" dataKey="latency" stroke="#6366f1" strokeWidth={2} fill="url(#latencyGradient)" />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-sm font-semibold text-slate-300 flex items-center gap-2">
+                  <span className="w-1 h-5 bg-gradient-to-b from-indigo-500 to-purple-500 rounded-full"></span>
+                  Latência em Tempo Real
+                </h3>
+                <button
+                  onClick={() => {
+                    const allDevices = getFilteredAndSortedDevices().filter(d => d.status === 'online');
+                    allDevices.forEach(d => pingDevice(d.id));
+                    addAlert(`📡 Testando ${allDevices.length} dispositivos...`, 'success');
+                  }}
+                  className="px-3 py-1.5 bg-indigo-600/20 hover:bg-indigo-600 text-indigo-400 hover:text-white rounded-lg text-xs font-medium transition-all"
+                >
+                  📡 Testar Todos
+                </button>
+              </div>
+
+              {getFilteredAndSortedDevices().filter(d => d.status === 'online').length > 0 ? (
+                <>
+                  {/* Apenas o gráfico - tabela removida */}
+                  <div className="h-[350px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={realtimeChartData}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
+                        <XAxis
+                          dataKey="time"
+                          stroke="#64748b"
+                          fontSize={11}
+                          tickLine={false}
+                          interval="preserveStartEnd"
+                        />
+                        <YAxis
+                          stroke="#64748b"
+                          fontSize={11}
+                          tickLine={false}
+                          label={{
+                            value: 'Latência (ms)',
+                            angle: -90,
+                            position: 'insideLeft',
+                            style: { fill: '#64748b', fontSize: 11 }
+                          }}
+                        />
+                        <Tooltip
+                          contentStyle={{ backgroundColor: '#1e293b', borderRadius: '8px', border: '1px solid #334155' }}
+                          labelStyle={{ color: '#94a3b8' }}
+                          formatter={(value, name) => [`${value}ms`, name]}
+                        />
+                        <Legend
+                          wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }}
+                          verticalAlign="bottom"
+                          height={36}
+                        />
+                        {getFilteredAndSortedDevices()
+                          .filter(d => d.status === 'online')
+                          .slice(0, 5)
+                          .map((device, idx) => {
+                            const colors = ['#6366f1', '#10b981', '#f59e0b', '#ec4899', '#06b6d4'];
+                            return (
+                              <Line
+                                key={device.id}
+                                type="monotone"
+                                dataKey={device.name}
+                                stroke={colors[idx % colors.length]}
+                                strokeWidth={2}
+                                dot={false}
+                                name={device.name}
+                                isAnimationActive={false}
+                              />
+                            );
+                          })}
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  <div className="flex justify-between mt-3 text-xs text-slate-500">
+                    <span>📊 Atualização em tempo real via WebSocket • {realtimeChartData.length} pontos</span>
+                    <span>🟢 &lt;50ms | 🟡 50-100ms | 🔴 &gt;100ms</span>
+                  </div>
+                </>
               ) : (
-                <div className="h-[200px] flex items-center justify-center text-slate-500 text-sm">
-                  Selecione um dispositivo na tabela
+                <div className="h-[350px] flex items-center justify-center text-slate-500 text-sm">
+                  Nenhum dispositivo online para monitorar
                 </div>
               )}
-              <div className="mt-3 flex justify-between text-xs text-slate-500">
-                <span>📡 Dispositivo: {selectedDevice?.name || '—'}</span>
-                <span>🔄 Atualização em tempo real</span>
-              </div>
             </div>
 
             {/* Uptime History Chart */}
