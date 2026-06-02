@@ -7,12 +7,85 @@ const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const net = require('net');
-const db = require('./database');
+const { Pool } = require('pg');
 
 const app = express();
 const JWT_SECRET = process.env.JWT_SECRET || 'orbnoc_secret_key_2024_change_this_in_production';
 
-// CORS corrigido
+// ==================== CONEXÃO COM POSTGRESQL ====================
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+});
+
+// Testar conexão com o banco
+pool.connect((err, client, release) => {
+  if (err) {
+    console.error('❌ Erro ao conectar ao PostgreSQL:', err.stack);
+  } else {
+    console.log('✅ Conectado ao PostgreSQL com sucesso!');
+    release();
+    criarTabelas(); // Criar tabelas após conectar
+  }
+});
+
+// ==================== CRIAÇÃO DAS TABELAS ====================
+async function criarTabelas() {
+  const queries = [
+    `CREATE TABLE IF NOT EXISTS users (
+      id SERIAL PRIMARY KEY,
+      username VARCHAR(100) UNIQUE NOT NULL,
+      email VARCHAR(255) UNIQUE NOT NULL,
+      password VARCHAR(255) NOT NULL,
+      role VARCHAR(50) DEFAULT 'user',
+      telegram_alerts_enabled BOOLEAN DEFAULT FALSE,
+      telegram_bot_token TEXT,
+      telegram_chat_id VARCHAR(100),
+      email_alerts_enabled BOOLEAN DEFAULT FALSE,
+      alert_email_target VARCHAR(255),
+      last_login TIMESTAMP,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`,
+    
+    `CREATE TABLE IF NOT EXISTS user_devices (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+      device_id BIGINT NOT NULL,
+      name VARCHAR(255) NOT NULL,
+      ip VARCHAR(45) NOT NULL,
+      location VARCHAR(255),
+      status VARCHAR(20) DEFAULT 'offline',
+      latency INTEGER,
+      avg_latency INTEGER,
+      min_latency INTEGER,
+      max_latency INTEGER,
+      jitter INTEGER DEFAULT 0,
+      packet_loss INTEGER DEFAULT 0,
+      last_check TIMESTAMP,
+      last_ping_stats TIMESTAMP,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`,
+    
+    `CREATE TABLE IF NOT EXISTS access_logs (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+      action VARCHAR(50),
+      ip_address VARCHAR(45),
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`
+  ];
+
+  for (const query of queries) {
+    try {
+      await pool.query(query);
+      console.log('✅ Tabela verificada/criada com sucesso');
+    } catch (err) {
+      console.error('❌ Erro ao criar tabela:', err.message);
+    }
+  }
+}
+
+// ==================== MIDDLEWARE ====================
 app.use(cors({
   origin: true,
   methods: ["GET", "POST", "DELETE", "PUT", "OPTIONS"],
@@ -82,7 +155,7 @@ async function sendTelegramAlert(botToken, chatId, message, type) {
   }
 }
 
-// ==================== MIDDLEWARE ====================
+// ==================== MIDDLEWARE DE AUTENTICAÇÃO ====================
 
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
@@ -112,32 +185,31 @@ app.post('/api/auth/register', async (req, res) => {
 
   try {
     const hashedPassword = await bcrypt.hash(password, 10);
-
-    db.run(
-      'INSERT INTO users (username, email, password) VALUES (?, ?, ?)',
-      [username, email, hashedPassword],
-      function(err) {
-        if (err) {
-          if (err.message.includes('UNIQUE')) {
-            return res.status(400).json({ error: 'Usuário ou email já existe' });
-          }
-          return res.status(500).json({ error: 'Erro ao criar usuário' });
-        }
-
-        const token = jwt.sign({ id: this.lastID, username, role: 'user' }, JWT_SECRET, { expiresIn: '24h' });
-
-        db.run('INSERT INTO access_logs (user_id, action, ip_address) VALUES (?, ?, ?)',
-          [this.lastID, 'register', req.ip]);
-
-        res.json({
-          success: true,
-          token,
-          user: { id: this.lastID, username, email, role: 'user' }
-        });
-      }
+    
+    const result = await pool.query(
+      'INSERT INTO users (username, email, password) VALUES ($1, $2, $3) RETURNING id, username, email, role',
+      [username, email, hashedPassword]
     );
+    
+    const user = result.rows[0];
+    const token = jwt.sign({ id: user.id, username: user.username, role: user.role }, JWT_SECRET, { expiresIn: '24h' });
+
+    await pool.query(
+      'INSERT INTO access_logs (user_id, action, ip_address) VALUES ($1, $2, $3)',
+      [user.id, 'register', req.ip]
+    );
+
+    res.json({
+      success: true,
+      token,
+      user: { id: user.id, username: user.username, email: user.email, role: user.role }
+    });
   } catch (error) {
-    res.status(500).json({ error: 'Erro interno' });
+    if (error.code === '23505') { // Unique violation
+      return res.status(400).json({ error: 'Usuário ou email já existe' });
+    }
+    console.error('Erro no registro:', error);
+    res.status(500).json({ error: 'Erro interno ao criar usuário' });
   }
 });
 
@@ -148,8 +220,14 @@ app.post('/api/auth/login', async (req, res) => {
     return res.status(400).json({ error: 'Usuário e senha são obrigatórios' });
   }
 
-  db.get('SELECT * FROM users WHERE username = ? OR email = ?', [username, username], async (err, user) => {
-    if (err || !user) {
+  try {
+    const result = await pool.query(
+      'SELECT * FROM users WHERE username = $1 OR email = $1',
+      [username]
+    );
+    
+    const user = result.rows[0];
+    if (!user) {
       return res.status(401).json({ error: 'Credenciais inválidas' });
     }
 
@@ -158,9 +236,15 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(401).json({ error: 'Credenciais inválidas' });
     }
 
-    db.run('UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?', [user.id]);
-    db.run('INSERT INTO access_logs (user_id, action, ip_address) VALUES (?, ?, ?)',
-      [user.id, 'login', req.ip]);
+    await pool.query(
+      'UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = $1',
+      [user.id]
+    );
+    
+    await pool.query(
+      'INSERT INTO access_logs (user_id, action, ip_address) VALUES ($1, $2, $3)',
+      [user.id, 'login', req.ip]
+    );
 
     const token = jwt.sign({ id: user.id, username: user.username, role: user.role }, JWT_SECRET, { expiresIn: '24h' });
 
@@ -169,89 +253,105 @@ app.post('/api/auth/login', async (req, res) => {
       token,
       user: { id: user.id, username: user.username, email: user.email, role: user.role }
     });
-  });
+  } catch (error) {
+    console.error('Erro no login:', error);
+    res.status(500).json({ error: 'Erro interno' });
+  }
 });
 
-app.post('/api/auth/logout', authenticateToken, (req, res) => {
-  db.run('INSERT INTO access_logs (user_id, action, ip_address) VALUES (?, ?, ?)',
-    [req.user.id, 'logout', req.ip]);
-  res.json({ success: true });
+app.post('/api/auth/logout', authenticateToken, async (req, res) => {
+  try {
+    await pool.query(
+      'INSERT INTO access_logs (user_id, action, ip_address) VALUES ($1, $2, $3)',
+      [req.user.id, 'logout', req.ip]
+    );
+    res.json({ success: true });
+  } catch (error) {
+    res.json({ success: true }); // Não falha mesmo se o log falhar
+  }
 });
 
 // ==================== ROTAS DE DISPOSITIVOS ====================
 
-app.get('/api/devices', authenticateToken, (req, res) => {
-  db.all('SELECT * FROM user_devices WHERE user_id = ? ORDER BY id', [req.user.id], (err, devices) => {
-    if (err) {
-      return res.status(500).json({ error: 'Erro ao buscar dispositivos' });
-    }
-    res.json(devices);
-  });
+app.get('/api/devices', authenticateToken, async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT * FROM user_devices WHERE user_id = $1 ORDER BY id',
+      [req.user.id]
+    );
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Erro ao buscar dispositivos:', error);
+    res.status(500).json({ error: 'Erro ao buscar dispositivos' });
+  }
 });
 
-app.post('/api/devices', authenticateToken, (req, res) => {
+app.post('/api/devices', authenticateToken, async (req, res) => {
   const { name, ip, location } = req.body;
 
-  db.run(
-    'INSERT INTO user_devices (user_id, device_id, name, ip, location) VALUES (?, ?, ?, ?, ?)',
-    [req.user.id, Date.now(), name, ip, location],
-    function(err) {
-      if (err) {
-        return res.status(500).json({ error: 'Erro ao adicionar dispositivo' });
-      }
-
-      db.get('SELECT * FROM user_devices WHERE id = ?', [this.lastID], (err, device) => {
-        res.json(device);
-      });
-    }
-  );
+  try {
+    const result = await pool.query(
+      'INSERT INTO user_devices (user_id, device_id, name, ip, location) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+      [req.user.id, Date.now(), name, ip, location || null]
+    );
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Erro ao adicionar dispositivo:', error);
+    res.status(500).json({ error: 'Erro ao adicionar dispositivo' });
+  }
 });
 
-app.delete('/api/devices/:id', authenticateToken, (req, res) => {
-  db.run(
-    'DELETE FROM user_devices WHERE id = ? AND user_id = ?',
-    [req.params.id, req.user.id],
-    function(err) {
-      if (err) {
-        return res.status(500).json({ error: 'Erro ao remover dispositivo' });
-      }
-      res.json({ success: true });
-    }
-  );
+app.delete('/api/devices/:id', authenticateToken, async (req, res) => {
+  try {
+    await pool.query(
+      'DELETE FROM user_devices WHERE id = $1 AND user_id = $2',
+      [req.params.id, req.user.id]
+    );
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Erro ao remover dispositivo:', error);
+    res.status(500).json({ error: 'Erro ao remover dispositivo' });
+  }
 });
 
 // ==================== ROTA DE PING MANUAL ====================
 
 app.get('/api/devices/:id/ping', authenticateToken, async (req, res) => {
   try {
-    db.get('SELECT * FROM user_devices WHERE id = ? AND user_id = ?',
-      [req.params.id, req.user.id], async (err, device) => {
-        if (err || !device) {
-          return res.status(404).json({ error: 'Dispositivo não encontrado' });
-        }
+    const result = await pool.query(
+      'SELECT * FROM user_devices WHERE id = $1 AND user_id = $2',
+      [req.params.id, req.user.id]
+    );
+    
+    const device = result.rows[0];
+    if (!device) {
+      return res.status(404).json({ error: 'Dispositivo não encontrado' });
+    }
 
-        const startTime = Date.now();
-        const result = await ping.promise.probe(device.ip, {
-          timeout: 2,
-          extra: ['-n', '1']
-        });
-        const endTime = Date.now();
+    const startTime = Date.now();
+    const pingResult = await ping.promise.probe(device.ip, {
+      timeout: 2,
+      extra: ['-n', '1']
+    });
+    const endTime = Date.now();
 
-        const latency = result.alive ? endTime - startTime : null;
+    const latency = pingResult.alive ? endTime - startTime : null;
 
-        db.run('UPDATE user_devices SET latency = ?, last_check = CURRENT_TIMESTAMP WHERE id = ?',
-          [latency, device.id]);
+    await pool.query(
+      'UPDATE user_devices SET latency = $1, last_check = CURRENT_TIMESTAMP WHERE id = $2',
+      [latency, device.id]
+    );
 
-        res.json({
-          id: device.id,
-          name: device.name,
-          ip: device.ip,
-          status: result.alive ? 'online' : 'offline',
-          latency_ms: latency,
-          timestamp: new Date().toISOString()
-        });
+    res.json({
+      id: device.id,
+      name: device.name,
+      ip: device.ip,
+      status: pingResult.alive ? 'online' : 'offline',
+      latency_ms: latency,
+      timestamp: new Date().toISOString()
     });
   } catch (error) {
+    console.error('Erro ao realizar ping:', error);
     res.status(500).json({ error: 'Erro ao realizar ping' });
   }
 });
@@ -262,157 +362,149 @@ app.post('/api/devices/:id/check-port', authenticateToken, (req, res) => {
   const { port } = req.body;
   if (!port) return res.status(400).json({ error: 'Porta é obrigatória' });
 
-  db.get('SELECT * FROM user_devices WHERE id = ? AND user_id = ?', [req.params.id, req.user.id], (err, device) => {
-    if (err || !device) return res.status(404).json({ error: 'Dispositivo não encontrado' });
-
-    const socket = new net.Socket();
-    let statusRespondido = false;
-
-    socket.setTimeout(2500);
-
-    socket.connect(parseInt(port), device.ip, () => {
-      if (!statusRespondido) {
-        statusRespondido = true;
-        socket.destroy();
-        res.json({ open: true, port, ip: device.ip });
+  pool.query(
+    'SELECT * FROM user_devices WHERE id = $1 AND user_id = $2',
+    [req.params.id, req.user.id],
+    (err, result) => {
+      if (err || result.rows.length === 0) {
+        return res.status(404).json({ error: 'Dispositivo não encontrado' });
       }
-    });
+      
+      const device = result.rows[0];
+      const socket = new net.Socket();
+      let statusRespondido = false;
 
-    socket.on('error', () => {
-      if (!statusRespondido) {
-        statusRespondido = true;
-        socket.destroy();
-        res.json({ open: false, port, ip: device.ip });
-      }
-    });
+      socket.setTimeout(2500);
 
-    socket.on('timeout', () => {
-      if (!statusRespondido) {
-        statusRespondido = true;
-        socket.destroy();
-        res.json({ open: false, port, ip: device.ip, error: 'timeout' });
-      }
-    });
-  });
+      socket.connect(parseInt(port), device.ip, () => {
+        if (!statusRespondido) {
+          statusRespondido = true;
+          socket.destroy();
+          res.json({ open: true, port, ip: device.ip });
+        }
+      });
+
+      socket.on('error', () => {
+        if (!statusRespondido) {
+          statusRespondido = true;
+          socket.destroy();
+          res.json({ open: false, port, ip: device.ip });
+        }
+      });
+
+      socket.on('timeout', () => {
+        if (!statusRespondido) {
+          statusRespondido = true;
+          socket.destroy();
+          res.json({ open: false, port, ip: device.ip, error: 'timeout' });
+        }
+      });
+    }
+  );
 });
 
-// ==================== CONFIGURAÇÃO DE ALERTAS (SALVAR NO BANCO) ====================
+// ==================== CONFIGURAÇÃO DE ALERTAS ====================
 
-// Salvar configuração de alerta por email
-app.post('/api/alerts/email', authenticateToken, (req, res) => {
+app.post('/api/alerts/email', authenticateToken, async (req, res) => {
   const { enabled, email } = req.body;
 
-  db.run(
-    'UPDATE users SET email_alerts_enabled = ?, alert_email_target = ? WHERE id = ?',
-    [enabled ? 1 : 0, email || null, req.user.id],
-    function(err) {
-      if (err) {
-        console.error('Erro ao salvar config email:', err);
-        return res.status(500).json({ error: 'Erro ao salvar configuração' });
-      }
-      console.log(`Configuração de email salva para usuário ${req.user.id}: enabled=${enabled}, email=${email}`);
-      res.json({ success: true, enabled, email });
-    }
-  );
+  try {
+    await pool.query(
+      'UPDATE users SET email_alerts_enabled = $1, alert_email_target = $2 WHERE id = $3',
+      [enabled ? true : false, email || null, req.user.id]
+    );
+    console.log(`Configuração de email salva para usuário ${req.user.id}`);
+    res.json({ success: true, enabled, email });
+  } catch (error) {
+    console.error('Erro ao salvar config email:', error);
+    res.status(500).json({ error: 'Erro ao salvar configuração' });
+  }
 });
 
-// Buscar configuração de alerta por email
-app.get('/api/alerts/email', authenticateToken, (req, res) => {
-  db.get('SELECT email_alerts_enabled, alert_email_target FROM users WHERE id = ?', [req.user.id], (err, result) => {
-    if (err) {
-      return res.status(500).json({ error: 'Erro ao buscar configuração' });
-    }
+app.get('/api/alerts/email', authenticateToken, async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT email_alerts_enabled, alert_email_target FROM users WHERE id = $1',
+      [req.user.id]
+    );
+    const user = result.rows[0];
     res.json({
-      enabled: result?.email_alerts_enabled === 1,
-      email: result?.alert_email_target || ''
+      enabled: user?.email_alerts_enabled || false,
+      email: user?.alert_email_target || ''
     });
-  });
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao buscar configuração' });
+  }
 });
 
-// Salvar configuração de alerta do Telegram
-app.post('/api/alerts/telegram', authenticateToken, (req, res) => {
+app.post('/api/alerts/telegram', authenticateToken, async (req, res) => {
   const { enabled, botToken, chatId } = req.body;
 
-  db.run(
-    'UPDATE users SET telegram_alerts_enabled = ?, telegram_bot_token = ?, telegram_chat_id = ? WHERE id = ?',
-    [enabled ? 1 : 0, botToken || null, chatId || null, req.user.id],
-    function(err) {
-      if (err) {
-        console.error('Erro ao salvar config Telegram:', err);
-        return res.status(500).json({ error: 'Erro ao salvar configuração' });
-      }
-      console.log(`Configuração do Telegram salva para usuário ${req.user.id}: enabled=${enabled}, botToken=${botToken ? '***' : 'null'}, chatId=${chatId}`);
+  try {
+    await pool.query(
+      'UPDATE users SET telegram_alerts_enabled = $1, telegram_bot_token = $2, telegram_chat_id = $3 WHERE id = $4',
+      [enabled ? true : false, botToken || null, chatId || null, req.user.id]
+    );
+    console.log(`Configuração do Telegram salva para usuário ${req.user.id}`);
 
-      // Testar a conexão com o Telegram
-      if (enabled && botToken && chatId) {
-        sendTelegramAlert(botToken, chatId, '✅ OrbNOC: Configuração do Telegram ativada com sucesso!', 'success')
-          .then(success => {
-            if (!success) {
-              console.warn('⚠️ Teste de conexão com Telegram falhou');
-            }
-          });
-      }
-
-      res.json({ success: true, enabled, botToken, chatId });
+    if (enabled && botToken && chatId) {
+      sendTelegramAlert(botToken, chatId, '✅ OrbNOC: Configuração do Telegram ativada com sucesso!', 'success');
     }
-  );
+
+    res.json({ success: true, enabled, botToken, chatId });
+  } catch (error) {
+    console.error('Erro ao salvar config Telegram:', error);
+    res.status(500).json({ error: 'Erro ao salvar configuração' });
+  }
 });
 
-// Buscar configuração de alerta do Telegram
-app.get('/api/alerts/telegram', authenticateToken, (req, res) => {
-  db.get('SELECT telegram_alerts_enabled, telegram_bot_token, telegram_chat_id FROM users WHERE id = ?', [req.user.id], (err, result) => {
-    if (err) {
-      return res.status(500).json({ error: 'Erro ao buscar configuração' });
-    }
+app.get('/api/alerts/telegram', authenticateToken, async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT telegram_alerts_enabled, telegram_bot_token, telegram_chat_id FROM users WHERE id = $1',
+      [req.user.id]
+    );
+    const user = result.rows[0];
     res.json({
-      enabled: result?.telegram_alerts_enabled === 1,
-      botToken: result?.telegram_bot_token || '',
-      chatId: result?.telegram_chat_id || ''
+      enabled: user?.telegram_alerts_enabled || false,
+      botToken: user?.telegram_bot_token || '',
+      chatId: user?.telegram_chat_id || ''
     });
-  });
+  } catch (error) {
+    res.status(500).json({ error: 'Erro ao buscar configuração' });
+  }
 });
 
-// Endpoint para disparar alertas (usado pelo sistema)
 app.post('/api/alerts/notify', authenticateToken, async (req, res) => {
   const { message, type } = req.body;
 
-  db.get('SELECT * FROM users WHERE id = ?', [req.user.id], async (err, user) => {
-    if (err || !user) {
+  try {
+    const result = await pool.query('SELECT * FROM users WHERE id = $1', [req.user.id]);
+    const user = result.rows[0];
+
+    if (!user) {
       return res.status(404).json({ error: 'Usuário não encontrado' });
     }
 
     console.log(`🚨 [ALERTA] Usuário: ${user.username} - ${message} (${type})`);
 
     let telegramSent = false;
-    let emailSent = false;
 
-    // Envio para o Telegram
     if (user.telegram_alerts_enabled && user.telegram_bot_token && user.telegram_chat_id) {
       telegramSent = await sendTelegramAlert(user.telegram_bot_token, user.telegram_chat_id, message, type);
-      if (telegramSent) {
-        console.log(`✅ Alerta enviado via Telegram para ${user.username}`);
-      } else {
-        console.error(`❌ Falha ao enviar alerta via Telegram para ${user.username}`);
-      }
-    } else {
-      console.log(`ℹ️ Telegram não configurado para ${user.username}`);
-    }
-
-    // Envio para Email (placeholder)
-    if (user.email_alerts_enabled && user.alert_email_target) {
-      console.log(`📧 Email alerta para ${user.alert_email_target}: ${message}`);
-      emailSent = true;
     }
 
     res.json({
       success: true,
       telegram_sent: telegramSent,
-      email_sent: emailSent
+      email_sent: false
     });
-  });
+  } catch (error) {
+    res.status(500).json({ error: 'Erro interno' });
+  }
 });
 
-// ==================== WEBSOCKET & MONITORAMENTO INTERNO ====================
+// ==================== WEBSOCKET & MONITORAMENTO ====================
 
 io.use((socket, next) => {
   const token = socket.handshake.auth.token;
@@ -432,108 +524,101 @@ io.use((socket, next) => {
 const latencyHistory = new Map();
 
 async function checkUserDevices(userId) {
-  return new Promise((resolve, reject) => {
-    db.all('SELECT * FROM user_devices WHERE user_id = ?', [userId], async (err, devices) => {
-      if (err) {
-        reject(err);
-        return;
-      }
+  try {
+    const result = await pool.query('SELECT * FROM user_devices WHERE user_id = $1', [userId]);
+    const devices = result.rows;
+    const updatedDevices = [];
 
-      const updatedDevices = [];
-      for (const device of devices) {
-        try {
-          if (!latencyHistory.has(device.id)) {
-            latencyHistory.set(device.id, []);
-          }
-          let history = latencyHistory.get(device.id);
-
-          const startTime = Date.now();
-          const res = await ping.promise.probe(device.ip, {
-            timeout: 2,
-            extra: ['-n', '1']
-          });
-          const endTime = Date.now();
-
-          const latency = res.alive ? endTime - startTime : null;
-
-          if (latency) {
-            history.push(latency);
-            if (history.length > 10) history.shift();
-          } else {
-            history.push(null);
-            if (history.length > 10) history.shift();
-          }
-          latencyHistory.set(device.id, history);
-
-          const validLatencies = history.filter(l => l !== null);
-          const avgLatency = validLatencies.length > 0
-            ? validLatencies.reduce((a, b) => a + b, 0) / validLatencies.length
-            : null;
-          const minLatency = validLatencies.length > 0 ? Math.min(...validLatencies) : null;
-          const maxLatency = validLatencies.length > 0 ? Math.max(...validLatencies) : null;
-          const jitter = calculateJitter(validLatencies);
-          const packetLoss = history.length > 0
-            ? ((history.filter(l => l === null).length / history.length) * 100)
-            : 0;
-
-          const previousStatus = device.status;
-          device.status = res.alive ? 'online' : 'offline';
-          device.last_check = new Date().toISOString();
-          device.latency = latency;
-          device.avg_latency = avgLatency ? Math.round(avgLatency) : null;
-          device.min_latency = minLatency;
-          device.max_latency = maxLatency;
-          device.jitter = jitter;
-          device.packet_loss = Math.round(packetLoss);
-
-          db.run(`UPDATE user_devices SET
-            status = ?,
-            last_check = ?,
-            latency = ?,
-            avg_latency = ?,
-            min_latency = ?,
-            max_latency = ?,
-            jitter = ?,
-            packet_loss = ?,
-            last_ping_stats = CURRENT_TIMESTAMP
-            WHERE id = ?`,
-            [device.status, device.last_check, latency, avgLatency, minLatency, maxLatency, jitter, packetLoss, device.id]);
-
-          // Disparar alerta se o status mudou
-          if (previousStatus && previousStatus !== device.status) {
-            const user = await new Promise((resolve) => {
-              db.get('SELECT * FROM users WHERE id = ?', [userId], (err, user) => resolve(user));
-            });
-
-            if (user && user.telegram_alerts_enabled && user.telegram_bot_token && user.telegram_chat_id) {
-              const alertMessage = device.status === 'offline'
-                ? `🔴 HOST OFFLINE: ${device.name} (${device.ip}) está fora do ar!`
-                : `🟢 HOST ONLINE: ${device.name} (${device.ip}) está novamente online!`;
-
-              await sendTelegramAlert(user.telegram_bot_token, user.telegram_chat_id, alertMessage, device.status === 'offline' ? 'error' : 'success');
-            }
-          }
-
-          updatedDevices.push(device);
-        } catch (error) {
-          console.error(`Erro ao pingar ${device.ip}:`, error.message);
-          device.status = 'offline';
-          device.latency = null;
-          db.run('UPDATE user_devices SET status = ?, last_check = CURRENT_TIMESTAMP, latency = ? WHERE id = ?',
-            ['offline', null, device.id]);
-          updatedDevices.push(device);
+    for (const device of devices) {
+      try {
+        if (!latencyHistory.has(device.id)) {
+          latencyHistory.set(device.id, []);
         }
+        let history = latencyHistory.get(device.id);
+
+        const startTime = Date.now();
+        const pingResult = await ping.promise.probe(device.ip, {
+          timeout: 2,
+          extra: ['-n', '1']
+        });
+        const endTime = Date.now();
+
+        const latency = pingResult.alive ? endTime - startTime : null;
+
+        if (latency) {
+          history.push(latency);
+          if (history.length > 10) history.shift();
+        } else {
+          history.push(null);
+          if (history.length > 10) history.shift();
+        }
+        latencyHistory.set(device.id, history);
+
+        const validLatencies = history.filter(l => l !== null);
+        const avgLatency = validLatencies.length > 0
+          ? validLatencies.reduce((a, b) => a + b, 0) / validLatencies.length
+          : null;
+        const jitter = calculateJitter(validLatencies);
+        const packetLoss = history.length > 0
+          ? ((history.filter(l => l === null).length / history.length) * 100)
+          : 0;
+
+        const previousStatus = device.status;
+        const newStatus = pingResult.alive ? 'online' : 'offline';
+
+        await pool.query(
+          `UPDATE user_devices SET 
+            status = $1, last_check = CURRENT_TIMESTAMP, latency = $2,
+            avg_latency = $3, jitter = $4, packet_loss = $5
+            WHERE id = $6`,
+          [newStatus, latency, avgLatency ? Math.round(avgLatency) : null, jitter, Math.round(packetLoss), device.id]
+        );
+
+        device.status = newStatus;
+        device.latency = latency;
+        device.avg_latency = avgLatency;
+        device.jitter = jitter;
+        device.packet_loss = Math.round(packetLoss);
+        device.last_check = new Date().toISOString();
+
+        // Disparar alerta se o status mudou
+        if (previousStatus && previousStatus !== newStatus && newStatus === 'offline') {
+          const userResult = await pool.query('SELECT * FROM users WHERE id = $1', [userId]);
+          const user = userResult.rows[0];
+
+          if (user && user.telegram_alerts_enabled && user.telegram_bot_token && user.telegram_chat_id) {
+            const alertMessage = `🔴 HOST OFFLINE: ${device.name} (${device.ip}) está fora do ar!`;
+            await sendTelegramAlert(user.telegram_bot_token, user.telegram_chat_id, alertMessage, 'error');
+          }
+        }
+
+        updatedDevices.push(device);
+      } catch (error) {
+        console.error(`Erro ao pingar ${device.ip}:`, error.message);
+        
+        await pool.query(
+          'UPDATE user_devices SET status = $1, last_check = CURRENT_TIMESTAMP, latency = $2 WHERE id = $3',
+          ['offline', null, device.id]
+        );
+        
+        device.status = 'offline';
+        device.latency = null;
+        updatedDevices.push(device);
       }
-      resolve(updatedDevices);
-    });
-  });
+    }
+    return updatedDevices;
+  } catch (error) {
+    console.error('Erro ao verificar dispositivos:', error);
+    return [];
+  }
 }
 
 async function monitorDevices() {
-  db.all('SELECT DISTINCT user_id FROM user_devices', (err, users) => {
-    if (err) return;
+  try {
+    const result = await pool.query('SELECT DISTINCT user_id FROM user_devices');
+    const users = result.rows;
 
-    users.forEach(async (user) => {
+    for (const user of users) {
       const devices = await checkUserDevices(user.user_id);
 
       const userSockets = Array.from(io.sockets.sockets.values())
@@ -542,40 +627,39 @@ async function monitorDevices() {
       userSockets.forEach(socket => {
         socket.emit('devices_update', devices);
       });
-    });
-  });
+    }
+  } catch (error) {
+    console.error('Erro no monitoramento:', error);
+  }
 }
 
 io.on('connection', (socket) => {
   console.log(`🔌 Usuário conectado: ${socket.user.username} (ID: ${socket.user.id})`);
 
-  db.all('SELECT * FROM user_devices WHERE user_id = ?', [socket.user.id], (err, devices) => {
-    if (!err) {
-      socket.emit('devices_update', devices);
-    }
-  });
+  pool.query('SELECT * FROM user_devices WHERE user_id = $1', [socket.user.id])
+    .then(result => {
+      socket.emit('devices_update', result.rows);
+    });
 
-  // Escutar eventos de alerta do frontend
   socket.on('send_alert', async (data) => {
     const { message, type } = data;
+    
+    try {
+      const result = await pool.query('SELECT * FROM users WHERE id = $1', [socket.user.id]);
+      const user = result.rows[0];
 
-    db.get('SELECT * FROM users WHERE id = ?', [socket.user.id], async (err, user) => {
-      if (err || !user) return;
-
-      if (user.telegram_alerts_enabled && user.telegram_bot_token && user.telegram_chat_id) {
+      if (user && user.telegram_alerts_enabled && user.telegram_bot_token && user.telegram_chat_id) {
         await sendTelegramAlert(user.telegram_bot_token, user.telegram_chat_id, message, type);
       }
-    });
+    } catch (error) {
+      console.error('Erro ao enviar alerta:', error);
+    }
   });
 
   socket.on('disconnect', () => {
     console.log(`🔌 Usuário desconectado: ${socket.user.username}`);
   });
 });
-
-// Iniciar monitoramento (a cada 10 segundos)
-setInterval(monitorDevices, 10000);
-monitorDevices();
 
 // ==================== INICIAR SERVIDOR ====================
 
@@ -587,3 +671,7 @@ server.listen(PORT, () => {
   console.log(`✅ CORS configurado para todas as origens`);
   console.log(`🤖 Telegram alerts ready\n`);
 });
+
+// Iniciar monitoramento (a cada 10 segundos)
+setInterval(monitorDevices, 10000);
+monitorDevices();
