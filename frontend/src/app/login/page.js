@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
+const API_BASE_URL = 'https://orbnoc-backend-nmlq.onrender.com';
+
 export default function Login() {
   const router = useRouter();
   const [username, setUsername] = useState('');
@@ -19,7 +21,7 @@ export default function Login() {
     setError('');
 
     try {
-      const res = await fetch('http://localhost:3001/api/auth/login', {
+      const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password })
@@ -59,7 +61,7 @@ export default function Login() {
     }
 
     try {
-      const res = await fetch('http://localhost:3001/api/auth/register', {
+      const res = await fetch(`${API_BASE_URL}/api/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, email, password })
@@ -98,7 +100,6 @@ export default function Login() {
               <div className="relative w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg overflow-hidden">
                 <div className="relative w-full h-full flex items-center justify-center">
                   <svg className="w-8 h-8 text-white" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    {/* Padrão ╱╲╱╲╱╲ - Linhas diagonais animadas */}
                     <g>
                       <line x1="4" y1="6" x2="10" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="animate-line-1"/>
                       <line x1="10" y1="12" x2="4" y2="18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="animate-line-2"/>
@@ -106,16 +107,12 @@ export default function Login() {
                       <line x1="18" y1="14" x2="12" y2="20" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="animate-line-4"/>
                       <line x1="8" y1="4" x2="20" y2="16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" opacity="0.5" className="animate-line-5"/>
                       <line x1="4" y1="16" x2="16" y2="4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" opacity="0.5" className="animate-line-6"/>
-
-                      {/* Pontos de conexão pulsantes */}
                       <circle cx="10" cy="12" r="1.5" fill="currentColor" className="animate-pulse-dot"/>
                       <circle cx="18" cy="14" r="1.5" fill="currentColor" className="animate-pulse-dot delay-100"/>
                       <circle cx="4" cy="18" r="1" fill="currentColor" className="animate-pulse-dot delay-200"/>
                       <circle cx="12" cy="20" r="1" fill="currentColor" className="animate-pulse-dot delay-300"/>
                     </g>
                   </svg>
-
-                  {/* Efeito de brilho */}
                   <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shine"></div>
                 </div>
               </div>
