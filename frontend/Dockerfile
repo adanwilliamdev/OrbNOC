@@ -12,8 +12,8 @@ FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+RUN npm install react-is --legacy-peer-deps
 RUN npm run build
-
 # Imagem de produção
 FROM base AS runner
 WORKDIR /app
