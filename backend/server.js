@@ -102,9 +102,9 @@ app.use((req, res, next) => {
 });
 
 const server = http.createServer(app);
-const io = socketIo(server, {
+io = socketIo(server, {
   cors: {
-    origin: true,
+    origin: "https://orbnoc-taer.onrender.com",
     methods: ["GET", "POST"],
     credentials: true
   },
