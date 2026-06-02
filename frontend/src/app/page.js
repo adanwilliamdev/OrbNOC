@@ -15,6 +15,7 @@ export default function Home() {
   const router = useRouter();
   const dashboardRef = useRef(null);
 
+  // States principais
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [devices, setDevices] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -41,17 +42,32 @@ export default function Home() {
   const [expandedDevice, setExpandedDevice] = useState(null);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [lastUpdateTime, setLastUpdateTime] = useState(null);
-  const [latencyTrend, setLatencyTrend] = useState({ value: 0, percentage: 0 });
-  const [previousAvgLatency, setPreviousAvgLatency] = useState(0);
-
+  const [showTelegramModal, setShowTelegramModal] = useState(false);
   const [emailConfig, setEmailConfig] = useState({ enabled: false, email: '' });
   const [telegramConfig, setTelegramConfig] = useState({ enabled: false, botToken: '', chatId: '' });
   const [savingTelegram, setSavingTelegram] = useState(false);
-  const [showTelegramModal, setShowTelegramModal] = useState(false);
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+
+  // Filtros avançados
+  const [filters, setFilters] = useState({
+    minLatency: '',
+    maxLatency: '',
+    minUptime: '',
+    tags: []
+  });
+
+  // Tendência de latência
+  const [latencyTrend, setLatencyTrend] = useState({ value: 0, percentage: 0, direction: 'stable' });
+  const [previousAvgLatency, setPreviousAvgLatency] = useState(0);
 
   const alertThresholdsRef = useRef(alertThresholds);
   const devicesRef = useRef(devices);
 
+  // Refs para evitar loop infinito
+  useEffect(() => { alertThresholdsRef.current = alertThresholds; }, [alertThresholds]);
+  useEffect(() => { devicesRef.current = devices; }, [devices]);
+
+  // Click outside handler para dropdown
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (showExportMenu && !e.target.closest('.export-dropdown')) {
@@ -62,22 +78,19 @@ export default function Home() {
     return () => document.removeEventListener('click', handleClickOutside);
   }, [showExportMenu]);
 
-  useEffect(() => { alertThresholdsRef.current = alertThresholds; }, [alertThresholds]);
-  useEffect(() => { devicesRef.current = devices; }, [devices]);
-
   // Calcular tendência de latência
   useEffect(() => {
     if (devices.length > 0) {
       const currentAvg = devices.filter(d => d.status === 'online' && d.latency).length > 0
         ? devices.filter(d => d.status === 'online' && d.latency).reduce((acc, d) => acc + d.latency, 0) / devices.filter(d => d.status === 'online' && d.latency).length
         : 0;
-      
+
       if (previousAvgLatency > 0 && currentAvg > 0) {
         const percentageChange = ((currentAvg - previousAvgLatency) / previousAvgLatency) * 100;
         setLatencyTrend({
           value: Math.round(Math.abs(currentAvg - previousAvgLatency)),
-          percentage: Math.round(percentageChange),
-          direction: percentageChange < 0 ? 'down' : 'up'
+          percentage: Math.abs(Math.round(percentageChange)),
+          direction: percentageChange < 0 ? 'down' : percentageChange > 0 ? 'up' : 'stable'
         });
       }
       setPreviousAvgLatency(currentAvg);
@@ -120,7 +133,7 @@ export default function Home() {
     const newThresholds = { ...alertThresholds, [deviceId]: threshold };
     setAlertThresholds(newThresholds);
     localStorage.setItem(`orbnoc_thresholds_${user?.id}`, JSON.stringify(newThresholds));
-    addAlert(`Alerta configurado: limite de ${threshold}ms`, 'success');
+    addAlert(`🔔 Alerta configurado: limite de ${threshold}ms`, 'success');
     setShowAlertConfig(false);
     setSelectedAlertDevice(null);
   };
@@ -130,7 +143,7 @@ export default function Home() {
     delete newThresholds[deviceId];
     setAlertThresholds(newThresholds);
     localStorage.setItem(`orbnoc_thresholds_${user?.id}`, JSON.stringify(newThresholds));
-    addAlert(`Alerta removido`, 'success');
+    addAlert(`🔕 Alerta removido`, 'success');
   };
 
   const saveToHistory = (devicesList) => {
@@ -175,9 +188,9 @@ export default function Home() {
       const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
       pdf.addImage(imgData, 'PNG', 0, 0, 297, (canvas.height * 297) / canvas.width);
       pdf.save(`orbnoc-report-${new Date().toISOString().split('T')[0]}.pdf`);
-      addAlert('Relatório PDF exportado!', 'success');
+      addAlert('📄 Relatório PDF exportado!', 'success');
     } catch (error) {
-      addAlert('Erro ao gerar PDF', 'error');
+      addAlert('❌ Erro ao gerar PDF', 'error');
     } finally {
       setIsGeneratingPDF(false);
     }
@@ -232,12 +245,12 @@ export default function Home() {
 
       if (response.ok) {
         setTelegramConfig({ enabled, botToken, chatId });
-        addAlert(enabled ? 'Telegram configurado com sucesso!' : 'Telegram desativado', enabled ? 'success' : 'warning');
+        addAlert(enabled ? '✅ Telegram configurado com sucesso!' : '❌ Telegram desativado', enabled ? 'success' : 'warning');
       } else {
-        addAlert(`Erro ao salvar configuração`, 'error');
+        addAlert(`❌ Erro ao salvar configuração`, 'error');
       }
     } catch (error) {
-      addAlert('Erro de conexão ao salvar configuração', 'error');
+      addAlert('❌ Erro de conexão ao salvar configuração', 'error');
     } finally {
       setSavingTelegram(false);
     }
@@ -303,7 +316,7 @@ export default function Home() {
     setRefreshing(true);
     await fetchDevices();
     setTimeout(() => setRefreshing(false), 800);
-    addAlert('Sincronização manual concluída!', 'success');
+    addAlert('🔄 Sincronização manual concluída!', 'success');
   };
 
   const pingDevice = async (deviceId) => {
@@ -368,6 +381,7 @@ export default function Home() {
 
         socket.on('connect', () => {
           setConnected(true);
+          console.log('✅ WebSocket conectado');
         });
 
         socket.on('devices_update', (updatedDevices) => {
@@ -398,6 +412,7 @@ export default function Home() {
 
         socket.on('disconnect', () => {
           setConnected(false);
+          console.log('❌ WebSocket desconectado');
         });
       } catch (err) {
         console.error('Erro ao conectar WebSocket:', err);
@@ -426,6 +441,8 @@ export default function Home() {
         setShowForm(false);
         fetchDevices();
         addAlert(`🚀 Host "${payload.name}" adicionado!`, 'success');
+      } else {
+        addAlert(`❌ Erro ao adicionar host`, 'error');
       }
     } catch (error) { addAlert('❌ Erro ao salvar host', 'error'); }
   };
@@ -460,11 +477,25 @@ export default function Home() {
 
   const getFilteredAndSortedDevices = () => {
     let filtered = [...devices];
+
+    // Status filter
     if (statusFilter !== 'all') filtered = filtered.filter(d => d.status === statusFilter);
+
+    // Search filter
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
       filtered = filtered.filter(d => d.name.toLowerCase().includes(term) || d.ip.toLowerCase().includes(term) || (d.location && d.location.toLowerCase().includes(term)));
     }
+
+    // Advanced filters
+    if (filters.minLatency && filters.minLatency !== '') {
+      filtered = filtered.filter(d => d.latency >= parseInt(filters.minLatency));
+    }
+    if (filters.maxLatency && filters.maxLatency !== '') {
+      filtered = filtered.filter(d => d.latency <= parseInt(filters.maxLatency));
+    }
+
+    // Sort
     filtered.sort((a, b) => {
       let valA, valB;
       switch (sortField) {
@@ -472,7 +503,6 @@ export default function Home() {
         case 'ip': valA = a.ip; valB = b.ip; break;
         case 'status': valA = a.status === 'online' ? 1 : 0; valB = b.status === 'online' ? 1 : 0; break;
         case 'latency': valA = a.latency || Infinity; valB = b.latency || Infinity; break;
-        case 'uptime': valA = a.uptime || 0; valB = b.uptime || 0; break;
         default: valA = a[sortField]; valB = b[sortField];
       }
       return sortDirection === 'asc' ? (valA > valB ? 1 : -1) : (valA < valB ? 1 : -1);
@@ -532,9 +562,7 @@ export default function Home() {
   const unreadAlerts = alertHistory.filter(a => !a.read).length;
   const realtimeChartData = getRealtimeChartData();
   const hasOfflineDevices = offline > 0;
-
-  // Sparkline data for KPI cards
-  const sparklineData = history.slice(0, 10).reverse().map(h => ({ value: h.avgLatency || 0 }));
+  const availability = devices.length ? Math.round((online / devices.length) * 100) : 0;
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-200" ref={dashboardRef}>
@@ -563,7 +591,6 @@ export default function Home() {
                 <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M4 6 L12 12 L20 6" strokeLinecap="round"/>
                   <path d="M4 12 L12 18 L20 12" strokeLinecap="round"/>
-                  <path d="M4 18 L12 24 L20 18" strokeLinecap="round"/>
                 </svg>
               </div>
               <div className={`absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full ${connected ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`}></div>
@@ -579,13 +606,13 @@ export default function Home() {
               <span className="text-xs text-slate-300">{user?.username}</span>
             </div>
 
-            <button onClick={handleRefresh} disabled={refreshing} className="p-2 bg-slate-900 hover:bg-slate-800 rounded-lg border border-slate-800 transition-all hover:border-slate-700">
+            <button onClick={handleRefresh} disabled={refreshing} className="p-2 bg-slate-900 hover:bg-slate-800 rounded-lg border border-slate-800 transition-all">
               <svg className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
             </button>
 
-            <div className="relative">
+            <div className="relative export-dropdown">
               <button
                 onClick={() => setShowExportMenu(!showExportMenu)}
                 className="px-3 py-2 bg-slate-900 hover:bg-slate-800 rounded-lg border border-slate-800 transition-all text-sm flex items-center gap-1"
@@ -646,10 +673,10 @@ export default function Home() {
           </div>
         </div>
 
-        {/* KPI Cards Premium com Sparklines e Tendências */}
+        {/* KPI Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-          {/* Total Ativos */}
-          <div className="group relative overflow-hidden bg-gradient-to-br from-slate-900 to-slate-900/50 rounded-lg border border-slate-800 p-4 hover:border-slate-700 transition-all">
+          {/* Total */}
+          <div className="bg-gradient-to-br from-slate-900 to-slate-900/50 rounded-lg border border-slate-800 p-4 hover:border-slate-700 transition-all">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-xs text-slate-400 uppercase tracking-wider">Total Ativos</p>
@@ -663,13 +690,13 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Online - Verde Vibrante */}
-          <div className="group relative overflow-hidden bg-gradient-to-br from-emerald-900/20 to-emerald-900/5 rounded-lg border border-emerald-800/30 hover:border-emerald-500/50 transition-all">
+          {/* Online */}
+          <div className="bg-gradient-to-br from-emerald-900/20 to-emerald-900/5 rounded-lg border border-emerald-800/30 hover:border-emerald-500/50 transition-all p-4">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-xs text-emerald-400/80 uppercase tracking-wider">Online</p>
                 <p className="text-2xl font-semibold mt-1 text-emerald-400">{online}</p>
-                <p className="text-[10px] text-emerald-500/60 mt-1">{devices.length ? Math.round((online/devices.length)*100) : 0}% do total</p>
+                <p className="text-[10px] text-emerald-500/60 mt-1">{availability}% do total</p>
               </div>
               <div className="w-8 h-8 bg-emerald-500/10 rounded-lg flex items-center justify-center">
                 <svg className="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -679,15 +706,13 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Offline - Vermelho Forte com Pulsação se houver offline */}
-          <div className={`group relative overflow-hidden bg-gradient-to-br from-rose-900/20 to-rose-900/5 rounded-lg border border-rose-800/30 transition-all ${hasOfflineDevices ? 'animate-pulse-slow border-rose-500/50' : 'hover:border-rose-500/30'}`}>
+          {/* Offline */}
+          <div className={`bg-gradient-to-br from-rose-900/20 to-rose-900/5 rounded-lg border transition-all p-4 ${hasOfflineDevices ? 'border-rose-500/50 animate-pulse-slow' : 'border-rose-800/30 hover:border-rose-500/30'}`}>
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-xs text-rose-400/80 uppercase tracking-wider">Offline</p>
                 <p className={`text-2xl font-semibold mt-1 ${hasOfflineDevices ? 'text-rose-500' : 'text-rose-400'}`}>{offline}</p>
-                {hasOfflineDevices && (
-                  <p className="text-[10px] text-rose-500/60 mt-1 animate-pulse">⚠️ Atenção necessária</p>
-                )}
+                {hasOfflineDevices && <p className="text-[10px] text-rose-500/60 mt-1 animate-pulse">⚠️ Atenção!</p>}
               </div>
               <div className="w-8 h-8 bg-rose-500/10 rounded-lg flex items-center justify-center">
                 <svg className="w-4 h-4 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -697,13 +722,13 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Disponibilidade com Sparkline */}
-          <div className="group relative overflow-hidden bg-gradient-to-br from-slate-900 to-slate-900/50 rounded-lg border border-slate-800 p-4 hover:border-slate-700 transition-all">
+          {/* Disponibilidade */}
+          <div className="bg-gradient-to-br from-slate-900 to-slate-900/50 rounded-lg border border-slate-800 p-4 hover:border-slate-700 transition-all">
             <div className="flex items-start justify-between">
-              <div className="flex-1">
+              <div>
                 <p className="text-xs text-slate-400 uppercase tracking-wider">Disponibilidade</p>
-                <p className="text-2xl font-semibold mt-1 text-blue-400">{devices.length ? Math.round((online/devices.length)*100) : 0}%</p>
-                <p className="text-[10px] text-slate-500 mt-1">SLA 99.9%</p>
+                <p className="text-2xl font-semibold mt-1 text-blue-400">{availability}%</p>
+                <p className="text-[10px] text-slate-500 mt-1">SLA</p>
               </div>
               <div className="w-12 h-8">
                 <ResponsiveContainer width="100%" height="100%">
@@ -721,15 +746,15 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Latência Média com Tendência */}
-          <div className="group relative overflow-hidden bg-gradient-to-br from-slate-900 to-slate-900/50 rounded-lg border border-slate-800 p-4 hover:border-slate-700 transition-all">
+          {/* Latência */}
+          <div className="bg-gradient-to-br from-slate-900 to-slate-900/50 rounded-lg border border-slate-800 p-4 hover:border-slate-700 transition-all">
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-xs text-slate-400 uppercase tracking-wider">Latência Média</p>
                 <p className="text-2xl font-semibold mt-1 text-amber-400">{avgLatency ? `${Math.round(avgLatency)}ms` : '—'}</p>
-                {latencyTrend.value > 0 && (
+                {latencyTrend.value > 0 && latencyTrend.direction !== 'stable' && (
                   <div className={`flex items-center gap-1 mt-1 text-[10px] ${latencyTrend.direction === 'down' ? 'text-emerald-400' : 'text-rose-400'}`}>
-                    {latencyTrend.direction === 'down' ? '↓' : '↑'} {latencyTrend.value}ms ({Math.abs(latencyTrend.percentage)}%)
+                    {latencyTrend.direction === 'down' ? '↓' : '↑'} {latencyTrend.value}ms ({latencyTrend.percentage}%)
                   </div>
                 )}
               </div>
@@ -742,7 +767,7 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Search e Filters - Mais interativos */}
+        {/* Search e Filters */}
         <div className="flex flex-col sm:flex-row justify-between gap-4">
           <div className="relative w-full sm:w-96">
             <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -756,22 +781,64 @@ export default function Home() {
               className="w-full bg-slate-900 border border-slate-800 rounded-lg pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-200 placeholder:text-slate-600"
             />
           </div>
-          <div className="flex gap-2 bg-slate-900/50 p-1 rounded-lg border border-slate-800">
-            <button onClick={() => setStatusFilter('all')} className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
-              statusFilter === 'all' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-400 hover:text-slate-200'
-            }`}>Todos</button>
-            <button onClick={() => setStatusFilter('online')} className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
-              statusFilter === 'online' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-500/20' : 'text-slate-400 hover:text-slate-200'
-            }`}>Online</button>
-            <button onClick={() => setStatusFilter('offline')} className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
-              statusFilter === 'offline' ? 'bg-rose-600 text-white shadow-lg shadow-rose-500/20' : 'text-slate-400 hover:text-slate-200'
-            }`}>Offline</button>
+          <div className="flex gap-2">
+            <div className="flex gap-1 bg-slate-900/50 p-1 rounded-lg border border-slate-800">
+              <button onClick={() => setStatusFilter('all')} className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${statusFilter === 'all' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}>Todos</button>
+              <button onClick={() => setStatusFilter('online')} className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${statusFilter === 'online' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}>Online</button>
+              <button onClick={() => setStatusFilter('offline')} className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${statusFilter === 'offline' ? 'bg-rose-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}>Offline</button>
+            </div>
+
+            <button
+              onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+              className={`px-3 py-1.5 rounded-lg text-sm transition-all ${showAdvancedFilters ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30' : 'bg-slate-900 text-slate-400 border border-slate-800 hover:border-slate-700'}`}
+            >
+              <svg className="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+              </svg>
+              Filtros
+            </button>
           </div>
         </div>
 
+        {/* Advanced Filters Panel */}
+        {showAdvancedFilters && (
+          <div className="bg-slate-900/50 rounded-lg border border-slate-800 p-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div>
+                <label className="text-xs text-slate-400 block mb-1">Latência Mínima (ms)</label>
+                <input
+                  type="number"
+                  placeholder="0"
+                  value={filters.minLatency}
+                  onChange={(e) => setFilters(prev => ({ ...prev, minLatency: e.target.value }))}
+                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-slate-400 block mb-1">Latência Máxima (ms)</label>
+                <input
+                  type="number"
+                  placeholder="100"
+                  value={filters.maxLatency}
+                  onChange={(e) => setFilters(prev => ({ ...prev, maxLatency: e.target.value }))}
+                  className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+                />
+              </div>
+              <div className="flex items-end">
+                <button
+                  onClick={() => setFilters({ minLatency: '', maxLatency: '', minUptime: '', tags: [] })}
+                  className="px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm transition-colors"
+                >
+                  Limpar Filtros
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Main Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left - Device Table com Ordenação */}
+          {/* Left - Device Table */}
           <div className="lg:col-span-2 space-y-4">
             <div className="flex justify-between items-center">
               <h2 className="text-sm font-semibold text-slate-300 flex items-center gap-2">
@@ -805,36 +872,22 @@ export default function Home() {
                 <table className="w-full text-sm">
                   <thead className="bg-slate-900 border-b border-slate-800">
                     <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 cursor-pointer hover:text-slate-300 transition-colors" onClick={() => handleSort('status')}>
-                        Status {sortField === 'status' && (sortDirection === 'asc' ? '↑' : '↓')}
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 cursor-pointer hover:text-slate-300 transition-colors" onClick={() => handleSort('name')}>
-                        Dispositivo {sortField === 'name' && (sortDirection === 'asc' ? '↑' : '↓')}
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 cursor-pointer hover:text-slate-300 transition-colors" onClick={() => handleSort('ip')}>
-                        IP {sortField === 'ip' && (sortDirection === 'asc' ? '↑' : '↓')}
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 cursor-pointer hover:text-slate-300 transition-colors" onClick={() => handleSort('latency')}>
-                        Latência {sortField === 'latency' && (sortDirection === 'asc' ? '↑' : '↓')}
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-slate-400">Uptime</th>
-                      <th className="px-4 py-3 text-center text-xs font-medium text-slate-400">Ações</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 cursor-pointer hover:text-slate-300 transition-colors" onClick={() => handleSort('status')}>Status {sortField === 'status' && (sortDirection === 'asc' ? '↑' : '↓')}</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 cursor-pointer hover:text-slate-300 transition-colors" onClick={() => handleSort('name')}>Dispositivo {sortField === 'name' && (sortDirection === 'asc' ? '↑' : '↓')}</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 cursor-pointer hover:text-slate-300 transition-colors" onClick={() => handleSort('ip')}>IP {sortField === 'ip' && (sortDirection === 'asc' ? '↑' : '↓')}</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 cursor-pointer hover:text-slate-300 transition-colors" onClick={() => handleSort('latency')}>Latência {sortField === 'latency' && (sortDirection === 'asc' ? '↑' : '↓')}</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-slate-400">Ações</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800">
                     {filteredDevices.length === 0 ? (
                       <tr>
-                        <td colSpan="6" className="px-4 py-12 text-center text-slate-500">
-                          Nenhum dispositivo encontrado
-                        </td>
+                        <td colSpan="5" className="px-4 py-12 text-center text-slate-500">Nenhum dispositivo encontrado</td>
                       </tr>
                     ) : (
                       filteredDevices.map((device) => (
                         <Fragment key={device.id}>
-                          <tr
-                            onClick={() => setExpandedDevice(expandedDevice === device.id ? null : device.id)}
-                            className={`cursor-pointer transition-colors hover:bg-slate-800/30 ${expandedDevice === device.id ? 'bg-slate-800/20' : ''}`}
-                          >
+                          <tr onClick={() => setExpandedDevice(expandedDevice === device.id ? null : device.id)} className={`cursor-pointer transition-colors hover:bg-slate-800/30 ${expandedDevice === device.id ? 'bg-slate-800/20' : ''}`}>
                             <td className="px-4 py-3">
                               <div className="flex items-center gap-2">
                                 <div className={`w-1.5 h-1.5 rounded-full ${device.status === 'online' ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`}></div>
@@ -850,7 +903,7 @@ export default function Home() {
                             <td className="px-4 py-3 font-mono text-xs text-slate-400">{device.ip}</td>
                             <td className="px-4 py-3">
                               {device.latency && device.status === 'online' ? (
-                                <div className="flex items-center gap-1">
+                                <div className="flex items-center gap-2">
                                   <div className="w-12 bg-slate-700 rounded-full h-1">
                                     <div className={`h-1 rounded-full ${device.latency < 40 ? 'bg-emerald-500' : device.latency < 100 ? 'bg-amber-500' : 'bg-rose-500'}`} style={{ width: `${Math.min(100, device.latency / 10)}%` }}></div>
                                   </div>
@@ -861,32 +914,13 @@ export default function Home() {
                               ) : <span className="text-slate-500 text-xs">—</span>}
                             </td>
                             <td className="px-4 py-3">
-                              <div className="flex items-center gap-1">
-                                <span className="text-xs text-emerald-400">{Math.floor(Math.random() * (100 - 95) + 95)}%</span>
-                                <div className="w-12 bg-slate-700 rounded-full h-1">
-                                  <div className="h-1 rounded-full bg-emerald-500" style={{ width: '98%' }}></div>
-                                </div>
-                              </div>
-                            </td>
-                            <td className="px-4 py-3">
                               <div className="flex justify-center gap-2">
-                                <button
-                                  onClick={(e) => { e.stopPropagation(); pingDevice(device.id); }}
-                                  disabled={pingingDevice === device.id}
-                                  className="group relative px-3 py-1.5 bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white rounded-lg text-xs font-medium transition-all flex items-center gap-1"
-                                >
-                                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                                  </svg>
-                                  {pingingDevice === device.id ? '...' : 'Ping'}
+                                <button onClick={(e) => { e.stopPropagation(); pingDevice(device.id); }} disabled={pingingDevice === device.id} className="px-3 py-1.5 bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white rounded-lg text-xs font-medium transition-all flex items-center gap-1">
+                                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                                  Ping
                                 </button>
-                                <button
-                                  onClick={(e) => { e.stopPropagation(); removeDevice(device.id, device.name); }}
-                                  className="group relative px-3 py-1.5 bg-rose-500/20 hover:bg-rose-500 text-rose-400 hover:text-white rounded-lg text-xs font-medium transition-all flex items-center gap-1"
-                                >
-                                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                  </svg>
+                                <button onClick={(e) => { e.stopPropagation(); removeDevice(device.id, device.name); }} className="px-3 py-1.5 bg-rose-500/20 hover:bg-rose-500 text-rose-400 hover:text-white rounded-lg text-xs font-medium transition-all flex items-center gap-1">
+                                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                                   Remover
                                 </button>
                               </div>
@@ -894,7 +928,7 @@ export default function Home() {
                           </tr>
                           {expandedDevice === device.id && (
                             <tr className="bg-slate-900/40">
-                              <td colSpan="6" className="px-4 py-3">
+                              <td colSpan="5" className="px-4 py-3">
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
                                   <div>
                                     <p className="text-slate-500">Localização</p>
@@ -912,9 +946,7 @@ export default function Home() {
                                         <button onClick={() => removeAlertConfig(device.id)} className="text-rose-400 text-xs">Remover</button>
                                       </div>
                                     ) : (
-                                      <button onClick={() => { setSelectedAlertDevice(device); setShowAlertConfig(true); }} className="text-blue-400 hover:text-blue-300 text-xs">
-                                        Configurar alerta
-                                      </button>
+                                      <button onClick={() => { setSelectedAlertDevice(device); setShowAlertConfig(true); }} className="text-blue-400 hover:text-blue-300 text-xs">Configurar alerta</button>
                                     )}
                                   </div>
                                 </div>
@@ -939,49 +971,32 @@ export default function Home() {
                   <span className="w-1 h-5 bg-blue-500 rounded-full"></span>
                   Latência em Tempo Real
                 </h3>
-                <button
-                  onClick={() => {
-                    const onlineDevices = getFilteredAndSortedDevices().filter(d => d.status === 'online');
-                    onlineDevices.forEach(d => pingDevice(d.id));
-                  }}
-                  className="px-2 py-1 bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white rounded text-xs transition-all flex items-center gap-1"
-                >
-                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                  </svg>
+                <button onClick={() => { const onlineDevices = getFilteredAndSortedDevices().filter(d => d.status === 'online'); onlineDevices.forEach(d => pingDevice(d.id)); addAlert(`📡 Testando ${onlineDevices.length} dispositivos...`, 'success'); }} className="px-2 py-1 bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white rounded text-xs transition-all">
                   Testar Todos
                 </button>
               </div>
-
               {getFilteredAndSortedDevices().filter(d => d.status === 'online').length > 0 ? (
                 <div className="h-72 w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={realtimeChartData}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
                       <XAxis dataKey="time" stroke="#64748b" fontSize={10} tickLine={false} />
-                      <YAxis stroke="#64748b" fontSize={10} tickLine={false} label={{ value: 'ms', angle: -90, position: 'insideLeft', style: { fill: '#64748b', fontSize: 10 } }} />
+                      <YAxis stroke="#64748b" fontSize={10} tickLine={false} />
                       <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderRadius: '8px', border: '1px solid #1e293b' }} />
                       <Legend wrapperStyle={{ fontSize: '10px' }} verticalAlign="bottom" height={30} />
-                      {getFilteredAndSortedDevices()
-                        .filter(d => d.status === 'online')
-                        .slice(0, 5)
-                        .map((device, idx) => {
-                          const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ec4899', '#06b6d4'];
-                          return (
-                            <Line key={device.id} type="monotone" dataKey={device.name} stroke={colors[idx % colors.length]} strokeWidth={1.5} dot={false} name={device.name} isAnimationActive={false} />
-                          );
-                        })}
+                      {getFilteredAndSortedDevices().filter(d => d.status === 'online').slice(0, 5).map((device, idx) => {
+                        const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ec4899', '#06b6d4'];
+                        return <Line key={device.id} type="monotone" dataKey={device.name} stroke={colors[idx % colors.length]} strokeWidth={1.5} dot={false} name={device.name} isAnimationActive={false} />;
+                      })}
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
               ) : (
-                <div className="h-72 flex items-center justify-center text-slate-500 text-sm">
-                  Nenhum dispositivo online
-                </div>
+                <div className="h-72 flex items-center justify-center text-slate-500 text-sm">Nenhum dispositivo online</div>
               )}
             </div>
 
-            {/* Compact Uptime Gauge */}
+            {/* Uptime History */}
             {history.length > 0 && (
               <div className="bg-gradient-to-br from-slate-900 to-slate-900/50 rounded-lg border border-slate-800 p-4">
                 <h3 className="text-sm font-semibold text-slate-300 mb-3 flex items-center gap-2">
@@ -1004,7 +1019,7 @@ export default function Home() {
               </div>
             )}
 
-            {/* Status Pie Chart */}
+            {/* Status Pie */}
             <div className="bg-gradient-to-br from-slate-900 to-slate-900/50 rounded-lg border border-slate-800 p-4">
               <h3 className="text-sm font-semibold text-slate-300 mb-3 flex items-center gap-2">
                 <span className="w-1 h-5 bg-amber-500 rounded-full"></span>
@@ -1014,8 +1029,7 @@ export default function Home() {
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie data={chartData.statusData} cx="50%" cy="50%" innerRadius={40} outerRadius={55} paddingAngle={3} dataKey="value">
-                      <Cell fill="#10b981" />
-                      <Cell fill="#ef4444" />
+                      <Cell fill="#10b981" /><Cell fill="#ef4444" />
                     </Pie>
                     <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderRadius: '8px', border: '1px solid #1e293b' }} />
                     <Legend wrapperStyle={{ fontSize: '10px' }} verticalAlign="bottom" height={30} />
@@ -1034,11 +1048,7 @@ export default function Home() {
                 </h3>
                 <div className="space-y-2 max-h-64 overflow-y-auto">
                   {alertHistory.slice(0, 10).map(alert => (
-                    <div key={alert.id} className={`p-2 rounded border transition-all hover:scale-[1.02] ${
-                      alert.type === 'error' ? 'bg-rose-500/10 border-rose-500/20' :
-                      alert.type === 'warning' ? 'bg-amber-500/10 border-amber-500/20' :
-                      'bg-emerald-500/10 border-emerald-500/20'
-                    }`}>
+                    <div key={alert.id} className={`p-2 rounded border transition-all ${alert.type === 'error' ? 'bg-rose-500/10 border-rose-500/20' : alert.type === 'warning' ? 'bg-amber-500/10 border-amber-500/20' : 'bg-emerald-500/10 border-emerald-500/20'}`}>
                       <p className="text-xs">{alert.message}</p>
                       <p className="text-[10px] text-slate-500 mt-1">{alert.timestamp}</p>
                     </div>
@@ -1049,22 +1059,14 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Footer com melhor contraste */}
+        {/* Footer */}
         <footer className="border-t border-slate-800 pt-4 mt-4">
           <div className="flex flex-wrap justify-between text-xs">
             <div className="flex gap-4 text-slate-500">
-              <span className="flex items-center gap-1">
-                <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
-                Polling: 10s
-              </span>
-              <span className="flex items-center gap-1">
-                <div className={`w-1.5 h-1.5 rounded-full ${connected ? 'bg-emerald-500' : 'bg-rose-500'}`}></div>
-                WebSocket: {connected ? 'Conectado' : 'Desconectado'}
-              </span>
+              <span className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>Polling: 30s</span>
+              <span className="flex items-center gap-1"><div className={`w-1.5 h-1.5 rounded-full ${connected ? 'bg-emerald-500' : 'bg-rose-500'}`}></div>WebSocket: {connected ? 'Conectado' : 'Desconectado'}</span>
             </div>
-            <div className="text-slate-500">
-              OrbNOC Network Operations Center © 2026
-            </div>
+            <div className="text-slate-500">OrbNOC Network Operations Center © 2026</div>
           </div>
         </footer>
       </div>
@@ -1077,14 +1079,7 @@ export default function Home() {
             <p className="text-sm text-slate-400 mb-4">{selectedAlertDevice.name}</p>
             <div className="space-y-2 mb-6">
               <label className="text-xs text-slate-400 uppercase tracking-wider">Limite de Latência (ms)</label>
-              <input
-                type="number"
-                id="modal-threshold"
-                min="10"
-                max="1000"
-                defaultValue={alertThresholds[selectedAlertDevice.id] || 120}
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 text-slate-200"
-              />
+              <input type="number" id="modal-threshold" min="10" max="1000" defaultValue={alertThresholds[selectedAlertDevice.id] || 120} className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 text-slate-200" />
             </div>
             <div className="flex gap-3 justify-end">
               <button onClick={() => setShowAlertConfig(false)} className="px-4 py-2 bg-slate-800 text-slate-300 rounded-lg text-sm hover:bg-slate-700 transition-colors">Cancelar</button>
