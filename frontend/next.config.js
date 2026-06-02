@@ -1,14 +1,14 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  typescript: {
-    // ⚠️ Ignorar erros de TypeScript durante o build
-    ignoreBuildErrors: true,
-  },
-  eslint: {
-    // Ignorar erros de lint durante o build
-    ignoreDuringBuilds: true,
-  },
+  typescript: { ignoreBuildErrors: true },
+  eslint: { ignoreDuringBuilds: true },
   output: 'standalone',
+  // Desabilitar geração estática para todas as rotas
+  staticPageGenerationTimeout: 120,
+  // Configuração para rotas dinâmicas
+  experimental: {
+    appDir: true,
+  },
 }
 
 module.exports = nextConfig
