@@ -84,7 +84,7 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 font-sans">
+    <div className="min-h-screen bg-slate-950 font-sans">
 
       {/* Container Principal */}
       <div className="flex min-h-screen items-center justify-center p-4">
@@ -92,56 +92,43 @@ export default function Login() {
         {/* Card de Login/Registro */}
         <div className="w-full max-w-md">
 
-          {/* Logo e Título com Ícone Animado */}
+          {/* Logo e Título */}
           <div className="text-center mb-8">
-            {/* Ícone de Rede Animado */}
-            <div className="inline-flex items-center justify-center w-20 h-20 mb-5 relative">
-              <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-2xl blur-xl opacity-50 animate-pulse"></div>
-              <div className="relative w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg overflow-hidden">
-                <div className="relative w-full h-full flex items-center justify-center">
-                  <svg className="w-8 h-8 text-white" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <g>
-                      <line x1="4" y1="6" x2="10" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="animate-line-1"/>
-                      <line x1="10" y1="12" x2="4" y2="18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="animate-line-2"/>
-                      <line x1="12" y1="8" x2="18" y2="14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="animate-line-3"/>
-                      <line x1="18" y1="14" x2="12" y2="20" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="animate-line-4"/>
-                      <line x1="8" y1="4" x2="20" y2="16" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" opacity="0.5" className="animate-line-5"/>
-                      <line x1="4" y1="16" x2="16" y2="4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" opacity="0.5" className="animate-line-6"/>
-                      <circle cx="10" cy="12" r="1.5" fill="currentColor" className="animate-pulse-dot"/>
-                      <circle cx="18" cy="14" r="1.5" fill="currentColor" className="animate-pulse-dot delay-100"/>
-                      <circle cx="4" cy="18" r="1" fill="currentColor" className="animate-pulse-dot delay-200"/>
-                      <circle cx="12" cy="20" r="1" fill="currentColor" className="animate-pulse-dot delay-300"/>
-                    </g>
-                  </svg>
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shine"></div>
-                </div>
+            {/* Ícone de Rede */}
+            <div className="inline-flex items-center justify-center w-16 h-16 mb-5">
+              <div className="w-14 h-14 bg-blue-600 rounded-lg flex items-center justify-center">
+                <svg className="w-7 h-7 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                  <path d="M4 6 L12 12 L20 6" strokeLinecap="round"/>
+                  <path d="M4 12 L12 18 L20 12" strokeLinecap="round"/>
+                  <path d="M4 18 L12 24 L20 18" strokeLinecap="round"/>
+                </svg>
               </div>
             </div>
 
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
-              OrbNOC Systems
+            <h1 className="text-2xl font-semibold text-white tracking-tight">
+              OrbNOC
             </h1>
-            <p className="text-sm text-slate-500 mt-2">
-              {isRegistering ? 'Crie sua conta para começar' : 'Network Operations Center'}
+            <p className="text-sm text-slate-500 mt-1">
+              {isRegistering ? 'Crie sua conta' : 'Network Operations Center'}
             </p>
           </div>
 
           {/* Card */}
-          <div className="rounded-2xl bg-slate-900/40 border border-slate-800/50 backdrop-blur-sm shadow-xl p-8">
+          <div className="rounded-lg bg-slate-900/50 border border-slate-800 p-6">
 
             {/* Formulário */}
-            <form onSubmit={isRegistering ? handleRegister : handleLogin} className="space-y-5">
+            <form onSubmit={isRegistering ? handleRegister : handleLogin} className="space-y-4">
 
               {/* Usuário */}
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider mb-2 text-slate-400">
+                <label className="block text-xs font-medium uppercase tracking-wider mb-1.5 text-slate-400">
                   Usuário
                 </label>
                 <input
                   type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  className="w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
+                  className="w-full bg-slate-800 border border-slate-700 rounded-md px-3 py-2 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
                   placeholder="Digite seu usuário"
                   required
                 />
@@ -150,14 +137,14 @@ export default function Login() {
               {/* Email (apenas registro) */}
               {isRegistering && (
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider mb-2 text-slate-400">
+                  <label className="block text-xs font-medium uppercase tracking-wider mb-1.5 text-slate-400">
                     Email
                   </label>
                   <input
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
+                    className="w-full bg-slate-800 border border-slate-700 rounded-md px-3 py-2 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
                     placeholder="seu@email.com"
                     required
                   />
@@ -166,14 +153,14 @@ export default function Login() {
 
               {/* Senha */}
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider mb-2 text-slate-400">
+                <label className="block text-xs font-medium uppercase tracking-wider mb-1.5 text-slate-400">
                   Senha
                 </label>
                 <input
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
+                  className="w-full bg-slate-800 border border-slate-700 rounded-md px-3 py-2 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
                   placeholder="••••••••"
                   required
                 />
@@ -182,14 +169,14 @@ export default function Login() {
               {/* Confirmar Senha (apenas registro) */}
               {isRegistering && (
                 <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wider mb-2 text-slate-400">
+                  <label className="block text-xs font-medium uppercase tracking-wider mb-1.5 text-slate-400">
                     Confirmar Senha
                   </label>
                   <input
                     type="password"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
+                    className="w-full bg-slate-800 border border-slate-700 rounded-md px-3 py-2 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
                     placeholder="••••••••"
                     required
                   />
@@ -198,7 +185,7 @@ export default function Login() {
 
               {/* Mensagem de Erro */}
               {error && (
-                <div className="bg-rose-500/10 border border-rose-500/20 rounded-xl p-3 animate-fade-in">
+                <div className="bg-rose-500/10 border border-rose-500/20 rounded-md p-3">
                   <p className="text-rose-400 text-sm text-center">{error}</p>
                 </div>
               )}
@@ -207,7 +194,7 @@ export default function Login() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-semibold py-3 rounded-xl transition-all transform hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 shadow-lg shadow-indigo-500/20"
+                className="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-2"
               >
                 {loading ? (
                   <span className="flex items-center justify-center gap-2">
@@ -218,13 +205,13 @@ export default function Login() {
                     {isRegistering ? 'Registrando...' : 'Entrando...'}
                   </span>
                 ) : (
-                  isRegistering ? 'Criar Conta' : 'Entrar no Dashboard'
+                  isRegistering ? 'Criar Conta' : 'Entrar'
                 )}
               </button>
             </form>
 
             {/* Link para alternar entre Login/Registro */}
-            <div className="mt-6 text-center">
+            <div className="mt-5 text-center">
               <button
                 onClick={() => {
                   setIsRegistering(!isRegistering);
@@ -234,7 +221,7 @@ export default function Login() {
                   setEmail('');
                   setConfirmPassword('');
                 }}
-                className="text-sm text-slate-400 hover:text-indigo-400 transition-colors"
+                className="text-sm text-slate-500 hover:text-blue-400 transition-colors"
               >
                 {isRegistering ? '← Voltar para o login' : 'Criar nova conta →'}
               </button>
@@ -242,10 +229,9 @@ export default function Login() {
 
             {/* Demo Credentials */}
             {!isRegistering && (
-              <div className="mt-6 pt-6 border-t border-slate-800/50 text-center">
+              <div className="mt-5 pt-4 border-t border-slate-800 text-center">
                 <p className="text-xs text-slate-500">
-                  <span className="text-slate-400">Credenciais de demonstração:</span>
-                  <br />
+                  <span className="text-slate-400">Demo:</span>{' '}
                   <span className="font-mono text-emerald-400">admin</span>
                   <span className="text-slate-600 mx-1">/</span>
                   <span className="font-mono text-emerald-400">admin123</span>
@@ -255,112 +241,11 @@ export default function Login() {
           </div>
 
           {/* Footer */}
-          <p className="text-center text-xs text-slate-500 mt-8">
-            OrbNOC Systems © {new Date().getFullYear()} • Network Operations Center
+          <p className="text-center text-xs text-slate-600 mt-6">
+            OrbNOC © {new Date().getFullYear()}
           </p>
         </div>
       </div>
-
-      <style jsx>{`
-        @keyframes line-draw {
-          0% {
-            stroke-dasharray: 30;
-            stroke-dashoffset: 30;
-            opacity: 0;
-          }
-          20% {
-            stroke-dashoffset: 0;
-            opacity: 1;
-          }
-          80% {
-            stroke-dashoffset: 0;
-            opacity: 1;
-          }
-          100% {
-            stroke-dashoffset: 0;
-            opacity: 1;
-          }
-        }
-
-        @keyframes pulse-dot {
-          0%, 100% {
-            opacity: 1;
-            transform: scale(1);
-          }
-          50% {
-            opacity: 0.3;
-            transform: scale(0.5);
-          }
-        }
-
-        @keyframes shine {
-          0% {
-            transform: translateX(-100%) skewX(-12deg);
-          }
-          100% {
-            transform: translateX(100%) skewX(-12deg);
-          }
-        }
-
-        @keyframes fade-in {
-          from {
-            opacity: 0;
-            transform: translateY(-5px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        .animate-line-1 {
-          animation: line-draw 3s ease-in-out infinite;
-        }
-
-        .animate-line-2 {
-          animation: line-draw 3s ease-in-out infinite 0.3s;
-        }
-
-        .animate-line-3 {
-          animation: line-draw 3s ease-in-out infinite 0.6s;
-        }
-
-        .animate-line-4 {
-          animation: line-draw 3s ease-in-out infinite 0.9s;
-        }
-
-        .animate-line-5 {
-          animation: line-draw 4s ease-in-out infinite 1.2s;
-        }
-
-        .animate-line-6 {
-          animation: line-draw 4s ease-in-out infinite 1.5s;
-        }
-
-        .animate-pulse-dot {
-          animation: pulse-dot 1.5s ease-in-out infinite;
-        }
-
-        .delay-100 {
-          animation-delay: 0.5s;
-        }
-
-        .delay-200 {
-          animation-delay: 1s;
-        }
-
-        .delay-300 {
-          animation-delay: 1.5s;
-        }
-
-        .animate-shine {
-          animation: shine 3s infinite;
-        }
-
-        .animate-fade-in {
-          animation: fade-in 0.3s ease-out;
-        }
-      `}</style>
     </div>
   );
 }
