@@ -20,6 +20,7 @@ export default function Home() {
   const [devices, setDevices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [connected, setConnected] = useState(false);
+  const [reconnecting, setReconnecting] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [history, setHistory] = useState([]);
   const [alertSound, setAlertSound] = useState(true);
@@ -108,6 +109,14 @@ export default function Home() {
     setShowAlert(true);
     setTimeout(() => setShowAlert(false), 4000);
     playAlertSound(type);
+  };
+
+  const clearAlertHistory = () => {
+    if (confirm('Limpar todo o histórico de alertas?')) {
+      setAlertHistory([]);
+      if (user?.id) localStorage.setItem(`orbnoc_alert_history_${user.id}`, JSON.stringify([]));
+      addAlert('Histórico de alertas limpo', 'success');
+    }
   };
 
   const playAlertSound = (type) => {
@@ -370,18 +379,39 @@ export default function Home() {
     fetchDevices();
 
     let socket = null;
+    let heartbeatInterval = null;
+
     const initSocket = async () => {
       try {
+        setReconnecting(true);
         const token = localStorage.getItem('token');
         const io = await import('socket.io-client');
         socket = io.default(WS_BASE_URL, {
           transports: ['websocket', 'polling'],
-          auth: { token }
+          auth: { token },
+          reconnection: true,
+          reconnectionAttempts: 10,
+          reconnectionDelay: 1000
         });
 
         socket.on('connect', () => {
           setConnected(true);
+          setReconnecting(false);
           console.log('✅ WebSocket conectado');
+
+          // Heartbeat a cada 25 segundos
+          if (heartbeatInterval) clearInterval(heartbeatInterval);
+          heartbeatInterval = setInterval(() => {
+            if (socket && socket.connected) {
+              socket.emit('ping');
+            }
+          }, 25000);
+        });
+
+        socket.on('disconnect', () => {
+          setConnected(false);
+          setReconnecting(true);
+          console.log('❌ WebSocket desconectado, reconectando...');
         });
 
         socket.on('devices_update', (updatedDevices) => {
@@ -409,18 +439,15 @@ export default function Home() {
           setLastUpdateTime(new Date());
           saveToHistory(updatedDevices);
         });
-
-        socket.on('disconnect', () => {
-          setConnected(false);
-          console.log('❌ WebSocket desconectado');
-        });
       } catch (err) {
         console.error('Erro ao conectar WebSocket:', err);
+        setReconnecting(false);
       }
     };
 
     initSocket();
     return () => {
+      if (heartbeatInterval) clearInterval(heartbeatInterval);
       if (socket) socket.disconnect();
     };
   }, [isAuthenticated]);
@@ -478,16 +505,13 @@ export default function Home() {
   const getFilteredAndSortedDevices = () => {
     let filtered = [...devices];
 
-    // Status filter
     if (statusFilter !== 'all') filtered = filtered.filter(d => d.status === statusFilter);
 
-    // Search filter
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
       filtered = filtered.filter(d => d.name.toLowerCase().includes(term) || d.ip.toLowerCase().includes(term) || (d.location && d.location.toLowerCase().includes(term)));
     }
 
-    // Advanced filters
     if (filters.minLatency && filters.minLatency !== '') {
       filtered = filtered.filter(d => d.latency >= parseInt(filters.minLatency));
     }
@@ -495,7 +519,6 @@ export default function Home() {
       filtered = filtered.filter(d => d.latency <= parseInt(filters.maxLatency));
     }
 
-    // Sort
     filtered.sort((a, b) => {
       let valA, valB;
       switch (sortField) {
@@ -581,6 +604,13 @@ export default function Home() {
         </div>
       )}
 
+      {/* WebSocket Reconectando Indicator */}
+      {reconnecting && !connected && (
+        <div className="fixed bottom-4 left-4 z-50 bg-amber-500/10 border border-amber-500/30 rounded-lg px-3 py-1.5 text-xs text-amber-400 animate-pulse">
+          🔄 Reconectando WebSocket...
+        </div>
+      )}
+
       <div className="max-w-[1600px] mx-auto p-6 space-y-6">
 
         {/* Header */}
@@ -602,6 +632,39 @@ export default function Home() {
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Navigation Buttons */}
+            <button
+              onClick={() => router.push('/network-map')}
+              className="px-3 py-2 bg-slate-900 hover:bg-slate-800 rounded-lg border border-slate-800 transition-all text-sm flex items-center gap-1"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+              </svg>
+              Mapa
+            </button>
+
+            <button
+              onClick={() => router.push('/alerts')}
+              className="px-3 py-2 bg-slate-900 hover:bg-slate-800 rounded-lg border border-slate-800 transition-all text-sm flex items-center gap-1"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              Alertas
+            </button>
+
+            <button
+              onClick={() => router.push('/reports')}
+              className="px-3 py-2 bg-slate-900 hover:bg-slate-800 rounded-lg border border-slate-800 transition-all text-sm flex items-center gap-1"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+              Relatórios
+            </button>
+
+            <div className="w-px h-6 bg-slate-700 mx-1" />
+
             <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-900 rounded-lg border border-slate-800">
               <span className="text-xs text-slate-300">{user?.username}</span>
             </div>
@@ -609,6 +672,12 @@ export default function Home() {
             <button onClick={handleRefresh} disabled={refreshing} className="p-2 bg-slate-900 hover:bg-slate-800 rounded-lg border border-slate-800 transition-all">
               <svg className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </button>
+
+            <button onClick={clearAlertHistory} className="p-2 bg-slate-900 hover:bg-slate-800 rounded-lg border border-slate-800 transition-all">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
               </svg>
             </button>
 
@@ -729,6 +798,11 @@ export default function Home() {
                 <p className="text-xs text-slate-400 uppercase tracking-wider">Disponibilidade</p>
                 <p className="text-2xl font-semibold mt-1 text-blue-400">{availability}%</p>
                 <p className="text-[10px] text-slate-500 mt-1">SLA</p>
+                {history.length > 1 && (
+                  <p className="text-[10px] text-slate-500 mt-1">
+                    Tendência: {history[0]?.uptime > history[1]?.uptime ? '↑ Melhorando' : history[0]?.uptime < history[1]?.uptime ? '↓ Piorando' : '→ Estável'}
+                  </p>
+                )}
               </div>
               <div className="w-12 h-8">
                 <ResponsiveContainer width="100%" height="100%">
@@ -982,7 +1056,12 @@ export default function Home() {
                       <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
                       <XAxis dataKey="time" stroke="#64748b" fontSize={10} tickLine={false} />
                       <YAxis stroke="#64748b" fontSize={10} tickLine={false} />
-                      <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderRadius: '8px', border: '1px solid #1e293b' }} />
+                      <Tooltip
+                        contentStyle={{ backgroundColor: '#0f172a', borderRadius: '8px', border: '1px solid #1e293b' }}
+                        labelStyle={{ color: '#94a3b8', fontSize: '10px' }}
+                        formatter={(value, name) => [`${value}ms`, name]}
+                        itemStyle={{ color: '#e2e8f0', fontSize: '11px' }}
+                      />
                       <Legend wrapperStyle={{ fontSize: '10px' }} verticalAlign="bottom" height={30} />
                       {getFilteredAndSortedDevices().filter(d => d.status === 'online').slice(0, 5).map((device, idx) => {
                         const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ec4899', '#06b6d4'];
@@ -1041,11 +1120,16 @@ export default function Home() {
             {/* Alert History */}
             {alertHistory.length > 0 && (
               <div className="bg-gradient-to-br from-slate-900 to-slate-900/50 rounded-lg border border-slate-800 p-4">
-                <h3 className="text-sm font-semibold text-slate-300 mb-3 flex items-center gap-2">
-                  <span className="w-1 h-5 bg-rose-500 rounded-full"></span>
-                  Alertas Recentes
-                  {unreadAlerts > 0 && <span className="px-1.5 py-0.5 bg-amber-500/20 text-amber-400 text-[10px] rounded-full animate-pulse">{unreadAlerts}</span>}
-                </h3>
+                <div className="flex justify-between items-center mb-3">
+                  <h3 className="text-sm font-semibold text-slate-300 flex items-center gap-2">
+                    <span className="w-1 h-5 bg-rose-500 rounded-full"></span>
+                    Alertas Recentes
+                    {unreadAlerts > 0 && <span className="px-1.5 py-0.5 bg-amber-500/20 text-amber-400 text-[10px] rounded-full animate-pulse">{unreadAlerts}</span>}
+                  </h3>
+                  <button onClick={clearAlertHistory} className="text-[10px] text-slate-500 hover:text-slate-400 transition-colors">
+                    Limpar
+                  </button>
+                </div>
                 <div className="space-y-2 max-h-64 overflow-y-auto">
                   {alertHistory.slice(0, 10).map(alert => (
                     <div key={alert.id} className={`p-2 rounded border transition-all ${alert.type === 'error' ? 'bg-rose-500/10 border-rose-500/20' : alert.type === 'warning' ? 'bg-amber-500/10 border-amber-500/20' : 'bg-emerald-500/10 border-emerald-500/20'}`}>
