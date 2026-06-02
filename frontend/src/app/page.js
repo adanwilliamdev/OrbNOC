@@ -9,7 +9,7 @@ import { LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tool
 import * as XLSX from 'xlsx';
 
 const API_BASE_URL = 'https://orbnoc-backend-nmlq.onrender.com';
-const WS_BASE_URL = process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:3001';
+const WS_BASE_URL = 'wss://orbnoc-backend-nmlq.onrender.com';  // ← MUDANÇA AQUI
 
 export default function Home() {
   const router = useRouter();
