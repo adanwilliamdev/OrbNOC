@@ -13,7 +13,7 @@ Monitoramento de infraestrutura, disponibilidade e desempenho em tempo real.
 ![Version](https://img.shields.io/badge/version-2.0.0-blue)
 ![Status](https://img.shields.io/badge/status-active-success)
 ![Next.js](https://img.shields.io/badge/Next.js-14-black)
-![Node.js](https://img.shields.io/badge/Node.js-18+-green)
+![Node.js](https://img.shields.io/badge/Node.js-20+-green)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-blue)
 ![Socket.IO](https://img.shields.io/badge/WebSocket-Realtime-purple)
 ![License](https://img.shields.io/badge/license-MIT-orange)
@@ -30,26 +30,44 @@ A plataforma oferece monitoramento contínuo, geração de alertas, análise de 
 
 ---
 
+# 🌐 Deploy Online
+
+| Serviço      | URL                                      |
+| ------------ | ---------------------------------------- |
+| Frontend     | https://orbnoc-taer.onrender.com         |
+| Backend API  | https://orbnoc-backend-nmlq.onrender.com |
+| Documentação | Em breve                                 |
+
+## Credenciais de Demonstração
+
+```text
+Usuário: admin
+Senha: admin123
+```
+
+---
+
 # ✨ Principais Recursos
 
-### 📡 Monitoramento em Tempo Real
+## 📡 Monitoramento em Tempo Real
 
-* Ping ICMP
+* Ping ICMP / TCP Connect
 * Latência
 * Jitter
 * Packet Loss
 * Uptime
 * Disponibilidade
 
-### 🔔 Sistema de Alertas
+## 🔔 Sistema de Alertas
 
 * Alertas visuais
 * Alertas sonoros
 * Integração Telegram
 * Integração Email
 * Histórico de incidentes
+* Alertas de SLA
 
-### 📊 Dashboard Operacional
+## 📊 Dashboard Operacional
 
 * KPIs em tempo real
 * Gráficos interativos
@@ -57,14 +75,14 @@ A plataforma oferece monitoramento contínuo, geração de alertas, análise de 
 * Histórico de eventos
 * Status dos dispositivos
 
-### 📤 Relatórios
+## 📤 Relatórios
 
 * PDF
 * Excel
 * CSV
 * Exportação sob demanda
 
-### 🔒 Segurança
+## 🔒 Segurança
 
 * JWT Authentication
 * Password Hashing (bcrypt)
@@ -94,21 +112,21 @@ A plataforma oferece monitoramento contínuo, geração de alertas, análise de 
                   │ Next.js Frontend│
                   └────────┬────────┘
                            │
-                     WebSocket
+                     WebSocket (WSS)
                            │
                            ▼
                   ┌─────────────────┐
                   │ Node.js Backend │
                   └────────┬────────┘
                            │
-       ┌───────────────────┼───────────────────┐
-       ▼                   ▼                   ▼
+      ┌────────────────────┼────────────────────┐
+      ▼                    ▼                    ▼
 
- PostgreSQL        Monitor Engine      Alert Engine
-       │                   │                   │
-       ▼                   ▼                   ▼
+ PostgreSQL        Monitor Engine       Alert Engine
+      │                    │                    │
+      ▼                    ▼                    ▼
 
- Database          ICMP/TCP Checks    Telegram/Email
+ Database         TCP Checks      Telegram / Email
 ```
 
 ---
@@ -128,7 +146,7 @@ A plataforma oferece monitoramento contínuo, geração de alertas, análise de 
 
 ## Backend
 
-* Node.js
+* Node.js 20+
 * Express.js
 * Socket.IO
 * JWT
@@ -138,19 +156,20 @@ A plataforma oferece monitoramento contínuo, geração de alertas, análise de 
 ## Banco de Dados
 
 * PostgreSQL
-* SQLite
+* SQLite (Desenvolvimento)
 
 ## DevOps
 
 * Docker
 * Docker Compose
 * GitHub Actions
+* Render.com
 
 ---
 
 # 📦 Estrutura do Projeto
 
-```bash
+```text
 OrbNOC/
 │
 ├── backend/
@@ -203,8 +222,6 @@ OrbNOC/
 | DELETE | /api/devices/:id      |
 | GET    | /api/devices/:id/ping |
 
----
-
 ## Autenticação
 
 | Método | Endpoint           |
@@ -213,6 +230,17 @@ OrbNOC/
 | POST   | /api/auth/login    |
 | POST   | /api/auth/logout   |
 
+## Alertas
+
+| Método | Endpoint              |
+| ------ | --------------------- |
+| GET    | /api/alerts/telegram  |
+| POST   | /api/alerts/telegram  |
+| GET    | /api/alerts/email     |
+| POST   | /api/alerts/email     |
+| POST   | /api/alerts/notify    |
+| POST   | /api/alerts/test-host |
+
 ---
 
 # 🔔 Integração Telegram
@@ -220,48 +248,48 @@ OrbNOC/
 ## Criando o Bot
 
 1. Abra o Telegram
-2. Procure por @BotFather
+2. Procure por **@BotFather**
 3. Execute:
 
 ```text
 /newbot
 ```
 
-4. Copie o Token gerado
-
+4. Copie o token gerado
 5. Descubra seu Chat ID usando:
 
 ```text
 @userinfobot
 ```
 
-6. Configure no OrbNOC
+6. Configure no OrbNOC:
+
+```text
+Dashboard → Configurações → Telegram
+```
 
 ---
 
-# 🚀 Instalação
+# 🚀 Instalação Local
 
 ## Pré-Requisitos
 
-* Node.js 18+
+* Node.js 20+
 * NPM
 * PostgreSQL (Opcional)
 * Docker (Opcional)
-
----
 
 ## Backend
 
 ```bash
 cd backend
-
 npm install
 ```
 
-Crie o arquivo:
+Crie o arquivo `.env`:
 
 ```env
-DATABASE_URL=sqlite:./database.sqlite
+DATABASE_URL=postgresql://localhost:5432/orbnoc
 JWT_SECRET=your_secret_key
 PORT=3001
 ```
@@ -278,15 +306,11 @@ Servidor:
 http://localhost:3001
 ```
 
----
-
 ## Frontend
 
 ```bash
 cd frontend
-
 npm install
-
 npm run dev
 ```
 
@@ -295,6 +319,55 @@ Aplicação:
 ```text
 http://localhost:3000
 ```
+
+---
+
+# ☁️ Deploy no Render
+
+## Backend
+
+```text
+Root Directory: backend
+Build Command: npm install
+Start Command: npm start
+```
+
+### Variáveis
+
+```env
+DATABASE_URL=
+JWT_SECRET=
+PORT=10000
+```
+
+## Frontend
+
+```text
+Root Directory: frontend
+Build Command: npm install && npm run build
+Start Command: npm start
+```
+
+### Variáveis
+
+```env
+NEXT_PUBLIC_API_URL=
+NODE_ENV=production
+```
+
+---
+
+# ⚠️ Observação
+
+O Render não permite ICMP Ping nativamente.
+
+Por isso o OrbNOC utiliza:
+
+```text
+TCP Connect (80/443)
+```
+
+como alternativa para validação de disponibilidade.
 
 ---
 
@@ -308,96 +381,89 @@ docker-compose up -d
 
 # ⚙️ Variáveis de Ambiente
 
+## Backend
+
 ```env
 DATABASE_URL=postgresql://user:password@localhost:5432/orbnoc
-
 JWT_SECRET=super_secret_key
-
 PORT=3001
 
 TELEGRAM_BOT_TOKEN=
-
 TELEGRAM_CHAT_ID=
 
-SMTP_HOST=
-
-SMTP_PORT=
-
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
 SMTP_USER=
-
 SMTP_PASSWORD=
+
+CORS_ORIGIN=https://seu-frontend.onrender.com
+```
+
+## Frontend
+
+```env
+NEXT_PUBLIC_API_URL=https://seu-backend.onrender.com
+NEXT_PUBLIC_WS_URL=wss://seu-backend.onrender.com
+NODE_ENV=production
 ```
 
 ---
 
 # 📈 Roadmap
 
-## v2.0
+## v2.0 ✅
 
-* [x] Dashboard em Tempo Real
-* [x] WebSocket
-* [x] Alertas Telegram
-* [x] Alertas Email
-* [x] Relatórios PDF
-* [x] Exportação Excel
+* Dashboard em Tempo Real
+* WebSocket
+* Alertas Telegram
+* Alertas Email
+* Relatórios PDF
+* Exportação Excel
+* TCP Connect
+* Deploy no Render
 
-## v2.5
+## v2.5 🚧
 
-* [ ] Monitoramento SNMP
-* [ ] SLA Dashboard
-* [ ] LDAP Authentication
-* [ ] Syslog Collector
+* Monitoramento SNMP
+* SLA Dashboard
+* LDAP Authentication
+* Syslog Collector
+* Múltiplos Dashboards
 
-## v3.0
+## v3.0 🔮
 
-* [ ] AI Incident Analysis
-* [ ] Root Cause Analysis
-* [ ] Predictive Monitoring
-* [ ] Network Discovery
-* [ ] Topology Maps
-
----
-
-# 🔮 Funcionalidades Futuras
-
-* SNMP v2/v3
-* NetFlow
-* Syslog Server
-* Active Directory
-* Multi-Tenant
-* RBAC
-* Auditoria Completa
-* Grafana Integration
-* Prometheus Exporter
-* Kubernetes Monitoring
-* Cloud Monitoring
+* AI Incident Analysis
+* Root Cause Analysis
+* Predictive Monitoring
+* Network Discovery
+* Topology Maps
 
 ---
 
 # 📊 Status do Projeto
 
-| Funcionalidade   | Status |
-| ---------------- | ------ |
-| ICMP Monitoring  | ✅      |
-| WebSocket        | ✅      |
-| Dashboard        | ✅      |
-| Exportação PDF   | ✅      |
-| Exportação Excel | ✅      |
-| Telegram Alerts  | ✅      |
-| Email Alerts     | ✅      |
-| Port Monitoring  | ✅      |
-| Multiusuário     | ✅      |
+| Funcionalidade      | Status |
+| ------------------- | ------ |
+| TCP/HTTP Monitoring | ✅      |
+| WebSocket           | ✅      |
+| Dashboard           | ✅      |
+| Exportação PDF      | ✅      |
+| Exportação Excel    | ✅      |
+| Telegram Alerts     | ✅      |
+| Email Alerts        | ✅      |
+| Port Monitoring     | ✅      |
+| Multiusuário        | ✅      |
+| Autenticação JWT    | ✅      |
+| Deploy no Render    | ✅      |
 
 ---
 
 # 🤝 Contribuindo
 
 ```bash
-git checkout -b feature/new-feature
-
-git commit -m "feat: add new feature"
-
-git push origin feature/new-feature
+git checkout -b feature/nova-funcionalidade
+git commit -m "feat: adiciona nova funcionalidade"
+git push origin feature/nova-funcionalidade
 ```
 
 Abra um Pull Request.
@@ -414,9 +480,9 @@ Copyright © 2026 Adan W. O. Santos
 
 # ❤️ Desenvolvido por
 
-### Adan W. O. Santos
+**Adan W. O. Santos**
 
-**OrbNOC Platform**
+OrbNOC Platform
 
 Network Operations Center • Infrastructure Monitoring • Real-Time Analytics
 
