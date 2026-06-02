@@ -4,7 +4,7 @@ const nextConfig = {
   eslint: { ignoreDuringBuilds: true },
   output: 'standalone',
   staticPageGenerationTimeout: 120,
-  // Remova a linha 'appDir' - ela é obsoleta no Next.js 14
+  // Remove appDir - é obsoleto no Next.js 14
   experimental: {
     serverComponentsExternalPackages: ['recharts', 'socket.io-client']
   }
