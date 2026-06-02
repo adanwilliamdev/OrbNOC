@@ -7,6 +7,8 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const net = require('net');
 const { Pool } = require('pg');
+const diagnosticRoutes = require('./routes/diagnostic');
+app.use('/api/diagnostic', diagnosticRoutes);
 
 const app = express();
 const JWT_SECRET = process.env.JWT_SECRET || 'orbnoc_secret_key_2024_change_this_in_production';
