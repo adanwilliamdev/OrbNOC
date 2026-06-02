@@ -597,7 +597,29 @@ io.on('connection', (socket) => {
 
   socket.on('disconnect', () => console.log(`🔌 Usuário desconectado: ${socket.user.username}`));
 });
+// ==================== ROTA DE TESTE PARA TELEGRAM ====================
+app.post('/api/alerts/test-telegram', authenticateToken, async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM users WHERE id = $1', [req.user.id]);
+    const user = result.rows[0];
 
+    if (!user || !user.telegram_bot_token || !user.telegram_chat_id) {
+      return res.status(400).json({ error: 'Telegram não configurado para este usuário' });
+    }
+
+    const testMessage = '🧪 *Teste OrbNOC*\n\nSe você recebeu esta mensagem, o Telegram está funcionando perfeitamente!';
+    const sent = await sendTelegramAlert(user.telegram_bot_token, user.telegram_chat_id, testMessage, 'success');
+
+    if (sent) {
+      res.json({ success: true, message: 'Mensagem de teste enviada com sucesso!' });
+    } else {
+      res.status(500).json({ error: 'Falha ao enviar mensagem' });
+    }
+  } catch (error) {
+    console.error('Erro no teste:', error);
+    res.status(500).json({ error: 'Erro interno ao testar' });
+  }
+});
 // ==================== INICIAR SERVIDOR ====================
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {
