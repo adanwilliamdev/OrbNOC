@@ -415,6 +415,59 @@ app.post('/api/alerts/email', authenticateToken, async (req, res) => {
   }
 });
 
+// ==================== CONFIGURAÇÃO DE ALERTAS ====================
+
+app.post('/api/alerts/email', authenticateToken, async (req, res) => {
+  // ... código existente ...
+});
+
+app.get('/api/alerts/email', authenticateToken, async (req, res) => {
+  // ... código existente ...
+});
+
+app.post('/api/alerts/telegram', authenticateToken, async (req, res) => {
+  // ... código existente ...
+});
+
+app.get('/api/alerts/telegram', authenticateToken, async (req, res) => {
+  // ... código existente ...
+});
+
+app.post('/api/alerts/notify', authenticateToken, async (req, res) => {
+  // ... código existente ...
+});
+
+// ⬇️⬇️⬇️ ADICIONE ESTE CÓDIGO AQUI ⬇️⬇️⬇️
+// ==================== ROTA DE TESTE DE ALERTA DE HOST ====================
+app.post('/api/alerts/test-host', authenticateToken, async (req, res) => {
+  try {
+    const { deviceName, deviceIp, status, latency } = req.body;
+
+    const result = await pool.query('SELECT * FROM users WHERE id = $1', [req.user.id]);
+    const user = result.rows[0];
+
+    if (!user || !user.telegram_bot_token || !user.telegram_chat_id) {
+      return res.status(400).json({ error: 'Telegram não configurado' });
+    }
+
+    let alertMessage, alertType;
+    if (status === 'online') {
+      alertMessage = `🟢 *HOST ONLINE* 🟢\n\n• Nome: ${deviceName}\n• IP: ${deviceIp}\n• Latência: ${latency}ms\n\n🕐 ${new Date().toLocaleString('pt-BR')}`;
+      alertType = 'success';
+    } else {
+      alertMessage = `🔴 *HOST OFFLINE* 🔴\n\n• Nome: ${deviceName}\n• IP: ${deviceIp}\n\n🕐 ${new Date().toLocaleString('pt-BR')}`;
+      alertType = 'error';
+    }
+
+    const sent = await sendTelegramAlert(user.telegram_bot_token, user.telegram_chat_id, alertMessage, alertType);
+    res.json({ success: sent, message: sent ? 'Alerta enviado!' : 'Falha no envio' });
+  } catch (error) {
+    console.error('Erro no teste de host:', error);
+    res.status(500).json({ error: 'Erro interno' });
+  }
+});
+
+
 app.get('/api/alerts/email', authenticateToken, async (req, res) => {
   try {
     const result = await pool.query('SELECT email_alerts_enabled, alert_email_target FROM users WHERE id = $1', [req.user.id]);
