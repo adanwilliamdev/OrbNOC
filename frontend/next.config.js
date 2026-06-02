@@ -4,14 +4,10 @@ const nextConfig = {
   eslint: { ignoreDuringBuilds: true },
   output: 'standalone',
   staticPageGenerationTimeout: 120,
-  // Forçar todas as páginas como client components
+  // Remova a linha 'appDir' - ela é obsoleta no Next.js 14
   experimental: {
-    appDir: true,
     serverComponentsExternalPackages: ['recharts', 'socket.io-client']
-  },
-  // Desabilitar geração estática
-  generateBuildId: async () => 'build',
-  distDir: '.next'
+  }
 }
 
 module.exports = nextConfig
