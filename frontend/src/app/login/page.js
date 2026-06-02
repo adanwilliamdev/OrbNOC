@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 const API_BASE_URL = 'https://orbnoc-backend-nmlq.onrender.com';
@@ -96,7 +96,7 @@ export default function Login() {
           <div className="text-center mb-8">
             {/* Ícone de Rede */}
             <div className="inline-flex items-center justify-center w-16 h-16 mb-5">
-              <div className="w-14 h-14 bg-blue-600 rounded-lg flex items-center justify-center">
+              <div className="w-14 h-14 bg-blue-600 rounded-lg flex items-center justify-center shadow-lg shadow-blue-500/20">
                 <svg className="w-7 h-7 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
                   <path d="M4 6 L12 12 L20 6" strokeLinecap="round"/>
                   <path d="M4 12 L12 18 L20 12" strokeLinecap="round"/>
@@ -109,12 +109,12 @@ export default function Login() {
               OrbNOC
             </h1>
             <p className="text-sm text-slate-500 mt-1">
-              {isRegistering ? 'Crie sua conta' : 'Network Operations Center'}
+              {isRegistering ? 'Crie sua conta para começar' : 'Network Operations Center'}
             </p>
           </div>
 
           {/* Card */}
-          <div className="rounded-lg bg-slate-900/50 border border-slate-800 p-6">
+          <div className="rounded-lg bg-gradient-to-br from-slate-900 to-slate-900/50 border border-slate-800 p-6 shadow-xl">
 
             {/* Formulário */}
             <form onSubmit={isRegistering ? handleRegister : handleLogin} className="space-y-4">
@@ -185,7 +185,7 @@ export default function Login() {
 
               {/* Mensagem de Erro */}
               {error && (
-                <div className="bg-rose-500/10 border border-rose-500/20 rounded-md p-3">
+                <div className="bg-rose-500/10 border border-rose-500/20 rounded-md p-3 animate-fade-in">
                   <p className="text-rose-400 text-sm text-center">{error}</p>
                 </div>
               )}
@@ -194,7 +194,7 @@ export default function Login() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-2"
+                className="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium py-2.5 rounded-md transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-2 shadow-lg shadow-blue-500/20"
               >
                 {loading ? (
                   <span className="flex items-center justify-center gap-2">
@@ -242,7 +242,7 @@ export default function Login() {
 
           {/* Footer */}
           <p className="text-center text-xs text-slate-600 mt-6">
-            OrbNOC © {new Date().getFullYear()}
+            OrbNOC Network Operations Center © {new Date().getFullYear()}
           </p>
         </div>
       </div>
