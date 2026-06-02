@@ -8,7 +8,7 @@ import { useRouter } from 'next/navigation';
 import { LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import * as XLSX from 'xlsx';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+const API_BASE_URL = 'https://orbnoc-backend-nmlq.onrender.com';
 const WS_BASE_URL = process.env.NEXT_PUBLIC_WS_URL || 'http://localhost:3001';
 
 export default function Home() {
