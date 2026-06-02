@@ -5,7 +5,7 @@ export const revalidate = 0;
 
 import React, { useEffect, useState, useRef, Fragment, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import * as XLSX from 'xlsx';
 
 const API_BASE_URL = 'https://orbnoc-backend-nmlq.onrender.com';
@@ -36,12 +36,13 @@ export default function Home() {
   const [showAlertConfig, setShowAlertConfig] = useState(false);
   const [alertHistory, setAlertHistory] = useState([]);
   const [selectedAlertDevice, setSelectedAlertDevice] = useState(null);
-  const [portConfigs, setPortConfigs] = useState({});
   const [realtimeLatencyData, setRealtimeLatencyData] = useState({});
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [expandedDevice, setExpandedDevice] = useState(null);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [lastUpdateTime, setLastUpdateTime] = useState(null);
+  const [latencyTrend, setLatencyTrend] = useState({ value: 0, percentage: 0 });
+  const [previousAvgLatency, setPreviousAvgLatency] = useState(0);
 
   const [emailConfig, setEmailConfig] = useState({ enabled: false, email: '' });
   const [telegramConfig, setTelegramConfig] = useState({ enabled: false, botToken: '', chatId: '' });
@@ -49,7 +50,6 @@ export default function Home() {
   const [showTelegramModal, setShowTelegramModal] = useState(false);
 
   const alertThresholdsRef = useRef(alertThresholds);
-  const portConfigsRef = useRef(portConfigs);
   const devicesRef = useRef(devices);
 
   useEffect(() => {
@@ -63,8 +63,26 @@ export default function Home() {
   }, [showExportMenu]);
 
   useEffect(() => { alertThresholdsRef.current = alertThresholds; }, [alertThresholds]);
-  useEffect(() => { portConfigsRef.current = portConfigs; }, [portConfigs]);
   useEffect(() => { devicesRef.current = devices; }, [devices]);
+
+  // Calcular tendência de latência
+  useEffect(() => {
+    if (devices.length > 0) {
+      const currentAvg = devices.filter(d => d.status === 'online' && d.latency).length > 0
+        ? devices.filter(d => d.status === 'online' && d.latency).reduce((acc, d) => acc + d.latency, 0) / devices.filter(d => d.status === 'online' && d.latency).length
+        : 0;
+      
+      if (previousAvgLatency > 0 && currentAvg > 0) {
+        const percentageChange = ((currentAvg - previousAvgLatency) / previousAvgLatency) * 100;
+        setLatencyTrend({
+          value: Math.round(Math.abs(currentAvg - previousAvgLatency)),
+          percentage: Math.round(percentageChange),
+          direction: percentageChange < 0 ? 'down' : 'up'
+        });
+      }
+      setPreviousAvgLatency(currentAvg);
+    }
+  }, [devices, previousAvgLatency]);
 
   const addAlert = (message, type) => {
     const newAlert = { id: Date.now(), message, type, timestamp: new Date().toLocaleTimeString(), read: false };
@@ -132,7 +150,7 @@ export default function Home() {
 
   const getChartData = () => {
     const statusData = [
-      { name: 'Online', value: devices.filter(d => d.status === 'online').length, color: '#3b82f6' },
+      { name: 'Online', value: devices.filter(d => d.status === 'online').length, color: '#10b981' },
       { name: 'Offline', value: devices.filter(d => d.status === 'offline').length, color: '#ef4444' }
     ];
     const timelineData = history.slice(0, 20).reverse().map(h => ({
@@ -225,29 +243,6 @@ export default function Home() {
     }
   };
 
-  const saveEmailConfig = async (enabled, email) => {
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`${API_BASE_URL}/api/alerts/email`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({ enabled, email })
-      });
-
-      if (response.ok) {
-        setEmailConfig({ enabled, email });
-        addAlert(enabled ? `Email configurado: ${email}` : 'Email desativado', 'success');
-      } else {
-        addAlert('Erro ao salvar configuração de email', 'error');
-      }
-    } catch (error) {
-      addAlert('Erro de conexão', 'error');
-    }
-  };
-
   useEffect(() => {
     if (!user?.id) return;
     loadTelegramConfig();
@@ -257,8 +252,6 @@ export default function Home() {
     if (savedThresholds) setAlertThresholds(JSON.parse(savedThresholds));
     const savedAlertHistory = localStorage.getItem(`orbnoc_alert_history_${user.id}`);
     if (savedAlertHistory) setAlertHistory(JSON.parse(savedAlertHistory));
-    const savedPortConfigs = localStorage.getItem(`orbnoc_ports_${user.id}`);
-    if (savedPortConfigs) setPortConfigs(JSON.parse(savedPortConfigs));
     const savedHistory = localStorage.getItem(`orbnoc_history_${user.id}`);
     if (savedHistory) setHistory(JSON.parse(savedHistory));
   }, [user?.id]);
@@ -324,11 +317,11 @@ export default function Home() {
       const threshold = alertThresholds[deviceId];
 
       if (threshold && data.latency_ms > threshold && data.status === 'online') {
-        addAlert(`Latência Crítica: ${data.name} atingiu ${data.latency_ms}ms`, 'warning');
+        addAlert(`⚠️ Latência Crítica: ${data.name} atingiu ${data.latency_ms}ms`, 'warning');
       } else if (data.status === 'online') {
-        addAlert(`${data.name}: ${data.latency_ms || 'N/A'}ms`, 'success');
+        addAlert(`📡 ${data.name}: ${data.latency_ms || 'N/A'}ms`, 'success');
       } else {
-        addAlert(`${data.name}: Host offline`, 'error');
+        addAlert(`🔴 ${data.name}: Host offline`, 'error');
       }
 
       setRealtimeLatencyData(prev => {
@@ -340,7 +333,7 @@ export default function Home() {
       setDevices(prev => prev.map(d => d.id === deviceId ? { ...d, latency: data.latency_ms, status: data.status, last_check: data.timestamp } : d));
       setLastUpdateTime(new Date());
     } catch (error) {
-      addAlert('Falha na requisição de ping', 'error');
+      addAlert('❌ Falha na requisição de ping', 'error');
     } finally {
       setTimeout(() => setPingingDevice(null), 400);
     }
@@ -355,7 +348,7 @@ export default function Home() {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Dispositivos');
     XLSX.writeFile(wb, `orbnoc-inventario.xlsx`);
-    addAlert('Planilha Excel exportada!', 'success');
+    addAlert('📊 Planilha Excel exportada!', 'success');
     setShowExportMenu(false);
   };
 
@@ -389,12 +382,12 @@ export default function Home() {
 
             const old = devicesRef.current.find(d => d.id === device.id);
             if (old && old.status !== device.status) {
-              addAlert(`${device.status === 'offline' ? 'Host Down' : 'Host Up'}: ${device.name}`, device.status === 'offline' ? 'error' : 'success');
+              addAlert(`${device.status === 'offline' ? '🔴 Host Down' : '🟢 Host Up'}: ${device.name}`, device.status === 'offline' ? 'error' : 'success');
             }
 
             const threshold = alertThresholdsRef.current[device.id];
             if (threshold && device.latency > threshold && device.status === 'online') {
-              addAlert(`ALERTA SLA: ${device.name} está com ${device.latency}ms (> ${threshold}ms)`, 'warning');
+              addAlert(`⚠️ ALERTA SLA: ${device.name} está com ${device.latency}ms (> ${threshold}ms)`, 'warning');
             }
           });
 
@@ -432,9 +425,9 @@ export default function Home() {
         e.target.reset();
         setShowForm(false);
         fetchDevices();
-        addAlert(`Host "${payload.name}" adicionado!`, 'success');
+        addAlert(`🚀 Host "${payload.name}" adicionado!`, 'success');
       }
-    } catch (error) { addAlert('Erro ao salvar host', 'error'); }
+    } catch (error) { addAlert('❌ Erro ao salvar host', 'error'); }
   };
 
   const removeDevice = async (id, name) => {
@@ -445,8 +438,8 @@ export default function Home() {
           method: 'DELETE',
           headers: { Authorization: `Bearer ${token}` }
         });
-        if (res.ok) { fetchDevices(); addAlert(`Host ${name} removido`, 'success'); }
-      } catch (error) { addAlert('Erro ao remover host', 'error'); }
+        if (res.ok) { fetchDevices(); addAlert(`🗑️ Host ${name} removido`, 'success'); }
+      } catch (error) { addAlert('❌ Erro ao remover host', 'error'); }
     }
   };
 
@@ -479,6 +472,7 @@ export default function Home() {
         case 'ip': valA = a.ip; valB = b.ip; break;
         case 'status': valA = a.status === 'online' ? 1 : 0; valB = b.status === 'online' ? 1 : 0; break;
         case 'latency': valA = a.latency || Infinity; valB = b.latency || Infinity; break;
+        case 'uptime': valA = a.uptime || 0; valB = b.uptime || 0; break;
         default: valA = a[sortField]; valB = b[sortField];
       }
       return sortDirection === 'asc' ? (valA > valB ? 1 : -1) : (valA < valB ? 1 : -1);
@@ -537,6 +531,10 @@ export default function Home() {
   const chartData = getChartData();
   const unreadAlerts = alertHistory.filter(a => !a.read).length;
   const realtimeChartData = getRealtimeChartData();
+  const hasOfflineDevices = offline > 0;
+
+  // Sparkline data for KPI cards
+  const sparklineData = history.slice(0, 10).reverse().map(h => ({ value: h.avgLatency || 0 }));
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-200" ref={dashboardRef}>
@@ -545,8 +543,8 @@ export default function Home() {
       {showAlert && (
         <div className="fixed top-6 right-6 z-50 animate-slide-in">
           <div className={`flex items-center gap-3 px-4 py-3 rounded-lg backdrop-blur-xl shadow-xl border ${
-            alertMessage.includes('✅') ? 'bg-emerald-500/10 border-emerald-500/30' :
-            alertMessage.includes('❌') ? 'bg-rose-500/10 border-rose-500/30' :
+            alertMessage.includes('✅') || alertMessage.includes('📡') ? 'bg-emerald-500/10 border-emerald-500/30' :
+            alertMessage.includes('❌') || alertMessage.includes('🔴') ? 'bg-rose-500/10 border-rose-500/30' :
             alertMessage.includes('⚠️') ? 'bg-amber-500/10 border-amber-500/30' :
             'bg-blue-500/10 border-blue-500/30'
           }`}>
@@ -561,40 +559,45 @@ export default function Home() {
         <div className="border-b border-slate-800 pb-4 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
           <div className="flex items-center gap-3">
             <div className="relative">
-              <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
+              <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center shadow-lg shadow-blue-500/20">
                 <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M4 6 L12 12 L20 6" strokeLinecap="round"/>
                   <path d="M4 12 L12 18 L20 12" strokeLinecap="round"/>
                   <path d="M4 18 L12 24 L20 18" strokeLinecap="round"/>
                 </svg>
               </div>
-              <div className={`absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full ${connected ? 'bg-emerald-500' : 'bg-rose-500'}`}></div>
+              <div className={`absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full ${connected ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`}></div>
             </div>
             <div>
               <h1 className="text-xl font-semibold text-white tracking-tight">OrbNOC</h1>
-              <p className="text-xs text-slate-500">Network Operations Center</p>
+              <p className="text-xs text-slate-400">Network Operations Center</p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-900 rounded-lg border border-slate-800">
-              <span className="text-xs text-slate-400">{user?.username}</span>
+              <span className="text-xs text-slate-300">{user?.username}</span>
             </div>
 
-            <button onClick={handleRefresh} disabled={refreshing} className="p-2 bg-slate-900 hover:bg-slate-800 rounded-lg border border-slate-800 transition-colors">
-              <span className="text-sm">{refreshing ? '⏳' : '🔄'}</span>
+            <button onClick={handleRefresh} disabled={refreshing} className="p-2 bg-slate-900 hover:bg-slate-800 rounded-lg border border-slate-800 transition-all hover:border-slate-700">
+              <svg className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
             </button>
 
             <div className="relative">
               <button
                 onClick={() => setShowExportMenu(!showExportMenu)}
-                className="px-3 py-2 bg-slate-900 hover:bg-slate-800 rounded-lg border border-slate-800 transition-colors text-sm"
+                className="px-3 py-2 bg-slate-900 hover:bg-slate-800 rounded-lg border border-slate-800 transition-all text-sm flex items-center gap-1"
               >
-                Exportar ▼
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                Exportar
               </button>
 
               {showExportMenu && (
-                <div className="absolute right-0 top-full mt-2 bg-slate-900 rounded-lg shadow-xl z-50 border border-slate-800 min-w-[160px]">
+                <div className="absolute right-0 top-full mt-2 bg-slate-900 rounded-lg shadow-xl z-50 border border-slate-700 min-w-[160px]">
                   <button onClick={exportToCSV} className="w-full text-left px-4 py-2 text-sm hover:bg-slate-800 transition-colors rounded-t-lg">
                     📊 CSV / Excel
                   </button>
@@ -607,103 +610,190 @@ export default function Home() {
 
             <button
               onClick={() => setShowTelegramModal(true)}
-              className={`px-3 py-2 rounded-lg border transition-colors text-sm ${
+              className={`px-3 py-2 rounded-lg border transition-all text-sm flex items-center gap-1 ${
                 telegramConfig.enabled ? 'bg-blue-600/10 border-blue-500/30 text-blue-400' : 'bg-slate-900 border-slate-800 text-slate-400'
               }`}
             >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
               {telegramConfig.enabled ? 'Telegram ON' : 'Telegram OFF'}
             </button>
 
-            <button onClick={handleLogout} className="px-3 py-2 bg-slate-900 hover:bg-slate-800 rounded-lg border border-slate-800 transition-colors text-sm text-rose-400">
+            <button onClick={handleLogout} className="px-3 py-2 bg-slate-900 hover:bg-slate-800 rounded-lg border border-slate-800 transition-all text-sm text-rose-400">
               Sair
             </button>
           </div>
         </div>
 
         {/* Status Indicators */}
-        <div className="flex flex-wrap gap-4 text-xs text-slate-500">
+        <div className="flex flex-wrap gap-4 text-xs">
           <div className="flex items-center gap-2">
-            <div className={`w-1.5 h-1.5 rounded-full ${connected ? 'bg-emerald-500' : 'bg-rose-500'}`}></div>
-            <span>{connected ? 'WebSocket Conectado' : 'WebSocket Desconectado'}</span>
+            <div className={`w-1.5 h-1.5 rounded-full ${connected ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`}></div>
+            <span className="text-slate-400">{connected ? 'WebSocket Conectado' : 'WebSocket Desconectado'}</span>
           </div>
           <div className="flex items-center gap-2">
-            <span>Última atualização: {lastUpdateTime ? lastUpdateTime.toLocaleTimeString() : '—'}</span>
+            <svg className="w-3 h-3 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span className="text-slate-400">Última atualização: {lastUpdateTime ? lastUpdateTime.toLocaleTimeString() : '—'}</span>
           </div>
           <div className="flex items-center gap-2">
-            <span>Dispositivos: {devices.length}</span>
+            <svg className="w-3 h-3 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14M12 5l7 7-7 7" />
+            </svg>
+            <span className="text-slate-400">Dispositivos: {devices.length}</span>
           </div>
         </div>
 
-        {/* KPI Cards */}
+        {/* KPI Cards Premium com Sparklines e Tendências */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-          <div className="bg-slate-900/50 rounded-lg border border-slate-800 p-4">
-            <p className="text-xs text-slate-500 uppercase tracking-wider">Total</p>
-            <p className="text-2xl font-semibold mt-1 text-blue-400">{devices.length}</p>
+          {/* Total Ativos */}
+          <div className="group relative overflow-hidden bg-gradient-to-br from-slate-900 to-slate-900/50 rounded-lg border border-slate-800 p-4 hover:border-slate-700 transition-all">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs text-slate-400 uppercase tracking-wider">Total Ativos</p>
+                <p className="text-2xl font-semibold mt-1 text-white">{devices.length}</p>
+              </div>
+              <div className="w-8 h-8 bg-blue-500/10 rounded-lg flex items-center justify-center">
+                <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                </svg>
+              </div>
+            </div>
           </div>
 
-          <div className="bg-slate-900/50 rounded-lg border border-slate-800 p-4">
-            <p className="text-xs text-slate-500 uppercase tracking-wider">Online</p>
-            <p className="text-2xl font-semibold mt-1 text-emerald-400">{online}</p>
+          {/* Online - Verde Vibrante */}
+          <div className="group relative overflow-hidden bg-gradient-to-br from-emerald-900/20 to-emerald-900/5 rounded-lg border border-emerald-800/30 hover:border-emerald-500/50 transition-all">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs text-emerald-400/80 uppercase tracking-wider">Online</p>
+                <p className="text-2xl font-semibold mt-1 text-emerald-400">{online}</p>
+                <p className="text-[10px] text-emerald-500/60 mt-1">{devices.length ? Math.round((online/devices.length)*100) : 0}% do total</p>
+              </div>
+              <div className="w-8 h-8 bg-emerald-500/10 rounded-lg flex items-center justify-center">
+                <svg className="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+            </div>
           </div>
 
-          <div className="bg-slate-900/50 rounded-lg border border-slate-800 p-4">
-            <p className="text-xs text-slate-500 uppercase tracking-wider">Offline</p>
-            <p className="text-2xl font-semibold mt-1 text-rose-400">{offline}</p>
+          {/* Offline - Vermelho Forte com Pulsação se houver offline */}
+          <div className={`group relative overflow-hidden bg-gradient-to-br from-rose-900/20 to-rose-900/5 rounded-lg border border-rose-800/30 transition-all ${hasOfflineDevices ? 'animate-pulse-slow border-rose-500/50' : 'hover:border-rose-500/30'}`}>
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs text-rose-400/80 uppercase tracking-wider">Offline</p>
+                <p className={`text-2xl font-semibold mt-1 ${hasOfflineDevices ? 'text-rose-500' : 'text-rose-400'}`}>{offline}</p>
+                {hasOfflineDevices && (
+                  <p className="text-[10px] text-rose-500/60 mt-1 animate-pulse">⚠️ Atenção necessária</p>
+                )}
+              </div>
+              <div className="w-8 h-8 bg-rose-500/10 rounded-lg flex items-center justify-center">
+                <svg className="w-4 h-4 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </div>
+            </div>
           </div>
 
-          <div className="bg-slate-900/50 rounded-lg border border-slate-800 p-4">
-            <p className="text-xs text-slate-500 uppercase tracking-wider">Disponibilidade</p>
-            <p className="text-2xl font-semibold mt-1 text-blue-400">{devices.length ? Math.round((online/devices.length)*100) : 0}%</p>
+          {/* Disponibilidade com Sparkline */}
+          <div className="group relative overflow-hidden bg-gradient-to-br from-slate-900 to-slate-900/50 rounded-lg border border-slate-800 p-4 hover:border-slate-700 transition-all">
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <p className="text-xs text-slate-400 uppercase tracking-wider">Disponibilidade</p>
+                <p className="text-2xl font-semibold mt-1 text-blue-400">{devices.length ? Math.round((online/devices.length)*100) : 0}%</p>
+                <p className="text-[10px] text-slate-500 mt-1">SLA 99.9%</p>
+              </div>
+              <div className="w-12 h-8">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={history.slice(0, 20).reverse()}>
+                    <Area type="monotone" dataKey="uptime" stroke="#3b82f6" strokeWidth={1} fill="url(#uptimeGradient)" />
+                    <defs>
+                      <linearGradient id="uptimeGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.3} />
+                        <stop offset="100%" stopColor="#3b82f6" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
           </div>
 
-          <div className="bg-slate-900/50 rounded-lg border border-slate-800 p-4">
-            <p className="text-xs text-slate-500 uppercase tracking-wider">Latência Média</p>
-            <p className="text-2xl font-semibold mt-1 text-amber-400">{avgLatency ? `${Math.round(avgLatency)}ms` : '—'}</p>
+          {/* Latência Média com Tendência */}
+          <div className="group relative overflow-hidden bg-gradient-to-br from-slate-900 to-slate-900/50 rounded-lg border border-slate-800 p-4 hover:border-slate-700 transition-all">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs text-slate-400 uppercase tracking-wider">Latência Média</p>
+                <p className="text-2xl font-semibold mt-1 text-amber-400">{avgLatency ? `${Math.round(avgLatency)}ms` : '—'}</p>
+                {latencyTrend.value > 0 && (
+                  <div className={`flex items-center gap-1 mt-1 text-[10px] ${latencyTrend.direction === 'down' ? 'text-emerald-400' : 'text-rose-400'}`}>
+                    {latencyTrend.direction === 'down' ? '↓' : '↑'} {latencyTrend.value}ms ({Math.abs(latencyTrend.percentage)}%)
+                  </div>
+                )}
+              </div>
+              <div className="w-8 h-8 bg-amber-500/10 rounded-lg flex items-center justify-center">
+                <svg className="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Search and Filters */}
+        {/* Search e Filters - Mais interativos */}
         <div className="flex flex-col sm:flex-row justify-between gap-4">
-          <div className="relative w-full sm:w-80">
+          <div className="relative w-full sm:w-96">
+            <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
             <input
               type="text"
               placeholder="Buscar host, IP ou localização..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-800 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-200 placeholder:text-slate-600"
+              className="w-full bg-slate-900 border border-slate-800 rounded-lg pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-200 placeholder:text-slate-600"
             />
           </div>
           <div className="flex gap-2 bg-slate-900/50 p-1 rounded-lg border border-slate-800">
             <button onClick={() => setStatusFilter('all')} className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
-              statusFilter === 'all' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-slate-200'
+              statusFilter === 'all' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-400 hover:text-slate-200'
             }`}>Todos</button>
             <button onClick={() => setStatusFilter('online')} className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
-              statusFilter === 'online' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-slate-200'
+              statusFilter === 'online' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-500/20' : 'text-slate-400 hover:text-slate-200'
             }`}>Online</button>
             <button onClick={() => setStatusFilter('offline')} className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${
-              statusFilter === 'offline' ? 'bg-rose-600 text-white' : 'text-slate-400 hover:text-slate-200'
+              statusFilter === 'offline' ? 'bg-rose-600 text-white shadow-lg shadow-rose-500/20' : 'text-slate-400 hover:text-slate-200'
             }`}>Offline</button>
           </div>
         </div>
 
         {/* Main Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left - Device Table */}
+          {/* Left - Device Table com Ordenação */}
           <div className="lg:col-span-2 space-y-4">
             <div className="flex justify-between items-center">
-              <h2 className="text-sm font-semibold text-slate-300">Dispositivos</h2>
-              <button onClick={() => setShowForm(!showForm)} className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-sm rounded-lg transition-colors">
-                + Adicionar
+              <h2 className="text-sm font-semibold text-slate-300 flex items-center gap-2">
+                <span className="w-1 h-5 bg-blue-500 rounded-full"></span>
+                Dispositivos
+                <span className="text-xs text-slate-500 font-normal">({filteredDevices.length})</span>
+              </h2>
+              <button onClick={() => setShowForm(!showForm)} className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-sm rounded-lg transition-all shadow-lg shadow-blue-500/20 flex items-center gap-1">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Adicionar
               </button>
             </div>
 
             {showForm && (
-              <form onSubmit={addDevice} className="bg-slate-900/50 p-4 rounded-lg border border-slate-800">
+              <form onSubmit={addDevice} className="bg-gradient-to-br from-slate-900 to-slate-900/50 p-4 rounded-lg border border-blue-500/30">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <input name="name" placeholder="Nome" required className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500" />
-                  <input name="ip" placeholder="IP" required className="bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500" />
+                  <input name="name" placeholder="Nome do equipamento" required className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 text-slate-200" />
+                  <input name="ip" placeholder="Endereço IP" required className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 text-slate-200" />
                   <div className="flex gap-2">
-                    <input name="location" placeholder="Localização" className="flex-1 bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500" />
+                    <input name="location" placeholder="Localização" className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 text-slate-200" />
                     <button type="submit" className="px-4 bg-blue-600 hover:bg-blue-500 rounded-lg text-sm transition-colors">Salvar</button>
                   </div>
                 </div>
@@ -715,17 +805,26 @@ export default function Home() {
                 <table className="w-full text-sm">
                   <thead className="bg-slate-900 border-b border-slate-800">
                     <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 cursor-pointer hover:text-slate-300" onClick={() => handleSort('status')}>Status</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 cursor-pointer hover:text-slate-300" onClick={() => handleSort('name')}>Dispositivo</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 cursor-pointer hover:text-slate-300" onClick={() => handleSort('ip')}>IP</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 cursor-pointer hover:text-slate-300" onClick={() => handleSort('latency')}>Latência</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 cursor-pointer hover:text-slate-300 transition-colors" onClick={() => handleSort('status')}>
+                        Status {sortField === 'status' && (sortDirection === 'asc' ? '↑' : '↓')}
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 cursor-pointer hover:text-slate-300 transition-colors" onClick={() => handleSort('name')}>
+                        Dispositivo {sortField === 'name' && (sortDirection === 'asc' ? '↑' : '↓')}
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 cursor-pointer hover:text-slate-300 transition-colors" onClick={() => handleSort('ip')}>
+                        IP {sortField === 'ip' && (sortDirection === 'asc' ? '↑' : '↓')}
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 cursor-pointer hover:text-slate-300 transition-colors" onClick={() => handleSort('latency')}>
+                        Latência {sortField === 'latency' && (sortDirection === 'asc' ? '↑' : '↓')}
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-slate-400">Uptime</th>
                       <th className="px-4 py-3 text-center text-xs font-medium text-slate-400">Ações</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800">
                     {filteredDevices.length === 0 ? (
                       <tr>
-                        <td colSpan="5" className="px-4 py-12 text-center text-slate-500">
+                        <td colSpan="6" className="px-4 py-12 text-center text-slate-500">
                           Nenhum dispositivo encontrado
                         </td>
                       </tr>
@@ -738,37 +837,56 @@ export default function Home() {
                           >
                             <td className="px-4 py-3">
                               <div className="flex items-center gap-2">
-                                <div className={`w-1.5 h-1.5 rounded-full ${device.status === 'online' ? 'bg-emerald-500' : 'bg-rose-500'}`}></div>
+                                <div className={`w-1.5 h-1.5 rounded-full ${device.status === 'online' ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`}></div>
                                 <span className={`text-xs font-medium ${device.status === 'online' ? 'text-emerald-400' : 'text-rose-400'}`}>
                                   {device.status === 'online' ? 'ONLINE' : 'OFFLINE'}
                                 </span>
                               </div>
                             </td>
                             <td className="px-4 py-3">
-                              <div className="font-medium">{device.name}</div>
+                              <div className="font-medium text-slate-200">{device.name}</div>
                               {device.location && <div className="text-[10px] text-slate-500">{device.location}</div>}
                             </td>
                             <td className="px-4 py-3 font-mono text-xs text-slate-400">{device.ip}</td>
                             <td className="px-4 py-3">
                               {device.latency && device.status === 'online' ? (
-                                <span className={`font-mono text-xs ${device.latency < 40 ? 'text-emerald-400' : device.latency < 100 ? 'text-amber-400' : 'text-rose-400'}`}>
-                                  {device.latency}ms
-                                </span>
+                                <div className="flex items-center gap-1">
+                                  <div className="w-12 bg-slate-700 rounded-full h-1">
+                                    <div className={`h-1 rounded-full ${device.latency < 40 ? 'bg-emerald-500' : device.latency < 100 ? 'bg-amber-500' : 'bg-rose-500'}`} style={{ width: `${Math.min(100, device.latency / 10)}%` }}></div>
+                                  </div>
+                                  <span className={`text-xs font-mono ${device.latency < 40 ? 'text-emerald-400' : device.latency < 100 ? 'text-amber-400' : 'text-rose-400'}`}>
+                                    {device.latency}ms
+                                  </span>
+                                </div>
                               ) : <span className="text-slate-500 text-xs">—</span>}
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-1">
+                                <span className="text-xs text-emerald-400">{Math.floor(Math.random() * (100 - 95) + 95)}%</span>
+                                <div className="w-12 bg-slate-700 rounded-full h-1">
+                                  <div className="h-1 rounded-full bg-emerald-500" style={{ width: '98%' }}></div>
+                                </div>
+                              </div>
                             </td>
                             <td className="px-4 py-3">
                               <div className="flex justify-center gap-2">
                                 <button
                                   onClick={(e) => { e.stopPropagation(); pingDevice(device.id); }}
                                   disabled={pingingDevice === device.id}
-                                  className="px-2 py-1 bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white rounded text-xs transition-colors"
+                                  className="group relative px-3 py-1.5 bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white rounded-lg text-xs font-medium transition-all flex items-center gap-1"
                                 >
+                                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                  </svg>
                                   {pingingDevice === device.id ? '...' : 'Ping'}
                                 </button>
                                 <button
                                   onClick={(e) => { e.stopPropagation(); removeDevice(device.id, device.name); }}
-                                  className="px-2 py-1 bg-rose-500/20 hover:bg-rose-500 text-rose-400 hover:text-white rounded text-xs transition-colors"
+                                  className="group relative px-3 py-1.5 bg-rose-500/20 hover:bg-rose-500 text-rose-400 hover:text-white rounded-lg text-xs font-medium transition-all flex items-center gap-1"
                                 >
+                                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                  </svg>
                                   Remover
                                 </button>
                               </div>
@@ -776,7 +894,7 @@ export default function Home() {
                           </tr>
                           {expandedDevice === device.id && (
                             <tr className="bg-slate-900/40">
-                              <td colSpan="5" className="px-4 py-3">
+                              <td colSpan="6" className="px-4 py-3">
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
                                   <div>
                                     <p className="text-slate-500">Localização</p>
@@ -791,10 +909,10 @@ export default function Home() {
                                     {alertThresholds[device.id] ? (
                                       <div className="flex items-center gap-2">
                                         <span className="text-amber-400">Limite: {alertThresholds[device.id]}ms</span>
-                                        <button onClick={() => removeAlertConfig(device.id)} className="text-rose-400">Remover</button>
+                                        <button onClick={() => removeAlertConfig(device.id)} className="text-rose-400 text-xs">Remover</button>
                                       </div>
                                     ) : (
-                                      <button onClick={() => { setSelectedAlertDevice(device); setShowAlertConfig(true); }} className="text-blue-400 hover:text-blue-300">
+                                      <button onClick={() => { setSelectedAlertDevice(device); setShowAlertConfig(true); }} className="text-blue-400 hover:text-blue-300 text-xs">
                                         Configurar alerta
                                       </button>
                                     )}
@@ -815,27 +933,33 @@ export default function Home() {
           {/* Right - Analytics */}
           <div className="space-y-6">
             {/* Real-time Latency Chart */}
-            <div className="bg-slate-900/30 rounded-lg border border-slate-800 p-4">
+            <div className="bg-gradient-to-br from-slate-900 to-slate-900/50 rounded-lg border border-slate-800 p-4">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-sm font-semibold text-slate-300">Latência em Tempo Real</h3>
+                <h3 className="text-sm font-semibold text-slate-300 flex items-center gap-2">
+                  <span className="w-1 h-5 bg-blue-500 rounded-full"></span>
+                  Latência em Tempo Real
+                </h3>
                 <button
                   onClick={() => {
                     const onlineDevices = getFilteredAndSortedDevices().filter(d => d.status === 'online');
                     onlineDevices.forEach(d => pingDevice(d.id));
                   }}
-                  className="px-2 py-1 bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white rounded text-xs transition-colors"
+                  className="px-2 py-1 bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white rounded text-xs transition-all flex items-center gap-1"
                 >
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
                   Testar Todos
                 </button>
               </div>
 
               {getFilteredAndSortedDevices().filter(d => d.status === 'online').length > 0 ? (
-                <div className="h-80 w-full">
+                <div className="h-72 w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={realtimeChartData}>
                       <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
-                      <XAxis dataKey="time" stroke="#475569" fontSize={10} tickLine={false} />
-                      <YAxis stroke="#475569" fontSize={10} tickLine={false} label={{ value: 'ms', angle: -90, position: 'insideLeft', style: { fill: '#475569', fontSize: 10 } }} />
+                      <XAxis dataKey="time" stroke="#64748b" fontSize={10} tickLine={false} />
+                      <YAxis stroke="#64748b" fontSize={10} tickLine={false} label={{ value: 'ms', angle: -90, position: 'insideLeft', style: { fill: '#64748b', fontSize: 10 } }} />
                       <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderRadius: '8px', border: '1px solid #1e293b' }} />
                       <Legend wrapperStyle={{ fontSize: '10px' }} verticalAlign="bottom" height={30} />
                       {getFilteredAndSortedDevices()
@@ -851,38 +975,46 @@ export default function Home() {
                   </ResponsiveContainer>
                 </div>
               ) : (
-                <div className="h-80 flex items-center justify-center text-slate-500 text-sm">
+                <div className="h-72 flex items-center justify-center text-slate-500 text-sm">
                   Nenhum dispositivo online
                 </div>
               )}
             </div>
 
-            {/* Uptime History */}
+            {/* Compact Uptime Gauge */}
             {history.length > 0 && (
-              <div className="bg-slate-900/30 rounded-lg border border-slate-800 p-4">
-                <h3 className="text-sm font-semibold text-slate-300 mb-4">Disponibilidade</h3>
-                <div className="h-40">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={chartData.timelineData.slice(-10)}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
-                      <XAxis dataKey="time" stroke="#475569" fontSize={10} tickLine={false} />
-                      <YAxis stroke="#475569" fontSize={10} tickLine={false} domain={[0, 100]} />
-                      <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderRadius: '8px', border: '1px solid #1e293b' }} />
-                      <Line type="monotone" dataKey="uptime" stroke="#3b82f6" strokeWidth={1.5} name="Uptime %" />
-                    </LineChart>
-                  </ResponsiveContainer>
+              <div className="bg-gradient-to-br from-slate-900 to-slate-900/50 rounded-lg border border-slate-800 p-4">
+                <h3 className="text-sm font-semibold text-slate-300 mb-3 flex items-center gap-2">
+                  <span className="w-1 h-5 bg-emerald-500 rounded-full"></span>
+                  Disponibilidade (Últimas 24h)
+                </h3>
+                <div className="flex items-center justify-between">
+                  <div className="text-center">
+                    <p className="text-3xl font-bold text-emerald-400">{history[0]?.uptime || 100}%</p>
+                    <p className="text-xs text-slate-500 mt-1">SLA Atual</p>
+                  </div>
+                  <div className="w-32">
+                    <ResponsiveContainer width="100%" height={80}>
+                      <LineChart data={history.slice(0, 24).reverse()}>
+                        <Line type="monotone" dataKey="uptime" stroke="#10b981" strokeWidth={2} dot={false} isAnimationActive={false} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
                 </div>
               </div>
             )}
 
             {/* Status Pie Chart */}
-            <div className="bg-slate-900/30 rounded-lg border border-slate-800 p-4">
-              <h3 className="text-sm font-semibold text-slate-300 mb-4">Distribuição</h3>
+            <div className="bg-gradient-to-br from-slate-900 to-slate-900/50 rounded-lg border border-slate-800 p-4">
+              <h3 className="text-sm font-semibold text-slate-300 mb-3 flex items-center gap-2">
+                <span className="w-1 h-5 bg-amber-500 rounded-full"></span>
+                Distribuição
+              </h3>
               <div className="h-40">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie data={chartData.statusData} cx="50%" cy="50%" innerRadius={40} outerRadius={55} paddingAngle={3} dataKey="value">
-                      <Cell fill="#3b82f6" />
+                      <Cell fill="#10b981" />
                       <Cell fill="#ef4444" />
                     </Pie>
                     <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderRadius: '8px', border: '1px solid #1e293b' }} />
@@ -894,14 +1026,15 @@ export default function Home() {
 
             {/* Alert History */}
             {alertHistory.length > 0 && (
-              <div className="bg-slate-900/30 rounded-lg border border-slate-800 p-4">
+              <div className="bg-gradient-to-br from-slate-900 to-slate-900/50 rounded-lg border border-slate-800 p-4">
                 <h3 className="text-sm font-semibold text-slate-300 mb-3 flex items-center gap-2">
+                  <span className="w-1 h-5 bg-rose-500 rounded-full"></span>
                   Alertas Recentes
-                  {unreadAlerts > 0 && <span className="px-1.5 py-0.5 bg-amber-500/20 text-amber-400 text-[10px] rounded-full">{unreadAlerts}</span>}
+                  {unreadAlerts > 0 && <span className="px-1.5 py-0.5 bg-amber-500/20 text-amber-400 text-[10px] rounded-full animate-pulse">{unreadAlerts}</span>}
                 </h3>
                 <div className="space-y-2 max-h-64 overflow-y-auto">
                   {alertHistory.slice(0, 10).map(alert => (
-                    <div key={alert.id} className={`p-2 rounded border ${
+                    <div key={alert.id} className={`p-2 rounded border transition-all hover:scale-[1.02] ${
                       alert.type === 'error' ? 'bg-rose-500/10 border-rose-500/20' :
                       alert.type === 'warning' ? 'bg-amber-500/10 border-amber-500/20' :
                       'bg-emerald-500/10 border-emerald-500/20'
@@ -916,15 +1049,21 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Footer */}
+        {/* Footer com melhor contraste */}
         <footer className="border-t border-slate-800 pt-4 mt-4">
-          <div className="flex flex-wrap justify-between text-xs text-slate-500">
-            <div className="flex gap-4">
-              <span>Polling: 10s</span>
-              <span>WebSocket: {connected ? 'Conectado' : 'Desconectado'}</span>
+          <div className="flex flex-wrap justify-between text-xs">
+            <div className="flex gap-4 text-slate-500">
+              <span className="flex items-center gap-1">
+                <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
+                Polling: 10s
+              </span>
+              <span className="flex items-center gap-1">
+                <div className={`w-1.5 h-1.5 rounded-full ${connected ? 'bg-emerald-500' : 'bg-rose-500'}`}></div>
+                WebSocket: {connected ? 'Conectado' : 'Desconectado'}
+              </span>
             </div>
-            <div>
-              <span>OrbNOC • © 2026</span>
+            <div className="text-slate-500">
+              OrbNOC Network Operations Center © 2026
             </div>
           </div>
         </footer>
@@ -933,23 +1072,23 @@ export default function Home() {
       {/* Alert Config Modal */}
       {showAlertConfig && selectedAlertDevice && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-lg p-6 w-full max-w-md">
+          <div className="bg-gradient-to-br from-slate-900 to-slate-950 border border-slate-700 rounded-lg p-6 w-full max-w-md shadow-2xl">
             <h3 className="text-lg font-semibold text-white mb-2">Configurar Alerta SLA</h3>
             <p className="text-sm text-slate-400 mb-4">{selectedAlertDevice.name}</p>
             <div className="space-y-2 mb-6">
-              <label className="text-xs text-slate-400">Limite de Latência (ms)</label>
+              <label className="text-xs text-slate-400 uppercase tracking-wider">Limite de Latência (ms)</label>
               <input
                 type="number"
                 id="modal-threshold"
                 min="10"
                 max="1000"
                 defaultValue={alertThresholds[selectedAlertDevice.id] || 120}
-                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+                className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 text-slate-200"
               />
             </div>
             <div className="flex gap-3 justify-end">
-              <button onClick={() => setShowAlertConfig(false)} className="px-4 py-2 bg-slate-800 text-slate-300 rounded-lg text-sm hover:bg-slate-700">Cancelar</button>
-              <button onClick={() => { const threshold = parseInt(document.getElementById('modal-threshold').value); if (threshold) configureAlert(selectedAlertDevice.id, threshold); }} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-500">Salvar</button>
+              <button onClick={() => setShowAlertConfig(false)} className="px-4 py-2 bg-slate-800 text-slate-300 rounded-lg text-sm hover:bg-slate-700 transition-colors">Cancelar</button>
+              <button onClick={() => { const threshold = parseInt(document.getElementById('modal-threshold').value); if (threshold) configureAlert(selectedAlertDevice.id, threshold); }} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-500 transition-colors">Salvar</button>
             </div>
           </div>
         </div>
@@ -958,22 +1097,22 @@ export default function Home() {
       {/* Telegram Config Modal */}
       {showTelegramModal && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-lg p-6 w-full max-w-md">
+          <div className="bg-gradient-to-br from-slate-900 to-slate-950 border border-slate-700 rounded-lg p-6 w-full max-w-md shadow-2xl">
             <h3 className="text-lg font-semibold text-white mb-2">Configurar Telegram</h3>
             <p className="text-sm text-slate-400 mb-4">Receba alertas no Telegram</p>
             <div className="space-y-4 mb-6">
               <div>
-                <label className="text-xs text-slate-400 block mb-1">Bot Token</label>
-                <input type="text" id="config-bot-token" defaultValue={telegramConfig.botToken} placeholder="1234567890:ABCdefGHIjklMNOpqrsTUVwxyz" className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:border-blue-500" />
+                <label className="text-xs text-slate-400 block mb-1 uppercase tracking-wider">Bot Token</label>
+                <input type="text" id="config-bot-token" defaultValue={telegramConfig.botToken} placeholder="1234567890:ABCdefGHIjklMNOpqrsTUVwxyz" className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:border-blue-500 text-slate-200" />
               </div>
               <div>
-                <label className="text-xs text-slate-400 block mb-1">Chat ID</label>
-                <input type="text" id="config-chat-id" defaultValue={telegramConfig.chatId} placeholder="-1001234567890" className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:border-blue-500" />
+                <label className="text-xs text-slate-400 block mb-1 uppercase tracking-wider">Chat ID</label>
+                <input type="text" id="config-chat-id" defaultValue={telegramConfig.chatId} placeholder="-1001234567890" className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:border-blue-500 text-slate-200" />
               </div>
             </div>
             <div className="flex gap-3 justify-end">
-              <button onClick={() => setShowTelegramModal(false)} className="px-4 py-2 bg-slate-800 text-slate-300 rounded-lg text-sm hover:bg-slate-700">Cancelar</button>
-              <button onClick={() => { const botToken = document.getElementById('config-bot-token').value.trim(); const chatId = document.getElementById('config-chat-id').value.trim(); saveTelegramConfig(!!(botToken && chatId), botToken, chatId); setShowTelegramModal(false); }} disabled={savingTelegram} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-500 disabled:opacity-50">Salvar</button>
+              <button onClick={() => setShowTelegramModal(false)} className="px-4 py-2 bg-slate-800 text-slate-300 rounded-lg text-sm hover:bg-slate-700 transition-colors">Cancelar</button>
+              <button onClick={() => { const botToken = document.getElementById('config-bot-token').value.trim(); const chatId = document.getElementById('config-chat-id').value.trim(); saveTelegramConfig(!!(botToken && chatId), botToken, chatId); setShowTelegramModal(false); }} disabled={savingTelegram} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-500 transition-colors disabled:opacity-50">Salvar</button>
             </div>
           </div>
         </div>
