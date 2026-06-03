@@ -4,23 +4,57 @@
 
 @layer base {
   :root {
-    --background: 222.2 84% 4.9%;
+    --background: 222 47% 6%;
     --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
+    --card: 222 47% 8%;
     --card-foreground: 210 40% 98%;
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
+    --primary: 217 91% 60%;
+    --primary-foreground: 222 47% 11%;
+    --secondary: 217 32% 17%;
     --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
+    --muted: 217 32% 17%;
+    --muted-foreground: 215 20% 65%;
+    --accent: 217 32% 17%;
     --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
+    --destructive: 0 63% 31%;
     --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 48%;
+    --border: 217 32% 17%;
+    --ring: 224 76% 48%;
   }
+}
+
+* {
+  border-color: hsl(var(--border));
+}
+
+body {
+  background-color: hsl(222, 47%, 6%);
+  color: hsl(210, 40%, 98%);
+}
+
+/* Dark mode custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0f172a;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1e293b;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #334155;
+}
+
+::selection {
+  background: #3b82f680;
+  color: white;
 }
 
 @layer utilities {
@@ -36,38 +70,8 @@
   .animate-pulse-slow {
     animation: pulseSlow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
-  .animate-pulse-fast {
-    animation: pulseFast 1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-  }
-  .animate-ping-slow {
-    animation: pingSlow 2s cubic-bezier(0, 0, 0.2, 1) infinite;
-  }
-  .animate-line-draw {
-    animation: lineDraw 3s ease-in-out infinite;
-  }
-  .animate-line-draw-delay-1 {
-    animation: lineDraw 3s ease-in-out infinite 0.3s;
-  }
-  .animate-line-draw-delay-2 {
-    animation: lineDraw 3s ease-in-out infinite 0.6s;
-  }
-  .animate-line-draw-delay-3 {
-    animation: lineDraw 3s ease-in-out infinite 0.9s;
-  }
-  .animate-pulse-dot {
-    animation: pulseDot 1.5s ease-in-out infinite;
-  }
-  .animate-pulse-dot-delay-1 {
-    animation: pulseDot 1.5s ease-in-out infinite 0.5s;
-  }
-  .animate-pulse-dot-delay-2 {
-    animation: pulseDot 1.5s ease-in-out infinite 1s;
-  }
-  .animate-pulse-dot-delay-3 {
-    animation: pulseDot 1.5s ease-in-out infinite 1.5s;
-  }
-  .animate-shine {
-    animation: shine 3s infinite;
+  .animate-glow {
+    animation: glow 2s ease-in-out infinite;
   }
 }
 
@@ -88,72 +92,10 @@
 
 @keyframes pulseSlow {
   0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+  50% { opacity: 0.7; }
 }
 
-@keyframes pulseFast {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.3; }
-}
-
-@keyframes pingSlow {
-  75%, 100% { transform: scale(1.5); opacity: 0; }
-}
-
-@keyframes lineDraw {
-  0% { stroke-dasharray: 30; stroke-dashoffset: 30; opacity: 0; }
-  20% { stroke-dashoffset: 0; opacity: 1; }
-  80% { stroke-dashoffset: 0; opacity: 1; }
-  100% { stroke-dashoffset: 0; opacity: 1; }
-}
-
-@keyframes pulseDot {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.3; transform: scale(0.5); }
-}
-
-@keyframes shine {
-  0% { transform: translateX(-100%) skewX(-12deg); }
-  100% { transform: translateX(100%) skewX(-12deg); }
-}
-
-@keyframes pulse-slow {
-  0%, 100% {
-    opacity: 1;
-    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
-  }
-  50% {
-    opacity: 0.9;
-    box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.2);
-  }
-}
-
-.animate-pulse-slow {
-  animation: pulse-slow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-
-/* Scrollbar personalizada */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-
-::-webkit-scrollbar-track {
-  background: #1e293b;
-  border-radius: 3px;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #334155;
-  border-radius: 3px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #475569;
-}
-
-/* Seleção de texto */
-::selection {
-  background: #3b82f680;
-  color: white;
+@keyframes glow {
+  0%, 100% { box-shadow: 0 0 5px rgba(59, 130, 246, 0.2); }
+  50% { box-shadow: 0 0 20px rgba(59, 130, 246, 0.4); }
 }
