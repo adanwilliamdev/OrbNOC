@@ -221,11 +221,8 @@ export default function Login() {
 
             {!isRegistering && (
               <div className="mt-5 pt-4 border-t border-slate-800 text-center">
-                <p className="text-xs text-slate-500">
-                  <span className="text-slate-400">Demo:</span>{' '}
-                  <span className="font-mono text-emerald-400">admin</span>
-                  <span className="text-slate-600 mx-1">/</span>
-                  <span className="font-mono text-emerald-400">admin123</span>
+                <p className="text-xs text-slate-400 font-medium tracking-wide">
+                  Adan W O Santos
                 </p>
               </div>
             )}
