@@ -49,6 +49,7 @@ async function criarTabelas() {
       last_login TIMESTAMP,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`,
+
     `CREATE TABLE IF NOT EXISTS user_devices (
       id SERIAL PRIMARY KEY,
       user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
@@ -67,12 +68,24 @@ async function criarTabelas() {
       last_ping_stats TIMESTAMP,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`,
+
     `CREATE TABLE IF NOT EXISTS access_logs (
       id SERIAL PRIMARY KEY,
       user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
       action VARCHAR(50),
       ip_address VARCHAR(45),
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`,
+
+    // ⬇️⬇️⬇️ NOVA TABELA DE ALERTAS SLA ⬇️⬇️⬇️
+    `CREATE TABLE IF NOT EXISTS sla_alerts (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+      device_id INTEGER NOT NULL,
+      threshold INTEGER NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(user_id, device_id)
     )`
   ];
 
@@ -153,12 +166,20 @@ function calculateJitter(latencies) {
   return Math.round(jitter / (latencies.length - 1));
 }
 
-// ==================== FUNÇÃO TELEGRAM ====================
-async function sendTelegramAlert(botToken, chatId, message, type) {
+// ==================== FUNÇÃO TELEGRAM MELHORADA ====================
+async function sendTelegramAlert(botToken, chatId, message, type, deviceName = null, deviceIp = null) {
   if (!botToken || !chatId) return false;
 
-  const emoji = type === 'error' ? '🔴' : type === 'warning' ? '⚠️' : '🟢';
-  const text = `${emoji} *OrbNOC Alert*\n\n${message}\n\n🕐 ${new Date().toLocaleString('pt-BR')}`;
+  const emoji = type === 'error' ? '🔴' : type === 'warning' ? '⚠️' : type === 'success' ? '✅' : '🟢';
+  const title = type === 'error' ? 'HOST OFFLINE' : type === 'warning' ? 'ALERTA SLA' : type === 'success' ? 'HOST ONLINE' : 'INFORMAÇÃO';
+
+  let text = `${emoji} *OrbNOC - ${title}* ${emoji}\n\n`;
+  text += `${message}\n`;
+  text += `\n🕐 ${new Date().toLocaleString('pt-BR')}`;
+
+  if (deviceName && deviceIp) {
+    text += `\n\n📡 ${deviceName} (${deviceIp})`;
+  }
 
   try {
     const telegramUrl = `https://api.telegram.org/bot${botToken}/sendMessage`;
@@ -257,20 +278,77 @@ app.get('/api/devices', authenticateToken, async (req, res) => {
   }
 });
 
+// ==================== ADICIONAR DISPOSITIVO COM NOTIFICAÇÃO ====================
 app.post('/api/devices', authenticateToken, async (req, res) => {
   const { name, ip, location } = req.body;
+
+  if (!name || !ip) {
+    return res.status(400).json({ error: 'Nome e IP são obrigatórios' });
+  }
+
   try {
-    const result = await pool.query('INSERT INTO user_devices (user_id, device_id, name, ip, location) VALUES ($1, $2, $3, $4, $5) RETURNING *', [req.user.id, Date.now(), name, ip, location || null]);
-    res.json(result.rows[0]);
+    // Verificar se o dispositivo já existe
+    const existingDevice = await pool.query(
+      'SELECT * FROM user_devices WHERE user_id = $1 AND ip = $2',
+      [req.user.id, ip]
+    );
+
+    if (existingDevice.rows.length > 0) {
+      return res.status(400).json({ error: 'Dispositivo com este IP já existe' });
+    }
+
+    const result = await pool.query(
+      'INSERT INTO user_devices (user_id, device_id, name, ip, location) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+      [req.user.id, Date.now(), name, ip, location || null]
+    );
+    const newDevice = result.rows[0];
+
+    // 🔔 NOTIFICAÇÃO: Dispositivo adicionado
+    try {
+      const userResult = await pool.query('SELECT * FROM users WHERE id = $1', [req.user.id]);
+      const user = userResult.rows[0];
+
+      if (user && user.telegram_alerts_enabled && user.telegram_bot_token && user.telegram_chat_id) {
+        const message = `📝 *NOVO DISPOSITIVO ADICIONADO*\n\n• Nome: ${name}\n• IP: ${ip}\n• Localização: ${location || 'Não informada'}\n\n🔍 O monitoramento já está ativo!`;
+        await sendTelegramAlert(user.telegram_bot_token, user.telegram_chat_id, message, 'info', name, ip);
+      }
+    } catch (telegramError) {
+      console.error('Erro ao enviar notificação Telegram:', telegramError);
+    }
+
+    res.json(newDevice);
   } catch (error) {
     console.error('Erro ao adicionar dispositivo:', error);
     res.status(500).json({ error: 'Erro ao adicionar dispositivo' });
   }
 });
 
+// ==================== REMOVER DISPOSITIVO ====================
 app.delete('/api/devices/:id', authenticateToken, async (req, res) => {
   try {
-    await pool.query('DELETE FROM user_devices WHERE id = $1 AND user_id = $2', [req.params.id, req.user.id]);
+    const result = await pool.query(
+      'DELETE FROM user_devices WHERE id = $1 AND user_id = $2 RETURNING *',
+      [req.params.id, req.user.id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Dispositivo não encontrado' });
+    }
+
+    // Opcional: Notificar remoção no Telegram
+    try {
+      const userResult = await pool.query('SELECT * FROM users WHERE id = $1', [req.user.id]);
+      const user = userResult.rows[0];
+      const removedDevice = result.rows[0];
+
+      if (user && user.telegram_alerts_enabled && user.telegram_bot_token && user.telegram_chat_id) {
+        const message = `🗑️ *DISPOSITIVO REMOVIDO*\n\n• Nome: ${removedDevice.name}\n• IP: ${removedDevice.ip}\n\n⏹️ O monitoramento foi interrompido.`;
+        await sendTelegramAlert(user.telegram_bot_token, user.telegram_chat_id, message, 'info', removedDevice.name, removedDevice.ip);
+      }
+    } catch (telegramError) {
+      console.error('Erro ao enviar notificação Telegram:', telegramError);
+    }
+
     res.json({ success: true });
   } catch (error) {
     console.error('Erro ao remover dispositivo:', error);
@@ -370,6 +448,44 @@ app.post('/api/alerts/notify', authenticateToken, async (req, res) => {
     res.json({ success: true, telegram_sent: telegramSent, email_sent: false });
   } catch (error) {
     res.status(500).json({ error: 'Erro interno' });
+  }
+});
+
+// ==================== ROTA DE ALERTA SLA ====================
+app.post('/api/alerts/sla/configure', authenticateToken, async (req, res) => {
+  const { deviceId, threshold } = req.body;
+
+  if (!deviceId || !threshold) {
+    return res.status(400).json({ error: 'Device ID e threshold são obrigatórios' });
+  }
+
+  try {
+    // Salvar no banco
+    await pool.query(
+      `INSERT INTO sla_alerts (user_id, device_id, threshold, created_at)
+       VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
+       ON CONFLICT (user_id, device_id)
+       DO UPDATE SET threshold = $3, updated_at = CURRENT_TIMESTAMP`,
+      [req.user.id, deviceId, threshold]
+    );
+
+    // Buscar informações do dispositivo
+    const deviceResult = await pool.query('SELECT * FROM user_devices WHERE id = $1 AND user_id = $2', [deviceId, req.user.id]);
+    const device = deviceResult.rows[0];
+
+    // 🔔 NOTIFICAÇÃO: Alerta SLA configurado
+    const userResult = await pool.query('SELECT * FROM users WHERE id = $1', [req.user.id]);
+    const user = userResult.rows[0];
+
+    if (user && user.telegram_alerts_enabled && user.telegram_bot_token && user.telegram_chat_id) {
+      const message = `⚙️ *ALERTA SLA CONFIGURADO*\n\n• Dispositivo: ${device?.name || 'N/A'}\n• IP: ${device?.ip || 'N/A'}\n• Limite: ${threshold}ms\n\n📊 Alertas serão enviados quando a latência exceder este limite.`;
+      await sendTelegramAlert(user.telegram_bot_token, user.telegram_chat_id, message, 'info', device?.name, device?.ip);
+    }
+
+    res.json({ success: true, message: `Alerta SLA configurado: ${threshold}ms` });
+  } catch (error) {
+    console.error('Erro ao configurar alerta SLA:', error);
+    res.status(500).json({ error: 'Erro ao configurar alerta' });
   }
 });
 
@@ -715,6 +831,19 @@ async function checkUserDevices(userId) {
           if (user && user.telegram_alerts_enabled && user.telegram_bot_token && user.telegram_chat_id) {
             await sendTelegramAlert(user.telegram_bot_token, user.telegram_chat_id, `🔴 HOST OFFLINE: ${device.name} (${device.ip}) está fora do ar!`, 'error');
           }
+        }
+        // Dentro da função checkUserDevices, após obter o pingResult, adicione:
+
+        // 🔔 VERIFICAÇÃO DE LIMITE SLA
+        const userSlaResult = await pool.query('SELECT * FROM users WHERE id = $1', [userId]);
+        const userSla = userSlaResult.rows[0];
+
+        // Buscar limites configurados para este dispositivo
+        const threshold = alertThresholds ? alertThresholds[device.id] : null;
+
+        if (threshold && latency && latency > threshold && userSla && userSla.telegram_alerts_enabled && userSla.telegram_bot_token && userSla.telegram_chat_id) {
+          const alertMessage = `⚠️ *LIMITE DE LATÊNCIA EXCEDIDO* ⚠️\n\n• Limite configurado: ${threshold}ms\n• Latência atual: ${latency}ms\n• Excedente: ${latency - threshold}ms\n\n📡 ${device.name} (${device.ip})`;
+          await sendTelegramAlert(userSla.telegram_bot_token, userSla.telegram_chat_id, alertMessage, 'warning', device.name, device.ip);
         }
         updatedDevices.push(device);
       } catch (error) {
