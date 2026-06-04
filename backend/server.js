@@ -175,20 +175,77 @@ function calculateJitter(latencies) {
   return Math.round(jitter / (latencies.length - 1));
 }
 
-// ==================== FUNÇÃO TELEGRAM ====================
-async function sendTelegramAlert(botToken, chatId, message, type, deviceName = null, deviceIp = null) {
+// ==================== FUNÇÃO TELEGRAM SOFISTICADA ====================
+async function sendTelegramAlert(botToken, chatId, message, type, deviceName = null, deviceIp = null, details = null) {
   if (!botToken || !chatId) return false;
 
-  const emoji = type === 'error' ? '🔴' : type === 'warning' ? '⚠️' : type === 'success' ? '✅' : '🟢';
-  const title = type === 'error' ? 'HOST OFFLINE' : type === 'warning' ? 'ALERTA SLA' : type === 'success' ? 'HOST ONLINE' : 'INFORMAÇÃO';
+  // Emojis mais elegantes
+  const emojis = {
+    info: 'ℹ️',
+    success: '✅',
+    error: '❌',
+    warning: '⚠️',
+    removed: '🗑️',
+    added: '📌',
+    sla: '📊'
+  };
 
-  let text = `${emoji} *OrbNOC - ${title}* ${emoji}\n\n`;
-  text += `${message}\n`;
-  text += `\n🕐 ${new Date().toLocaleString('pt-BR')}`;
+  // Títulos com formatação elegante
+  const titles = {
+    info: 'Informação',
+    success: 'Recuperação',
+    error: 'Falha',
+    warning: 'Atenção',
+    removed: 'Remoção',
+    added: 'Adição',
+    sla: 'SLA'
+  };
+
+  // Cores para diferentes tipos (usando HTML tags)
+  const getHeader = () => {
+    switch(type) {
+      case 'error': return '🚨 *SISTEMA DE MONITORAMENTO* 🚨\n┏━━━━━━━━━━━━━━━━━━━━━━━━━━┓';
+      case 'warning': return '⚠️ *SISTEMA DE MONITORAMENTO* ⚠️\n┏━━━━━━━━━━━━━━━━━━━━━━━━━━┓';
+      case 'success': return '🟢 *SISTEMA DE MONITORAMENTO* 🟢\n┏━━━━━━━━━━━━━━━━━━━━━━━━━━┓';
+      default: return '📡 *SISTEMA DE MONITORAMENTO* 📡\n┏━━━━━━━━━━━━━━━━━━━━━━━━━━┓';
+    }
+  };
+
+  let text = `${getHeader()}\n`;
+  text += `┃\n`;
+  text += `┃  *${titles[type] || 'Notificação'}*\n`;
+  text += `┃\n`;
+
+  // Mensagem principal com formatação de código
+  text += `┃  \`${message}\`\n`;
+  text += `┃\n`;
 
   if (deviceName && deviceIp) {
-    text += `\n\n📡 ${deviceName} (${deviceIp})`;
+    text += `┃  📡 Dispositivo: *${deviceName}*\n`;
+    text += `┃  🌐 Endereço: \`${deviceIp}\`\n`;
+    text += `┃\n`;
   }
+
+  if (details) {
+    text += `┃  📋 Detalhes:\n`;
+    const detailLines = details.split('\n');
+    for (const line of detailLines) {
+      text += `┃    • ${line}\n`;
+    }
+    text += `┃\n`;
+  }
+
+  text += `┃  🕐 ${new Date().toLocaleString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  })}\n`;
+  text += `┃\n`;
+  text += `┗━━━━━━━━━━━━━━━━━━━━━━━━━━┛`;
+  text += `\n\n_OrbNOC Network Operations Center_`;
 
   try {
     const telegramUrl = `https://api.telegram.org/bot${botToken}/sendMessage`;
@@ -198,7 +255,8 @@ async function sendTelegramAlert(botToken, chatId, message, type, deviceName = n
       body: JSON.stringify({
         chat_id: chatId,
         text: text,
-        parse_mode: 'Markdown'
+        parse_mode: 'Markdown',
+        disable_web_page_preview: true
       })
     });
     const result = await response.json();
@@ -860,33 +918,54 @@ async function checkUserDevices(userId) {
         device.packet_loss = Math.round(packetLoss);
         device.last_check = new Date().toISOString();
 
-        // Notificação de mudança de status
+        // 🔔 NOTIFICAÇÃO DE MUDANÇA DE STATUS (FORMATO SOFISTICADO)
         if (previousStatus && previousStatus !== newStatus) {
           const userResult = await pool.query('SELECT * FROM users WHERE id = $1', [userId]);
           const user = userResult.rows[0];
 
           if (user && user.telegram_alerts_enabled && user.telegram_bot_token && user.telegram_chat_id) {
-            let alertMessage, alertType;
+            let statusDetails, alertType;
+
             if (newStatus === 'offline') {
-              alertMessage = `🔴 *HOST OFFLINE* 🔴\n\n• Nome: ${device.name}\n• IP: ${device.ip}\n\n⚠️ O host ficou inativo!`;
+              statusDetails = `🕐 Inativo desde: ${new Date().toLocaleString()}\n🔧 Ação recomendada: Verificar conectividade de rede.`;
               alertType = 'error';
             } else {
-              alertMessage = `🟢 *HOST ONLINE* 🟢\n\n• Nome: ${device.name}\n• IP: ${device.ip}\n• Latência: ${latency || 'N/A'}ms\n\n✅ Host恢复正常!`;
+              statusDetails = `⚡ Latência atual: ${latency || 'N/A'}ms\n✅ Serviços restaurados.`;
               alertType = 'success';
             }
-            await sendTelegramAlert(user.telegram_bot_token, user.telegram_chat_id, alertMessage, alertType, device.name, device.ip);
+
+            await sendTelegramAlert(
+              user.telegram_bot_token,
+              user.telegram_chat_id,
+              newStatus === 'offline'
+                ? `Host não está respondendo aos testes de conectividade.`
+                : `Host voltou a responder normalmente.`,
+              alertType,
+              device.name,
+              device.ip,
+              statusDetails
+            );
           }
         }
 
-        // Verificação de limite SLA
+        // 🔔 NOTIFICAÇÃO DE LIMITE SLA EXCEDIDO (FORMATO SOFISTICADO)
         const threshold = slaAlerts[device.id];
         if (threshold && latency && latency > threshold) {
           const userResult = await pool.query('SELECT * FROM users WHERE id = $1', [userId]);
           const user = userResult.rows[0];
 
           if (user && user.telegram_alerts_enabled && user.telegram_bot_token && user.telegram_chat_id) {
-            const alertMessage = `⚠️ *LIMITE DE LATÊNCIA EXCEDIDO* ⚠️\n\n• Dispositivo: ${device.name}\n• IP: ${device.ip}\n• Limite configurado: ${threshold}ms\n• Latência atual: ${latency}ms\n• Excedente: ${latency - threshold}ms`;
-            await sendTelegramAlert(user.telegram_bot_token, user.telegram_chat_id, alertMessage, 'warning', device.name, device.ip);
+            const percentageExceeded = Math.round(((latency - threshold) / threshold) * 100);
+
+            await sendTelegramAlert(
+              user.telegram_bot_token,
+              user.telegram_chat_id,
+              `⚠️ Limite de latência excedido!`,
+              'sla',
+              device.name,
+              device.ip,
+              `🎯 Limite configurado: ${threshold}ms\n📈 Latência atual: ${latency}ms\n📊 Percentual excedido: ${percentageExceeded}%\n⚠️ Excedente absoluto: ${latency - threshold}ms`
+            );
           }
         }
 
