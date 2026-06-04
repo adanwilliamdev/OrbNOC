@@ -1,149 +1,111 @@
-🛰️ OrbNOC
+```markdown
+# 🛰️ OrbNOC
 
-<div align="center">Enterprise Network Operations Center Platform
+<div align="center">
 
-Plataforma moderna para monitoramento de infraestrutura, disponibilidade e desempenho em tempo real.
+# Enterprise Network Operations Center Platform
 
-"Version" (https://img.shields.io/badge/version-2.1.0-blue)
-"Status" (https://img.shields.io/badge/status-active-success)
-"Next.js" (https://img.shields.io/badge/Next.js-14-black)
-"Node.js" (https://img.shields.io/badge/Node.js-20+-green)
-"PostgreSQL" (https://img.shields.io/badge/PostgreSQL-16-blue)
-"Socket.IO" (https://img.shields.io/badge/WebSocket-Realtime-purple)
-"License" (https://img.shields.io/badge/license-MIT-orange)
+Monitoramento de infraestrutura, disponibilidade e desempenho em tempo real.
 
-Real-Time Monitoring • Alert Management • Network Visualization • Operational Analytics
+![Version](https://img.shields.io/badge/version-2.1.0-blue)
+![Status](https://img.shields.io/badge/status-active-success)
+![Next.js](https://img.shields.io/badge/Next.js-14-black)
+![Node.js](https://img.shields.io/badge/Node.js-20+-green)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-blue)
+![Socket.IO](https://img.shields.io/badge/WebSocket-Realtime-purple)
+![License](https://img.shields.io/badge/license-MIT-orange)
 
-🌐 Ambiente Online
+### 🌐 Acesso Online
 
-Frontend: https://orbnoc-taer.onrender.com
+**Frontend:** https://orbnoc-taer.onrender.com
 
-Backend API: https://orbnoc-backend-nmlq.onrender.com
+**Backend API:** https://orbnoc-backend-nmlq.onrender.com
 
-</div>---
-
-📖 Sobre o Projeto
-
-O OrbNOC é uma plataforma de monitoramento de infraestrutura desenvolvida para equipes de Network Operations Center (NOC), provedores de internet, administradores de sistemas e profissionais de tecnologia que necessitam de visibilidade operacional em tempo real.
-
-A solução centraliza informações críticas da infraestrutura em uma única interface, permitindo acompanhar disponibilidade, desempenho, incidentes e indicadores operacionais de forma simples e eficiente.
-
-Com comunicação em tempo real via WebSocket, geração automática de alertas e dashboards interativos, o OrbNOC auxilia equipes na redução do tempo de resposta a incidentes e na melhoria da confiabilidade dos serviços monitorados.
+</div>
 
 ---
 
-📸 Visão Geral da Plataforma
+## 📖 Sobre o Projeto
 
-Dashboard Operacional
+O **OrbNOC** é uma plataforma moderna de monitoramento de infraestrutura desenvolvida para equipes de Network Operations Center (NOC), provedores de internet, administradores de sistemas e profissionais de TI que precisam acompanhar a disponibilidade e a saúde dos seus ativos em tempo real.
 
-Monitoramento centralizado dos dispositivos, métricas e indicadores em tempo real.
-
-Centro de Alertas
-
-Gerenciamento de incidentes, reconhecimento de alertas e análise de criticidade.
-
-Mapa de Rede
-
-Visualização topológica da infraestrutura utilizando React Flow.
-
-Wallboard
-
-Modo otimizado para exibição em televisores e painéis de operação.
+A plataforma oferece monitoramento contínuo, geração de alertas, análise de métricas e dashboards interativos para garantir máxima visibilidade operacional.
 
 ---
 
-🎯 Principais Diferenciais
+## ✨ Funcionalidades
 
-- Monitoramento em tempo real via WebSocket
-- Dashboard operacional moderno e responsivo
-- Mapa de rede interativo com React Flow
-- Sistema profissional de alertas e incidentes
-- Integração com Telegram para notificações
-- Relatórios operacionais e métricas históricas
-- Diagnóstico avançado de conectividade
-- Wallboard dedicado para ambientes NOC
-- Arquitetura Full Stack escalável
+### 📡 Monitoramento em Tempo Real
 
----
+- Disponibilidade de Hosts
+- TCP Connect Monitoring (portas 80/443)
+- Latência, Jitter e Packet Loss
+- Uptime e SLA
 
-✨ Funcionalidades
-
-📡 Monitoramento em Tempo Real
-
-- Disponibilidade de hosts
-- TCP Connect Monitoring
-- Latência, jitter e perda de pacotes
-- Uptime e indicadores de SLA
-- Atualização automática em tempo real
-
-🔔 Gestão de Alertas
+### 🔔 Sistema de Alertas
 
 - Alertas visuais e sonoros
-- Integração com Telegram
+- Integração Telegram (formato profissional)
 - Histórico de incidentes
 - Reconhecimento de alertas
-- Controle de criticidade
-- Monitoramento de SLA
+- Alertas de limiar (SLA)
 
-📊 Dashboard Operacional
+### 📊 Dashboard Operacional
 
-- Indicadores de desempenho (KPIs)
-- Gráficos interativos
-- Filtros avançados
-- Pesquisa rápida
-- Ordenação dinâmica
+- KPIs com hierarquia visual
+- Gráficos interativos (Recharts)
+- Filtros avançados e busca
+- Ordenação por status, nome, IP ou latência
 - Atualização via WebSocket
 
-🗺️ Mapa de Rede
+### 🗺️ Mapa de Rede
 
-- Visualização topológica
-- Layout hierárquico
-- Layout radial
-- Layout em grade
-- Status visual por dispositivo
+- Visualização topológica (React Flow)
+- Layouts: Hierárquico, Radial e Grade
+- Status colorido por dispositivo
 - Conexões animadas
 
-🚨 Centro de Alertas
+### 🚨 Centro de Alertas
 
-- Filtros por severidade
-- Estatísticas operacionais
+- Filtros por criticidade
+- Estatísticas de alertas
 - Reconhecimento de incidentes
-- Tendências de alertas
+- Tendência de alertas
 
-📈 Relatórios
+### 📊 Relatórios
 
-- Exportação para Excel (CSV)
-- Relatórios de disponibilidade
-- Histórico de latência
-- Filtros por período
-- Indicadores operacionais
+- Exportação Excel (CSV)
+- Gráficos de disponibilidade
+- Gráficos de evolução de latência
+- Filtro por período (24h/7d/30d)
 
-🔧 Diagnóstico Avançado
+### 🔧 Diagnóstico Avançado
 
-- Ping avançado
+- Ping avançado (latência, perda, min/máx)
+- Traceroute (simulado)
 - Teste de portas TCP
-- DNS Lookup
-- Traceroute simulado
-- Diagnóstico automatizado
+- DNS Lookup (A, AAAA, MX, TXT, CNAME)
+- Diagnóstico completo inteligente
 
-📺 Wallboard
+### 📺 Wallboard
 
-- Exibição em tela cheia
+- Modo TV para NOC
+- Letras gigantes
 - Atualização automática
-- Interface otimizada para NOC
-- Indicadores ampliados para monitoramento contínuo
+- Ideal para telas de monitoramento
 
-🔒 Segurança
+### 🔒 Segurança
 
 - Autenticação JWT
-- Hash de senhas com bcrypt
-- Controle de sessões
-- Configuração segura de CORS
+- Password Hashing (bcrypt)
+- Controle de sessão
+- Proteção CORS
 
 ---
 
-🏗️ Arquitetura da Solução
+## 🏗️ Arquitetura
 
+```text
                     ┌─────────────┐
                     │   Browser   │
                     └──────┬──────┘
@@ -168,6 +130,7 @@ Modo otimizado para exibição em televisores e painéis de operação.
       ▼                    ▼                    ▼
 
  Database         TCP Checks        Telegram / Email
+```
 
 ---
 
@@ -175,72 +138,67 @@ Modo otimizado para exibição em televisores e painéis de operação.
 
 Frontend
 
-Tecnologia| Finalidade
-Next.js 14| Framework principal
-React| Construção da interface
-Tailwind CSS| Estilização
-Socket.IO Client| Comunicação em tempo real
-React Flow| Topologia de rede
-Recharts| Visualização de dados
-jsPDF| Relatórios PDF
-SheetJS| Exportação Excel
+· Next.js 14
+· React
+· TailwindCSS
+· Socket.IO Client
+· React Flow (Mapa de Rede)
+· Recharts (Gráficos)
+· jsPDF
+· SheetJS (Excel)
 
 Backend
 
-Tecnologia| Finalidade
-Node.js| Runtime
-Express.js| API REST
-Socket.IO| Comunicação em tempo real
-JWT| Autenticação
-bcrypt| Segurança
-node-cron| Agendamentos
+· Node.js 20+
+· Express.js
+· Socket.IO
+· JWT
+· bcrypt
+· node-cron
 
 Banco de Dados
 
-Tecnologia| Finalidade
-PostgreSQL| Produção
-SQLite| Desenvolvimento
+· PostgreSQL (Produção)
+· SQLite (Desenvolvimento)
 
 DevOps
 
-Tecnologia| Finalidade
-Docker| Containerização
-Docker Compose| Orquestração local
-GitHub Actions| CI/CD
-Render| Hospedagem
-
----
-
-📈 Métricas do Projeto
-
-- Plataforma Full Stack
-- Comunicação em tempo real
-- Mais de 10 módulos operacionais
-- Integração com Telegram
-- Dashboard responsivo
-- Deploy em nuvem
-- Arquitetura escalável
+· Docker
+· Docker Compose
+· GitHub Actions
+· Render.com (Deploy)
 
 ---
 
 📁 Estrutura do Projeto
 
+```text
 OrbNOC/
 ├── backend/
 │   └── server.js
 ├── frontend/
 │   └── src/app/
-│       ├── page.js
-│       ├── alerts/page.js
-│       ├── reports/page.js
-│       ├── network-map/page.js
-│       ├── diagnostic/page.js
-│       ├── wallboard/page.js
-│       ├── login/page.js
-│       └── register/page.js
+│       ├── page.js           # Dashboard
+│       ├── alerts/page.js    # Centro de Alertas
+│       ├── reports/page.js   # Relatórios
+│       ├── network-map/page.js # Mapa de Rede
+│       ├── diagnostic/page.js # Diagnóstico
+│       ├── wallboard/page.js # Wallboard
+│       ├── login/page.js     # Login
+│       └── register/page.js  # Registro
 ├── docs/
 ├── docker-compose.yml
 └── README.md
+```
+
+---
+
+🔐 Credenciais de Demonstração
+
+```text
+Usuário: admin
+Senha: admin123
+```
 
 ---
 
@@ -248,96 +206,184 @@ OrbNOC/
 
 Pré-requisitos
 
-- Node.js 20+
-- NPM
-- PostgreSQL (Opcional)
+· Node.js 20+
+· NPM
+· PostgreSQL (opcional)
 
 Backend
 
+```bash
 cd backend
 npm install
+
+# Configure o arquivo .env
 cp .env.example .env
+
+# Execute
 npm start
+```
 
-Servidor disponível em:
-
-http://localhost:3001
+Servidor: http://localhost:3001
 
 Frontend
 
+```bash
 cd frontend
 npm install
 npm run dev
+```
 
-Aplicação disponível em:
-
-http://localhost:3000
+Aplicação: http://localhost:3000
 
 ---
 
-☁️ Deploy
-
-A plataforma está preparada para implantação em ambientes cloud utilizando Render, Docker ou infraestrutura própria.
+☁️ Deploy no Render
 
 Backend
 
+```text
+Root Directory: backend
+Build Command: npm install
+Start Command: npm start
+```
+
+Variáveis de Ambiente:
+
+```env
 DATABASE_URL=postgresql://...
 JWT_SECRET=sua_chave_secreta
 PORT=10000
+```
 
 Frontend
 
+```text
+Root Directory: frontend
+Build Command: npm install && npm run build
+Start Command: npm start
+```
+
+Variáveis de Ambiente:
+
+```env
 NEXT_PUBLIC_API_URL=https://seu-backend.onrender.com
 NEXT_PUBLIC_WS_URL=wss://seu-backend.onrender.com
+NODE_ENV=production
+```
 
-«Observação: Ambientes Render não permitem ICMP Ping nativo. O OrbNOC utiliza TCP Connect Monitoring como alternativa.»
+⚠️ Observação: O Render não permite ICMP Ping nativamente. O OrbNOC utiliza TCP Connect (portas 80/443) como alternativa.
 
 ---
 
-🛣️ Roadmap
+⚙️ Variáveis de Ambiente
 
-Versão| Status| Recursos
-2.1| ✅ Concluído| Dashboard, Alertas, Relatórios, Mapa de Rede, Wallboard
-2.5| 🚧 Em Desenvolvimento| SLA por Cliente, E-mail, Agendamento de Relatórios
-3.0| 🔮 Planejado| Inteligência Artificial, RCA, Multi-Tenant, API Pública
+Backend (.env)
+
+```env
+DATABASE_URL=postgresql://user:password@localhost:5432/orbnoc
+JWT_SECRET=super_secret_key
+PORT=3001
+
+TELEGRAM_BOT_TOKEN=seu_token_aqui
+TELEGRAM_CHAT_ID=seu_chat_id_aqui
+
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=seu_email@gmail.com
+SMTP_PASSWORD=sua_senha
+```
+
+Frontend (.env.local)
+
+```env
+NEXT_PUBLIC_API_URL=http://localhost:3001
+NEXT_PUBLIC_WS_URL=ws://localhost:3001
+NODE_ENV=development
+```
+
+---
+
+🔔 Integração Telegram
+
+Criando o Bot
+
+1. Abra o Telegram
+2. Procure por @BotFather
+3. Execute /newbot
+4. Copie o token gerado
+5. Descubra seu Chat ID com @userinfobot
+6. Configure no OrbNOC (Dashboard → Telegram)
+
+---
+
+📌 Roadmap
+
+v2.1 ✅ (Concluído)
+
+· Dashboard em Tempo Real
+· Centro de Alertas
+· Mapa de Rede (React Flow)
+· Relatórios Avançados
+· Diagnóstico Avançado
+· Wallboard para NOC
+· Alertas Telegram (formato profissional)
+
+v2.5 🚧 (Em desenvolvimento)
+
+· SLA por Cliente
+· Monitoramento de Portas Específicas
+· Agendamento de Relatórios
+· Notificações por Email
+
+v3.0 🔮 (Planejado)
+
+· AI Incident Analysis
+· Root Cause Analysis
+· Predictive Monitoring
+· Multi-Tenant
+· API Pública
 
 ---
 
 📊 Status do Projeto
 
-Módulo| Status
-Dashboard| ✅
-WebSocket| ✅
-Centro de Alertas| ✅
-Relatórios| ✅
-Mapa de Rede| ✅
-Diagnóstico| ✅
-Wallboard| ✅
-Autenticação JWT| ✅
-Integração Telegram| ✅
-Deploy Cloud| ✅
+Módulo Status
+Dashboard ✅
+WebSocket ✅
+Alertas Telegram ✅
+Relatórios ✅
+Mapa de Rede ✅
+Centro de Alertas ✅
+Diagnóstico ✅
+Wallboard ✅
+Autenticação JWT ✅
+Deploy no Render ✅
 
 ---
 
 🤝 Contribuição
 
-Contribuições são bem-vindas.
-
+```bash
 git checkout -b feature/minha-feature
-git commit -m "feat: nova funcionalidade"
+git commit -m "feat: adiciona nova funcionalidade"
 git push origin feature/minha-feature
+```
 
-Após isso, abra um Pull Request.
+Abra um Pull Request.
 
 ---
 
 📄 Licença
 
-Distribuído sob a licença MIT.
+MIT License
+
+Copyright © 2026 Adan W. O. Santos
 
 ---
 
-<div align="center">Desenvolvido por Adan W. O. Santos
+<div align="center">
+
+Desenvolvido por Adan W. O. Santos
 
 OrbNOC Platform
 
@@ -346,3 +392,4 @@ Infrastructure Monitoring • Network Operations Center • Real-Time Analytics
 © 2026 OrbNOC
 
 </div>
+```
