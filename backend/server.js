@@ -123,9 +123,8 @@ const io = socketIo(server, {
   transports: ['websocket', 'polling']
 });
 
-// ==================== FUNÇÃO DE PING VIA TCP MELHORADA ====================
+// ==================== FUNÇÃO DE PING VIA TCP ====================
 async function tcpPing(ip, timeout = 5000) {
-  // Portas comuns para teste
   const ports = [80, 443, 53, 8080, 8443];
 
   for (const port of ports) {
@@ -175,77 +174,64 @@ function calculateJitter(latencies) {
   return Math.round(jitter / (latencies.length - 1));
 }
 
-// ==================== FUNÇÃO TELEGRAM SOFISTICADA ====================
-async function sendTelegramAlert(botToken, chatId, message, type, deviceName = null, deviceIp = null, details = null) {
+// ==================== FUNÇÃO TELEGRAM - DESIGN BOTÃO ====================
+async function sendTelegramAlert(botToken, chatId, message, type, deviceName = null, deviceIp = null, details = null, incidentDetails = null) {
   if (!botToken || !chatId) return false;
 
-  // Emojis mais elegantes
-  const emojis = {
-    info: 'ℹ️',
-    success: '✅',
-    error: '❌',
-    warning: '⚠️',
-    removed: '🗑️',
-    added: '📌',
-    sla: '📊'
-  };
+  let title = '';
+  let headerIcon = '';
 
-  // Títulos com formatação elegante
-  const titles = {
-    info: 'Informação',
-    success: 'Recuperação',
-    error: 'Falha',
-    warning: 'Atenção',
-    removed: 'Remoção',
-    added: 'Adição',
-    sla: 'SLA'
-  };
+  switch(type) {
+    case 'error':
+      title = '⚠️ ALERTA DE MONITORAMENTO ⚠️';
+      headerIcon = '⚠️';
+      break;
+    case 'success':
+      title = '✅ RECUPERAÇÃO DE SERVIÇO ✅';
+      headerIcon = '✅';
+      break;
+    case 'warning':
+      title = '⚠️ ALERTA DE DESEMPENHO ⚠️';
+      headerIcon = '⚠️';
+      break;
+    case 'added':
+      title = '📌 NOVO DISPOSITIVO ADICIONADO 📌';
+      headerIcon = '📌';
+      break;
+    case 'removed':
+      title = '🗑️ DISPOSITIVO REMOVIDO 🗑️';
+      headerIcon = '🗑️';
+      break;
+    default:
+      title = 'ℹ️ NOTIFICAÇÃO DO SISTEMA ℹ️';
+      headerIcon = 'ℹ️';
+  }
 
-  // Cores para diferentes tipos (usando HTML tags)
-  const getHeader = () => {
-    switch(type) {
-      case 'error': return '🚨 *SISTEMA DE MONITORAMENTO* 🚨\n┏━━━━━━━━━━━━━━━━━━━━━━━━━━┓';
-      case 'warning': return '⚠️ *SISTEMA DE MONITORAMENTO* ⚠️\n┏━━━━━━━━━━━━━━━━━━━━━━━━━━┓';
-      case 'success': return '🟢 *SISTEMA DE MONITORAMENTO* 🟢\n┏━━━━━━━━━━━━━━━━━━━━━━━━━━┓';
-      default: return '📡 *SISTEMA DE MONITORAMENTO* 📡\n┏━━━━━━━━━━━━━━━━━━━━━━━━━━┓';
-    }
-  };
-
-  let text = `${getHeader()}\n`;
-  text += `┃\n`;
-  text += `┃  *${titles[type] || 'Notificação'}*\n`;
-  text += `┃\n`;
-
-  // Mensagem principal com formatação de código
-  text += `┃  \`${message}\`\n`;
-  text += `┃\n`;
+  let text = `*ORBNOC | Network Operations Center*\n\n`;
+  text += `**${title}**\n\n`;
+  text += `---\n`;
 
   if (deviceName && deviceIp) {
-    text += `┃  📡 Dispositivo: *${deviceName}*\n`;
-    text += `┃  🌐 Endereço: \`${deviceIp}\`\n`;
-    text += `┃\n`;
+    text += `📡 *Dispositivo:* ${deviceName}\n`;
+    text += `🌐 *IP:* ${deviceIp}\n`;
+    text += `📊 *Status:* ${type === 'error' ? 'OFFLINE' : type === 'success' ? 'ONLINE' : type === 'warning' ? 'ALERTA' : 'ATUALIZADO'}\n`;
   }
 
   if (details) {
-    text += `┃  📋 Detalhes:\n`;
-    const detailLines = details.split('\n');
-    for (const line of detailLines) {
-      text += `┃    • ${line}\n`;
-    }
-    text += `┃\n`;
+    text += `${details}\n`;
   }
 
-  text += `┃  🕐 ${new Date().toLocaleString('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit'
-  })}\n`;
-  text += `┃\n`;
-  text += `┗━━━━━━━━━━━━━━━━━━━━━━━━━━┛`;
-  text += `\n\n_OrbNOC Network Operations Center_`;
+  text += `---\n\n`;
+
+  if (incidentDetails) {
+    text += `📋 *Detalhes do Incidente:*\n`;
+    text += `─────────────────────────\n`;
+    text += `${incidentDetails}\n`;
+    text += `─────────────────────────\n\n`;
+  }
+
+  text += `${message}\n\n`;
+  text += `_📡 OrbNOC • Monitoramento 24/7_`;
 
   try {
     const telegramUrl = `https://api.telegram.org/bot${botToken}/sendMessage`;
@@ -375,8 +361,16 @@ app.post('/api/devices', authenticateToken, async (req, res) => {
       const user = userResult.rows[0];
 
       if (user && user.telegram_alerts_enabled && user.telegram_bot_token && user.telegram_chat_id) {
-        const message = `📝 *NOVO DISPOSITIVO ADICIONADO*\n\n• Nome: ${name}\n• IP: ${ip}\n• Localização: ${location || 'Não informada'}\n\n🔍 O monitoramento já está ativo!`;
-        await sendTelegramAlert(user.telegram_bot_token, user.telegram_chat_id, message, 'info', name, ip);
+        await sendTelegramAlert(
+          user.telegram_bot_token,
+          user.telegram_chat_id,
+          `Novo dispositivo adicionado à lista de monitoramento.`,
+          'added',
+          name,
+          ip,
+          `📍 *Localização:* ${location || 'Não informada'}`,
+          `🔍 *Status:* Aguardando primeira verificação\n📊 *Monitoramento:* Ativo`
+        );
       }
     } catch (telegramError) {
       console.error('Erro ao enviar notificação Telegram:', telegramError);
@@ -403,17 +397,23 @@ app.delete('/api/devices/:id', authenticateToken, async (req, res) => {
 
     const removedDevice = result.rows[0];
 
-    // Remover também os alertas SLA associados
     await pool.query('DELETE FROM sla_alerts WHERE user_id = $1 AND device_id = $2', [req.user.id, req.params.id]);
 
-    // Notificar remoção
     try {
       const userResult = await pool.query('SELECT * FROM users WHERE id = $1', [req.user.id]);
       const user = userResult.rows[0];
 
       if (user && user.telegram_alerts_enabled && user.telegram_bot_token && user.telegram_chat_id) {
-        const message = `🗑️ *DISPOSITIVO REMOVIDO*\n\n• Nome: ${removedDevice.name}\n• IP: ${removedDevice.ip}\n\n⏹️ O monitoramento foi interrompido.`;
-        await sendTelegramAlert(user.telegram_bot_token, user.telegram_chat_id, message, 'info', removedDevice.name, removedDevice.ip);
+        await sendTelegramAlert(
+          user.telegram_bot_token,
+          user.telegram_chat_id,
+          `Dispositivo removido permanentemente do monitoramento.`,
+          'removed',
+          removedDevice.name,
+          removedDevice.ip,
+          `📅 *Data da remoção:* ${new Date().toLocaleString('pt-BR')}`,
+          `⏹️ *Status:* Monitoramento interrompido\n📊 *Dispositivo:* ${removedDevice.name} (${removedDevice.ip})`
+        );
       }
     } catch (telegramError) {
       console.error('Erro ao enviar notificação Telegram:', telegramError);
@@ -493,7 +493,16 @@ app.post('/api/alerts/telegram', authenticateToken, async (req, res) => {
   try {
     await pool.query('UPDATE users SET telegram_alerts_enabled = $1, telegram_bot_token = $2, telegram_chat_id = $3 WHERE id = $4', [enabled ? true : false, botToken || null, chatId || null, req.user.id]);
     if (enabled && botToken && chatId) {
-      await sendTelegramAlert(botToken, chatId, '✅ OrbNOC: Configuração do Telegram ativada com sucesso!', 'success');
+      await sendTelegramAlert(
+        botToken,
+        chatId,
+        `Sistema de notificações configurado com sucesso. Você receberá alertas de monitoramento aqui.`,
+        'info',
+        null,
+        null,
+        `🤖 *Bot:* OrbNOC Monitor\n📱 *Canal:* Notificações`,
+        `✅ *Status:* Conectado\n📊 *Alertas:* Ativos\n🔔 *Resposta:* Imediata`
+      );
     }
     res.json({ success: true, enabled, botToken, chatId });
   } catch (error) {
@@ -528,7 +537,7 @@ app.post('/api/alerts/notify', authenticateToken, async (req, res) => {
   }
 });
 
-// ==================== ROTA DE ALERTA SLA ====================
+// ROTA DE ALERTA SLA
 app.post('/api/alerts/sla/configure', authenticateToken, async (req, res) => {
   const { deviceId, threshold } = req.body;
 
@@ -552,8 +561,16 @@ app.post('/api/alerts/sla/configure', authenticateToken, async (req, res) => {
     const user = userResult.rows[0];
 
     if (user && user.telegram_alerts_enabled && user.telegram_bot_token && user.telegram_chat_id) {
-      const message = `⚙️ *ALERTA SLA CONFIGURADO*\n\n• Dispositivo: ${device?.name || 'N/A'}\n• IP: ${device?.ip || 'N/A'}\n• Limite: ${threshold}ms\n\n📊 Alertas serão enviados quando a latência exceder este limite.`;
-      await sendTelegramAlert(user.telegram_bot_token, user.telegram_chat_id, message, 'info', device?.name, device?.ip);
+      await sendTelegramAlert(
+        user.telegram_bot_token,
+        user.telegram_chat_id,
+        `Alerta SLA configurado com sucesso para o dispositivo.`,
+        'info',
+        device?.name || 'N/A',
+        device?.ip || 'N/A',
+        `🎯 *Limite configurado:* ${threshold}ms\n📊 *Tipo:* Latência`,
+        `✅ *Status:* Monitoramento ativo\n⚠️ *Alertas:* Serão enviados quando o limite for excedido`
+      );
     }
 
     res.json({ success: true, message: `Alerta SLA configurado: ${threshold}ms` });
@@ -571,13 +588,17 @@ app.post('/api/alerts/test-telegram', authenticateToken, async (req, res) => {
     if (!user || !user.telegram_bot_token || !user.telegram_chat_id) {
       return res.status(400).json({ error: 'Telegram não configurado para este usuário' });
     }
-    const testMessage = '🧪 *Teste OrbNOC*\n\nSe você recebeu esta mensagem, o Telegram está funcionando perfeitamente!';
-    const sent = await sendTelegramAlert(user.telegram_bot_token, user.telegram_chat_id, testMessage, 'success');
-    if (sent) {
-      res.json({ success: true, message: 'Mensagem de teste enviada com sucesso!' });
-    } else {
-      res.status(500).json({ error: 'Falha ao enviar mensagem' });
-    }
+    await sendTelegramAlert(
+      user.telegram_bot_token,
+      user.telegram_chat_id,
+      `Teste de conectividade realizado com sucesso. O sistema de alertas está operacional.`,
+      'info',
+      null,
+      null,
+      `🧪 *Tipo:* Teste de Sistema\n📊 *Status:* Operacional`,
+      `✅ *Resultado:* Sucesso\n🔔 *Próximos alertas:* Serão enviados automaticamente`
+    );
+    res.json({ success: true, message: 'Mensagem de teste enviada com sucesso!' });
   } catch (error) {
     console.error('Erro no teste:', error);
     res.status(500).json({ error: 'Erro interno ao testar' });
@@ -592,16 +613,17 @@ app.post('/api/alerts/test-host', authenticateToken, async (req, res) => {
     if (!user || !user.telegram_bot_token || !user.telegram_chat_id) {
       return res.status(400).json({ error: 'Telegram não configurado' });
     }
-    let alertMessage, alertType;
-    if (status === 'online') {
-      alertMessage = `🟢 *HOST ONLINE* 🟢\n\n• Nome: ${deviceName}\n• IP: ${deviceIp}\n• Latência: ${latency}ms\n\n🕐 ${new Date().toLocaleString('pt-BR')}`;
-      alertType = 'success';
-    } else {
-      alertMessage = `🔴 *HOST OFFLINE* 🔴\n\n• Nome: ${deviceName}\n• IP: ${deviceIp}\n\n🕐 ${new Date().toLocaleString('pt-BR')}`;
-      alertType = 'error';
-    }
-    const sent = await sendTelegramAlert(user.telegram_bot_token, user.telegram_chat_id, alertMessage, alertType);
-    res.json({ success: sent, message: sent ? 'Alerta enviado!' : 'Falha no envio' });
+    await sendTelegramAlert(
+      user.telegram_bot_token,
+      user.telegram_chat_id,
+      `Teste de alerta de host executado com sucesso.`,
+      status === 'online' ? 'success' : 'error',
+      deviceName,
+      deviceIp,
+      `⚡ *Latência:* ${latency || 'N/A'}ms\n📊 *Status do teste:* ${status === 'online' ? 'ONLINE' : 'OFFLINE'}`,
+      `🧪 *Tipo:* Teste manual\n✅ *Resultado:* Sistema operacional\n📡 *Monitoramento:* Ativo`
+    );
+    res.json({ success: true, message: 'Alerta enviado!' });
   } catch (error) {
     console.error('Erro no teste de host:', error);
     res.status(500).json({ error: 'Erro interno' });
@@ -918,20 +940,20 @@ async function checkUserDevices(userId) {
         device.packet_loss = Math.round(packetLoss);
         device.last_check = new Date().toISOString();
 
-        // 🔔 NOTIFICAÇÃO DE MUDANÇA DE STATUS (FORMATO SOFISTICADO)
+        // 🔔 NOTIFICAÇÃO DE MUDANÇA DE STATUS
         if (previousStatus && previousStatus !== newStatus) {
           const userResult = await pool.query('SELECT * FROM users WHERE id = $1', [userId]);
           const user = userResult.rows[0];
 
           if (user && user.telegram_alerts_enabled && user.telegram_bot_token && user.telegram_chat_id) {
-            let statusDetails, alertType;
+            let alertType, incidentDetails;
 
             if (newStatus === 'offline') {
-              statusDetails = `🕐 Inativo desde: ${new Date().toLocaleString()}\n🔧 Ação recomendada: Verificar conectividade de rede.`;
               alertType = 'error';
+              incidentDetails = `• Tempo de inatividade: Iniciado agora\n• Último ping bem-sucedido: ${device.last_check || 'N/A'}\n• Falhas consecutivas: ${history.filter(l => l === null).length}\n• 🔧 Ação recomendada: Verificar conectividade de rede`;
             } else {
-              statusDetails = `⚡ Latência atual: ${latency || 'N/A'}ms\n✅ Serviços restaurados.`;
               alertType = 'success';
+              incidentDetails = `• Tempo de recuperação: Imediato\n• Latência atual: ${latency || 'N/A'}ms\n• Status: Operacional\n• ✅ Serviços restaurados com sucesso`;
             }
 
             await sendTelegramAlert(
@@ -943,12 +965,13 @@ async function checkUserDevices(userId) {
               alertType,
               device.name,
               device.ip,
-              statusDetails
+              `📊 *Status:* ${newStatus === 'offline' ? 'OFFLINE' : 'ONLINE'}\n⏱️ *Início:* ${new Date().toLocaleString()}`,
+              incidentDetails
             );
           }
         }
 
-        // 🔔 NOTIFICAÇÃO DE LIMITE SLA EXCEDIDO (FORMATO SOFISTICADO)
+        // 🔔 NOTIFICAÇÃO DE LIMITE SLA EXCEDIDO
         const threshold = slaAlerts[device.id];
         if (threshold && latency && latency > threshold) {
           const userResult = await pool.query('SELECT * FROM users WHERE id = $1', [userId]);
@@ -960,11 +983,12 @@ async function checkUserDevices(userId) {
             await sendTelegramAlert(
               user.telegram_bot_token,
               user.telegram_chat_id,
-              `⚠️ Limite de latência excedido!`,
-              'sla',
+              `Limite de latência excedido para o dispositivo.`,
+              'warning',
               device.name,
               device.ip,
-              `🎯 Limite configurado: ${threshold}ms\n📈 Latência atual: ${latency}ms\n📊 Percentual excedido: ${percentageExceeded}%\n⚠️ Excedente absoluto: ${latency - threshold}ms`
+              `📊 *Status:* ALERTA\n🎯 *Limite:* ${threshold}ms\n📈 *Atual:* ${latency}ms`,
+              `• Percentual excedido: ${percentageExceeded}%\n• Excedente absoluto: ${latency - threshold}ms\n• 🔧 Ação recomendada: Verificar rota e conectividade`
             );
           }
         }
@@ -1021,9 +1045,9 @@ server.listen(PORT, () => {
   console.log(`📡 WebSocket disponível para conexões`);
   console.log(`📊 Monitoramento via TCP Connect ativo`);
   console.log(`✅ CORS configurado para o frontend`);
-  console.log(`🤖 Telegram alerts ready`);
+  console.log(`🤖 Telegram alerts ready (Design Botão)`);
   console.log(`🔧 Diagnostic routes available\n`);
 });
 
-setInterval(monitorDevices, 30000);
+setInterval(monitorDevices, 10000);
 monitorDevices();
