@@ -189,7 +189,7 @@ export default function Home() {
       const { default: jsPDF } = await import('jspdf');
       const html2canvas = (await import('html2canvas')).default;
       const element = dashboardRef.current;
-      const canvas = await html2canvas(element, { scale: 2, backgroundColor: '#0a0a0f', logging: false, useCORS: true });
+      const canvas = await html2canvas(element, { scale: 2, backgroundColor: '#0f172a', logging: false, useCORS: true });
       const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
       pdf.addImage(imgData, 'PNG', 0, 0, 297, (canvas.height * 297) / canvas.width);
@@ -561,7 +561,7 @@ export default function Home() {
 
   if (!isAuthenticated || loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-[#0a0a0f] to-[#0f0f1a]">
+      <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
         <div className="relative">
           <div className="w-12 h-12 border-2 border-blue-500/20 border-t-blue-500 rounded-full animate-spin"></div>
         </div>
@@ -584,13 +584,7 @@ export default function Home() {
   const availability = devices.length ? Math.round((online / devices.length) * 100) : 0;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0a0a0f] via-[#0f0f1a] to-[#0a0a0f] text-slate-200" ref={dashboardRef}>
-
-      {/* Animated Background Orbs */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-20 -left-40 w-96 h-96 bg-blue-500/5 rounded-full blur-3xl animate-pulse-slow" />
-        <div className="absolute bottom-20 -right-40 w-96 h-96 bg-purple-500/5 rounded-full blur-3xl animate-pulse-slow" style={{ animationDelay: '2s' }} />
-      </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-200" ref={dashboardRef}>
 
       {/* Toast Notification */}
       {showAlert && (
@@ -613,14 +607,14 @@ export default function Home() {
         </div>
       )}
 
-      <div className="max-w-[1600px] mx-auto p-6 space-y-6 relative z-10">
+      <div className="max-w-[1600px] mx-auto p-6 space-y-6">
 
         {/* Header */}
-        <div className="bg-[#0d1117]/50 backdrop-blur-sm rounded-xl p-4 border border-slate-800">
+        <div className="bg-slate-900/50 backdrop-blur-sm rounded-xl p-4 border border-slate-800">
           <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
             <div className="flex items-center gap-3">
               <div className="relative">
-                <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-500 rounded-lg flex items-center justify-center shadow-lg shadow-blue-500/20 animate-glow">
+                <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-500 rounded-lg flex items-center justify-center shadow-lg shadow-blue-500/20">
                   <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                     <path d="M4 6 L12 12 L20 6" strokeLinecap="round"/>
                     <path d="M4 12 L12 18 L20 12" strokeLinecap="round"/>
@@ -629,57 +623,65 @@ export default function Home() {
                 <div className={`absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full ${connected ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`}></div>
               </div>
               <div>
-                <h1 className="text-xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">OrbNOC</h1>
+                <h1 className="text-xl font-bold bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">OrbNOC</h1>
                 <p className="text-xs text-slate-500">Network Operations Center</p>
               </div>
             </div>
 
             <div className="flex items-center gap-2 flex-wrap">
-              <button onClick={() => router.push('/network-map')} className="px-3 py-2 bg-[#0d1117] hover:bg-[#1a1f2e] rounded-lg border border-slate-800 transition-all text-sm flex items-center gap-1">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" /></svg>
+              <button onClick={() => router.push('/network-map')} className="px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-700 transition-all text-sm flex items-center gap-1">
+                <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" /></svg>
                 Mapa
               </button>
-              <button onClick={() => router.push('/alerts')} className="px-3 py-2 bg-[#0d1117] hover:bg-[#1a1f2e] rounded-lg border border-slate-800 transition-all text-sm flex items-center gap-1">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+              <button onClick={() => router.push('/alerts')} className="px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-700 transition-all text-sm flex items-center gap-1">
+                <svg className="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                 Alertas
               </button>
-              <button onClick={() => router.push('/reports')} className="px-3 py-2 bg-[#0d1117] hover:bg-[#1a1f2e] rounded-lg border border-slate-800 transition-all text-sm flex items-center gap-1">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+              <button onClick={() => router.push('/reports')} className="px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-700 transition-all text-sm flex items-center gap-1">
+                <svg className="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
                 Relatórios
+              </button>
+              <button onClick={() => router.push('/diagnostic')} className="px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-700 transition-all text-sm flex items-center gap-1">
+                <svg className="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+                Diagnóstico
+              </button>
+              <button onClick={() => router.push('/wallboard')} className="px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-700 transition-all text-sm flex items-center gap-1">
+                <svg className="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                Wallboard
               </button>
 
               <div className="w-px h-6 bg-slate-700 mx-1" />
 
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-[#0d1117] rounded-lg border border-slate-800">
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 rounded-lg border border-slate-700">
                 <span className="text-xs text-slate-300">{user?.username}</span>
               </div>
 
-              <button onClick={handleRefresh} disabled={refreshing} className="p-2 bg-[#0d1117] hover:bg-[#1a1f2e] rounded-lg border border-slate-800 transition-all">
+              <button onClick={handleRefresh} disabled={refreshing} className="p-2 bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-700 transition-all">
                 <svg className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
               </button>
 
-              <button onClick={clearAlertHistory} className="p-2 bg-[#0d1117] hover:bg-[#1a1f2e] rounded-lg border border-slate-800 transition-all">
+              <button onClick={clearAlertHistory} className="p-2 bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-700 transition-all">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                 </svg>
               </button>
 
               <div className="relative export-dropdown">
-                <button onClick={() => setShowExportMenu(!showExportMenu)} className="px-3 py-2 bg-[#0d1117] hover:bg-[#1a1f2e] rounded-lg border border-slate-800 transition-all text-sm flex items-center gap-1">
+                <button onClick={() => setShowExportMenu(!showExportMenu)} className="px-3 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-700 transition-all text-sm flex items-center gap-1">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
                   Exportar
                 </button>
                 {showExportMenu && (
-                  <div className="absolute right-0 top-full mt-2 bg-[#0d1117] rounded-lg shadow-xl z-50 border border-slate-700 min-w-[160px]">
-                    <button onClick={exportToCSV} className="w-full text-left px-4 py-2 text-sm hover:bg-[#1a1f2e] transition-colors rounded-t-lg">📊 CSV / Excel</button>
-                    <button onClick={generatePDF} disabled={isGeneratingPDF} className="w-full text-left px-4 py-2 text-sm hover:bg-[#1a1f2e] transition-colors rounded-b-lg border-t border-slate-800">📄 {isGeneratingPDF ? 'Gerando...' : 'PDF'}</button>
+                  <div className="absolute right-0 top-full mt-2 bg-slate-800 rounded-lg shadow-xl z-50 border border-slate-700 min-w-[160px]">
+                    <button onClick={exportToCSV} className="w-full text-left px-4 py-2 text-sm hover:bg-slate-700 transition-colors rounded-t-lg">📊 CSV / Excel</button>
+                    <button onClick={generatePDF} disabled={isGeneratingPDF} className="w-full text-left px-4 py-2 text-sm hover:bg-slate-700 transition-colors rounded-b-lg border-t border-slate-700">📄 {isGeneratingPDF ? 'Gerando...' : 'PDF'}</button>
                   </div>
                 )}
               </div>
 
-              <button onClick={() => setShowTelegramModal(true)} className={`px-3 py-2 rounded-lg border transition-all text-sm flex items-center gap-1 ${telegramConfig.enabled ? 'bg-blue-600/10 border-blue-500/30 text-blue-400' : 'bg-[#0d1117] border-slate-800 text-slate-400'}`}>
+              <button onClick={() => setShowTelegramModal(true)} className={`px-3 py-2 rounded-lg border transition-all text-sm flex items-center gap-1 ${telegramConfig.enabled ? 'bg-blue-600/20 border-blue-500/30 text-blue-400' : 'bg-slate-800 border-slate-700 text-slate-400'}`}>
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
                 {telegramConfig.enabled ? 'Telegram ON' : 'Telegram OFF'}
               </button>
@@ -709,41 +711,36 @@ export default function Home() {
 
         {/* KPI Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-          <div className="bg-gradient-to-br from-[#0d1117] to-[#0a0e12] rounded-lg border border-slate-800 p-4 hover:border-slate-700 transition-all relative overflow-hidden group">
-            <div className="absolute inset-0 bg-gradient-to-r from-blue-500/0 via-blue-500/5 to-blue-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-            <div className="flex items-start justify-between relative z-10">
+          <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 rounded-lg border border-slate-700 p-4 hover:border-slate-600 transition-all">
+            <div className="flex items-start justify-between">
               <div><p className="text-xs text-slate-500 uppercase tracking-wider">Total Ativos</p><p className="text-2xl font-semibold mt-1 text-white">{devices.length}</p></div>
               <div className="w-8 h-8 bg-blue-500/10 rounded-lg flex items-center justify-center"><svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg></div>
             </div>
           </div>
 
-          <div className="bg-gradient-to-br from-[#0d1117] to-[#0a0e12] rounded-lg border border-emerald-800/30 hover:border-emerald-500/50 transition-all p-4 relative overflow-hidden group">
-            <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/0 via-emerald-500/5 to-emerald-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-            <div className="flex items-start justify-between relative z-10">
+          <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 rounded-lg border border-emerald-800/30 hover:border-emerald-500/50 transition-all p-4">
+            <div className="flex items-start justify-between">
               <div><p className="text-xs text-emerald-400/80 uppercase tracking-wider">Online</p><p className="text-2xl font-semibold mt-1 text-emerald-400">{online}</p><p className="text-[10px] text-emerald-500/60 mt-1">{availability}% do total</p></div>
               <div className="w-8 h-8 bg-emerald-500/10 rounded-lg flex items-center justify-center"><svg className="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg></div>
             </div>
           </div>
 
-          <div className={`bg-gradient-to-br from-[#0d1117] to-[#0a0e12] rounded-lg border transition-all p-4 relative overflow-hidden group ${hasOfflineDevices ? 'border-rose-500/50 animate-pulse-slow' : 'border-rose-800/30 hover:border-rose-500/30'}`}>
-            <div className="absolute inset-0 bg-gradient-to-r from-rose-500/0 via-rose-500/5 to-rose-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-            <div className="flex items-start justify-between relative z-10">
+          <div className={`bg-gradient-to-br from-slate-800/50 to-slate-900/50 rounded-lg border transition-all p-4 ${hasOfflineDevices ? 'border-rose-500/50 animate-pulse-slow' : 'border-rose-800/30 hover:border-rose-500/30'}`}>
+            <div className="flex items-start justify-between">
               <div><p className="text-xs text-rose-400/80 uppercase tracking-wider">Offline</p><p className={`text-2xl font-semibold mt-1 ${hasOfflineDevices ? 'text-rose-500' : 'text-rose-400'}`}>{offline}</p>{hasOfflineDevices && <p className="text-[10px] text-rose-500/60 mt-1 animate-pulse">⚠️ Atenção!</p>}</div>
               <div className="w-8 h-8 bg-rose-500/10 rounded-lg flex items-center justify-center"><svg className="w-4 h-4 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></div>
             </div>
           </div>
 
-          <div className="bg-gradient-to-br from-[#0d1117] to-[#0a0e12] rounded-lg border border-slate-800 p-4 hover:border-slate-700 transition-all relative overflow-hidden group">
-            <div className="absolute inset-0 bg-gradient-to-r from-blue-500/0 via-blue-500/5 to-blue-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-            <div className="flex items-start justify-between relative z-10">
+          <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 rounded-lg border border-slate-700 p-4 hover:border-slate-600 transition-all">
+            <div className="flex items-start justify-between">
               <div><p className="text-xs text-slate-500 uppercase tracking-wider">Disponibilidade</p><p className="text-2xl font-semibold mt-1 text-blue-400">{availability}%</p><p className="text-[10px] text-slate-500 mt-1">SLA</p></div>
               <div className="w-12 h-8"><ResponsiveContainer width="100%" height="100%"><AreaChart data={history.slice(0, 20).reverse()}><Area type="monotone" dataKey="uptime" stroke="#3b82f6" strokeWidth={1} fill="url(#uptimeGradient)" /><defs><linearGradient id="uptimeGradient" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#3b82f6" stopOpacity={0.3} /><stop offset="100%" stopColor="#3b82f6" stopOpacity={0} /></linearGradient></defs></AreaChart></ResponsiveContainer></div>
             </div>
           </div>
 
-          <div className="bg-gradient-to-br from-[#0d1117] to-[#0a0e12] rounded-lg border border-slate-800 p-4 hover:border-slate-700 transition-all relative overflow-hidden group">
-            <div className="absolute inset-0 bg-gradient-to-r from-amber-500/0 via-amber-500/5 to-amber-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-            <div className="flex items-start justify-between relative z-10">
+          <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 rounded-lg border border-slate-700 p-4 hover:border-slate-600 transition-all">
+            <div className="flex items-start justify-between">
               <div><p className="text-xs text-slate-500 uppercase tracking-wider">Latência Média</p><p className="text-2xl font-semibold mt-1 text-amber-400">{avgLatency ? `${Math.round(avgLatency)}ms` : '—'}</p>{latencyTrend.value > 0 && latencyTrend.direction !== 'stable' && (<div className={`flex items-center gap-1 mt-1 text-[10px] ${latencyTrend.direction === 'down' ? 'text-emerald-400' : 'text-rose-400'}`}>{latencyTrend.direction === 'down' ? '↓' : '↑'} {latencyTrend.value}ms ({latencyTrend.percentage}%)</div>)}</div>
               <div className="w-8 h-8 bg-amber-500/10 rounded-lg flex items-center justify-center"><svg className="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg></div>
             </div>
@@ -754,15 +751,15 @@ export default function Home() {
         <div className="flex flex-col sm:flex-row justify-between gap-4">
           <div className="relative w-full sm:w-96">
             <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-            <input type="text" placeholder="Buscar host, IP ou localização..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full bg-[#0d1117] border border-slate-800 rounded-lg pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-200 placeholder:text-slate-600" />
+            <input type="text" placeholder="Buscar host, IP ou localização..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded-lg pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-200 placeholder:text-slate-600" />
           </div>
           <div className="flex gap-2">
-            <div className="flex gap-1 bg-[#0d1117]/50 p-1 rounded-lg border border-slate-800">
+            <div className="flex gap-1 bg-slate-800/30 p-1 rounded-lg border border-slate-700">
               <button onClick={() => setStatusFilter('all')} className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${statusFilter === 'all' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}>Todos</button>
               <button onClick={() => setStatusFilter('online')} className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${statusFilter === 'online' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}>Online</button>
               <button onClick={() => setStatusFilter('offline')} className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${statusFilter === 'offline' ? 'bg-rose-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}>Offline</button>
             </div>
-            <button onClick={() => setShowAdvancedFilters(!showAdvancedFilters)} className={`px-3 py-1.5 rounded-lg text-sm transition-all ${showAdvancedFilters ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30' : 'bg-[#0d1117] text-slate-400 border border-slate-800 hover:border-slate-700'}`}>
+            <button onClick={() => setShowAdvancedFilters(!showAdvancedFilters)} className={`px-3 py-1.5 rounded-lg text-sm transition-all ${showAdvancedFilters ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30' : 'bg-slate-800 text-slate-400 border border-slate-700 hover:border-slate-600'}`}>
               <svg className="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
               Filtros
             </button>
@@ -771,11 +768,11 @@ export default function Home() {
 
         {/* Advanced Filters Panel */}
         {showAdvancedFilters && (
-          <div className="bg-[#0d1117]/50 rounded-lg border border-slate-800 p-4">
+          <div className="bg-slate-800/30 rounded-lg border border-slate-700 p-4">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div><label className="text-xs text-slate-400 block mb-1">Latência Mínima (ms)</label><input type="number" placeholder="0" value={filters.minLatency} onChange={(e) => setFilters(prev => ({ ...prev, minLatency: e.target.value }))} className="w-full bg-[#0a0e12] border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500" /></div>
-              <div><label className="text-xs text-slate-400 block mb-1">Latência Máxima (ms)</label><input type="number" placeholder="100" value={filters.maxLatency} onChange={(e) => setFilters(prev => ({ ...prev, maxLatency: e.target.value }))} className="w-full bg-[#0a0e12] border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500" /></div>
-              <div className="flex items-end"><button onClick={() => setFilters({ minLatency: '', maxLatency: '', minUptime: '', tags: [] })} className="px-3 py-2 bg-[#1a1f2e] hover:bg-[#252b3d] rounded-lg text-sm transition-colors">Limpar Filtros</button></div>
+              <div><label className="text-xs text-slate-400 block mb-1">Latência Mínima (ms)</label><input type="number" placeholder="0" value={filters.minLatency} onChange={(e) => setFilters(prev => ({ ...prev, minLatency: e.target.value }))} className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500" /></div>
+              <div><label className="text-xs text-slate-400 block mb-1">Latência Máxima (ms)</label><input type="number" placeholder="100" value={filters.maxLatency} onChange={(e) => setFilters(prev => ({ ...prev, maxLatency: e.target.value }))} className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500" /></div>
+              <div className="flex items-end"><button onClick={() => setFilters({ minLatency: '', maxLatency: '', minUptime: '', tags: [] })} className="px-3 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm transition-colors">Limpar Filtros</button></div>
             </div>
           </div>
         )}
@@ -790,19 +787,19 @@ export default function Home() {
             </div>
 
             {showForm && (
-              <form onSubmit={addDevice} className="bg-gradient-to-br from-[#0d1117] to-[#0a0e12] p-4 rounded-lg border border-blue-500/30">
+              <form onSubmit={addDevice} className="bg-slate-800/30 p-4 rounded-lg border border-blue-500/30">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <input name="name" placeholder="Nome do equipamento" required className="bg-[#0a0e12] border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 text-slate-200" />
-                  <input name="ip" placeholder="Endereço IP" required className="bg-[#0a0e12] border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 text-slate-200" />
-                  <div className="flex gap-2"><input name="location" placeholder="Localização" className="flex-1 bg-[#0a0e12] border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 text-slate-200" /><button type="submit" className="px-4 bg-blue-600 hover:bg-blue-500 rounded-lg text-sm transition-colors">Salvar</button></div>
+                  <input name="name" placeholder="Nome do equipamento" required className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 text-slate-200" />
+                  <input name="ip" placeholder="Endereço IP" required className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 text-slate-200" />
+                  <div className="flex gap-2"><input name="location" placeholder="Localização" className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 text-slate-200" /><button type="submit" className="px-4 bg-blue-600 hover:bg-blue-500 rounded-lg text-sm transition-colors">Salvar</button></div>
                 </div>
               </form>
             )}
 
-            <div className="bg-[#0d1117]/30 rounded-lg border border-slate-800 overflow-hidden">
+            <div className="bg-slate-800/20 rounded-lg border border-slate-700 overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
-                  <thead className="bg-[#0d1117] border-b border-slate-800">
+                  <thead className="bg-slate-800 border-b border-slate-700">
                     <tr>
                       <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 cursor-pointer hover:text-slate-300 transition-colors" onClick={() => handleSort('status')}>Status {sortField === 'status' && (sortDirection === 'asc' ? '↑' : '↓')}</th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 cursor-pointer hover:text-slate-300 transition-colors" onClick={() => handleSort('name')}>Dispositivo {sortField === 'name' && (sortDirection === 'asc' ? '↑' : '↓')}</th>
@@ -811,13 +808,13 @@ export default function Home() {
                       <th className="px-4 py-3 text-left text-xs font-medium text-slate-400">Ações</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-800">
+                  <tbody className="divide-y divide-slate-700">
                     {filteredDevices.length === 0 ? (
                       <tr><td colSpan="5" className="px-4 py-12 text-center text-slate-500">Nenhum dispositivo encontrado</td></tr>
                     ) : (
                       filteredDevices.map((device) => (
                         <Fragment key={device.id}>
-                          <tr onClick={() => setExpandedDevice(expandedDevice === device.id ? null : device.id)} className={`cursor-pointer transition-colors hover:bg-[#1a1f2e]/50 ${expandedDevice === device.id ? 'bg-[#1a1f2e]/30' : ''}`}>
+                          <tr onClick={() => setExpandedDevice(expandedDevice === device.id ? null : device.id)} className={`cursor-pointer transition-colors hover:bg-slate-700/30 ${expandedDevice === device.id ? 'bg-slate-700/20' : ''}`}>
                             <td className="px-4 py-3"><div className="flex items-center gap-2"><div className={`w-1.5 h-1.5 rounded-full ${device.status === 'online' ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`}></div><span className={`text-xs font-medium ${device.status === 'online' ? 'text-emerald-400' : 'text-rose-400'}`}>{device.status === 'online' ? 'ONLINE' : 'OFFLINE'}</span></div></td>
                             <td className="px-4 py-3"><div className="font-medium text-slate-200">{device.name}</div>{device.location && <div className="text-[10px] text-slate-500">{device.location}</div>}</td>
                             <td className="px-4 py-3 font-mono text-xs text-slate-400">{device.ip}</td>
@@ -825,7 +822,7 @@ export default function Home() {
                             <td className="px-4 py-3"><div className="flex justify-center gap-2"><button onClick={(e) => { e.stopPropagation(); pingDevice(device.id); }} disabled={pingingDevice === device.id} className="px-3 py-1.5 bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white rounded-lg text-xs font-medium transition-all flex items-center gap-1"><svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>Ping</button><button onClick={(e) => { e.stopPropagation(); removeDevice(device.id, device.name); }} className="px-3 py-1.5 bg-rose-500/20 hover:bg-rose-500 text-rose-400 hover:text-white rounded-lg text-xs font-medium transition-all flex items-center gap-1"><svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>Remover</button></div></td>
                           </tr>
                           {expandedDevice === device.id && (
-                            <tr className="bg-[#0d1117]/50"><td colSpan="5" className="px-4 py-3"><div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs"><div><p className="text-slate-500">Localização</p><p className="text-slate-300">{device.location || '—'}</p></div><div><p className="text-slate-500">Último check</p><p className="text-slate-300">{device.last_check ? new Date(device.last_check).toLocaleString() : '—'}</p></div><div><p className="text-slate-500">Alerta SLA</p>{alertThresholds[device.id] ? (<div className="flex items-center gap-2"><span className="text-amber-400">Limite: {alertThresholds[device.id]}ms</span><button onClick={() => removeAlertConfig(device.id)} className="text-rose-400 text-xs">Remover</button></div>) : (<button onClick={() => { setSelectedAlertDevice(device); setShowAlertConfig(true); }} className="text-blue-400 hover:text-blue-300 text-xs">Configurar alerta</button>)}</div></div></td></tr>
+                            <tr className="bg-slate-800/30"><td colSpan="5" className="px-4 py-3"><div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs"><div><p className="text-slate-500">Localização</p><p className="text-slate-300">{device.location || '—'}</p></div><div><p className="text-slate-500">Último check</p><p className="text-slate-300">{device.last_check ? new Date(device.last_check).toLocaleString() : '—'}</p></div><div><p className="text-slate-500">Alerta SLA</p>{alertThresholds[device.id] ? (<div className="flex items-center gap-2"><span className="text-amber-400">Limite: {alertThresholds[device.id]}ms</span><button onClick={() => removeAlertConfig(device.id)} className="text-rose-400 text-xs">Remover</button></div>) : (<button onClick={() => { setSelectedAlertDevice(device); setShowAlertConfig(true); }} className="text-blue-400 hover:text-blue-300 text-xs">Configurar alerta</button>)}</div></div></td></tr>
                           )}
                         </Fragment>
                       ))
@@ -838,7 +835,7 @@ export default function Home() {
 
           {/* Right - Analytics */}
           <div className="space-y-6">
-            <div className="bg-gradient-to-br from-[#0d1117] to-[#0a0e12] rounded-lg border border-slate-800 p-4">
+            <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 rounded-lg border border-slate-700 p-4">
               <div className="flex justify-between items-center mb-4"><h3 className="text-sm font-semibold text-slate-300 flex items-center gap-2"><span className="w-1 h-5 bg-blue-500 rounded-full"></span>Latência em Tempo Real</h3><button onClick={() => { const onlineDevices = getFilteredAndSortedDevices().filter(d => d.status === 'online'); onlineDevices.forEach(d => pingDevice(d.id)); addAlert(`📡 Testando ${onlineDevices.length} dispositivos...`, 'success'); }} className="px-2 py-1 bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white rounded text-xs transition-all">Testar Todos</button></div>
               {getFilteredAndSortedDevices().filter(d => d.status === 'online').length > 0 ? (
                 <div className="h-72 w-full"><ResponsiveContainer width="100%" height="100%"><LineChart data={realtimeChartData}><CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} /><XAxis dataKey="time" stroke="#64748b" fontSize={10} tickLine={false} /><YAxis stroke="#64748b" fontSize={10} tickLine={false} /><Tooltip contentStyle={{ backgroundColor: '#0f172a', borderRadius: '8px', border: '1px solid #1e293b' }} labelStyle={{ color: '#94a3b8', fontSize: '10px' }} formatter={(value, name) => [`${value}ms`, name]} itemStyle={{ color: '#e2e8f0', fontSize: '11px' }} /><Legend wrapperStyle={{ fontSize: '10px' }} verticalAlign="bottom" height={30} />{getFilteredAndSortedDevices().filter(d => d.status === 'online').slice(0, 5).map((device, idx) => { const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ec4899', '#06b6d4']; return <Line key={device.id} type="monotone" dataKey={device.name} stroke={colors[idx % colors.length]} strokeWidth={1.5} dot={false} name={device.name} isAnimationActive={false} />;})}</LineChart></ResponsiveContainer></div>
@@ -846,19 +843,19 @@ export default function Home() {
             </div>
 
             {history.length > 0 && (
-              <div className="bg-gradient-to-br from-[#0d1117] to-[#0a0e12] rounded-lg border border-slate-800 p-4">
+              <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 rounded-lg border border-slate-700 p-4">
                 <h3 className="text-sm font-semibold text-slate-300 mb-3 flex items-center gap-2"><span className="w-1 h-5 bg-emerald-500 rounded-full"></span>Disponibilidade (Últimas 24h)</h3>
                 <div className="flex items-center justify-between"><div className="text-center"><p className="text-3xl font-bold text-emerald-400">{history[0]?.uptime || 100}%</p><p className="text-xs text-slate-500 mt-1">SLA Atual</p></div><div className="w-32"><ResponsiveContainer width="100%" height={80}><LineChart data={history.slice(0, 24).reverse()}><Line type="monotone" dataKey="uptime" stroke="#10b981" strokeWidth={2} dot={false} isAnimationActive={false} /></LineChart></ResponsiveContainer></div></div>
               </div>
             )}
 
-            <div className="bg-gradient-to-br from-[#0d1117] to-[#0a0e12] rounded-lg border border-slate-800 p-4">
+            <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 rounded-lg border border-slate-700 p-4">
               <h3 className="text-sm font-semibold text-slate-300 mb-3 flex items-center gap-2"><span className="w-1 h-5 bg-amber-500 rounded-full"></span>Distribuição</h3>
               <div className="h-40"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={chartData.statusData} cx="50%" cy="50%" innerRadius={40} outerRadius={55} paddingAngle={3} dataKey="value"><Cell fill="#10b981" /><Cell fill="#ef4444" /></Pie><Tooltip contentStyle={{ backgroundColor: '#0f172a', borderRadius: '8px', border: '1px solid #1e293b' }} /><Legend wrapperStyle={{ fontSize: '10px' }} verticalAlign="bottom" height={30} /></PieChart></ResponsiveContainer></div>
             </div>
 
             {alertHistory.length > 0 && (
-              <div className="bg-gradient-to-br from-[#0d1117] to-[#0a0e12] rounded-lg border border-slate-800 p-4">
+              <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 rounded-lg border border-slate-700 p-4">
                 <div className="flex justify-between items-center mb-3"><h3 className="text-sm font-semibold text-slate-300 flex items-center gap-2"><span className="w-1 h-5 bg-rose-500 rounded-full"></span>Alertas Recentes{unreadAlerts > 0 && <span className="px-1.5 py-0.5 bg-amber-500/20 text-amber-400 text-[10px] rounded-full animate-pulse">{unreadAlerts}</span>}</h3><button onClick={clearAlertHistory} className="text-[10px] text-slate-500 hover:text-slate-400 transition-colors">Limpar</button></div>
                 <div className="space-y-2 max-h-64 overflow-y-auto">{alertHistory.slice(0, 10).map(alert => (<div key={alert.id} className={`p-2 rounded border transition-all ${alert.type === 'error' ? 'bg-rose-500/10 border-rose-500/20' : alert.type === 'warning' ? 'bg-amber-500/10 border-amber-500/20' : 'bg-emerald-500/10 border-emerald-500/20'}`}><p className="text-xs">{alert.message}</p><p className="text-[10px] text-slate-500 mt-1">{alert.timestamp}</p></div>))}</div>
               </div>
@@ -867,7 +864,7 @@ export default function Home() {
         </div>
 
         {/* Footer */}
-        <footer className="border-t border-slate-800 pt-4 mt-4">
+        <footer className="border-t border-slate-700 pt-4 mt-4">
           <div className="flex flex-wrap justify-between items-center text-xs">
             <div className="flex gap-4 text-slate-500">
               <span className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>Polling: 30s</span>
@@ -883,11 +880,11 @@ export default function Home() {
       {/* Alert Config Modal */}
       {showAlertConfig && selectedAlertDevice && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-gradient-to-br from-[#0d1117] to-[#0a0e12] border border-slate-700 rounded-lg p-6 w-full max-w-md shadow-2xl">
+          <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700 rounded-lg p-6 w-full max-w-md shadow-2xl">
             <h3 className="text-lg font-semibold text-white mb-2">Configurar Alerta SLA</h3>
             <p className="text-sm text-slate-400 mb-4">{selectedAlertDevice.name}</p>
-            <div className="space-y-2 mb-6"><label className="text-xs text-slate-400 uppercase tracking-wider">Limite de Latência (ms)</label><input type="number" id="modal-threshold" min="10" max="1000" defaultValue={alertThresholds[selectedAlertDevice.id] || 120} className="w-full bg-[#0a0e12] border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 text-slate-200" /></div>
-            <div className="flex gap-3 justify-end"><button onClick={() => setShowAlertConfig(false)} className="px-4 py-2 bg-[#1a1f2e] text-slate-300 rounded-lg text-sm hover:bg-[#252b3d] transition-colors">Cancelar</button><button onClick={() => { const threshold = parseInt(document.getElementById('modal-threshold').value); if (threshold) configureAlert(selectedAlertDevice.id, threshold); }} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-500 transition-colors">Salvar</button></div>
+            <div className="space-y-2 mb-6"><label className="text-xs text-slate-400 uppercase tracking-wider">Limite de Latência (ms)</label><input type="number" id="modal-threshold" min="10" max="1000" defaultValue={alertThresholds[selectedAlertDevice.id] || 120} className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 text-slate-200" /></div>
+            <div className="flex gap-3 justify-end"><button onClick={() => setShowAlertConfig(false)} className="px-4 py-2 bg-slate-700 text-slate-300 rounded-lg text-sm hover:bg-slate-600 transition-colors">Cancelar</button><button onClick={() => { const threshold = parseInt(document.getElementById('modal-threshold').value); if (threshold) configureAlert(selectedAlertDevice.id, threshold); }} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-500 transition-colors">Salvar</button></div>
           </div>
         </div>
       )}
@@ -895,31 +892,14 @@ export default function Home() {
       {/* Telegram Config Modal */}
       {showTelegramModal && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-          <div className="bg-gradient-to-br from-[#0d1117] to-[#0a0e12] border border-slate-700 rounded-lg p-6 w-full max-w-md shadow-2xl">
+          <div className="bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700 rounded-lg p-6 w-full max-w-md shadow-2xl">
             <h3 className="text-lg font-semibold text-white mb-2">Configurar Telegram</h3>
             <p className="text-sm text-slate-400 mb-4">Receba alertas no Telegram</p>
-            <div className="space-y-4 mb-6"><div><label className="text-xs text-slate-400 block mb-1 uppercase tracking-wider">Bot Token</label><input type="text" id="config-bot-token" defaultValue={telegramConfig.botToken} placeholder="1234567890:ABCdefGHIjklMNOpqrsTUVwxyz" className="w-full bg-[#0a0e12] border border-slate-700 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:border-blue-500 text-slate-200" /></div><div><label className="text-xs text-slate-400 block mb-1 uppercase tracking-wider">Chat ID</label><input type="text" id="config-chat-id" defaultValue={telegramConfig.chatId} placeholder="-1001234567890" className="w-full bg-[#0a0e12] border border-slate-700 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:border-blue-500 text-slate-200" /></div></div>
-            <div className="flex gap-3 justify-end"><button onClick={() => setShowTelegramModal(false)} className="px-4 py-2 bg-[#1a1f2e] text-slate-300 rounded-lg text-sm hover:bg-[#252b3d] transition-colors">Cancelar</button><button onClick={() => { const botToken = document.getElementById('config-bot-token').value.trim(); const chatId = document.getElementById('config-chat-id').value.trim(); saveTelegramConfig(!!(botToken && chatId), botToken, chatId); setShowTelegramModal(false); }} disabled={savingTelegram} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-500 transition-colors disabled:opacity-50">Salvar</button></div>
+            <div className="space-y-4 mb-6"><div><label className="text-xs text-slate-400 block mb-1 uppercase tracking-wider">Bot Token</label><input type="text" id="config-bot-token" defaultValue={telegramConfig.botToken} placeholder="1234567890:ABCdefGHIjklMNOpqrsTUVwxyz" className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:border-blue-500 text-slate-200" /></div><div><label className="text-xs text-slate-400 block mb-1 uppercase tracking-wider">Chat ID</label><input type="text" id="config-chat-id" defaultValue={telegramConfig.chatId} placeholder="-1001234567890" className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm font-mono focus:outline-none focus:border-blue-500 text-slate-200" /></div></div>
+            <div className="flex gap-3 justify-end"><button onClick={() => setShowTelegramModal(false)} className="px-4 py-2 bg-slate-700 text-slate-300 rounded-lg text-sm hover:bg-slate-600 transition-colors">Cancelar</button><button onClick={() => { const botToken = document.getElementById('config-bot-token').value.trim(); const chatId = document.getElementById('config-chat-id').value.trim(); saveTelegramConfig(!!(botToken && chatId), botToken, chatId); setShowTelegramModal(false); }} disabled={savingTelegram} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-500 transition-colors disabled:opacity-50">Salvar</button></div>
           </div>
         </div>
       )}
-
-      <style jsx>{`
-        @keyframes pulse-slow {
-          0%, 100% { opacity: 0.3; transform: scale(1); }
-          50% { opacity: 0.5; transform: scale(1.05); }
-        }
-        @keyframes glow {
-          0%, 100% { box-shadow: 0 0 5px rgba(59, 130, 246, 0.2); }
-          50% { box-shadow: 0 0 20px rgba(59, 130, 246, 0.4); }
-        }
-        .animate-pulse-slow {
-          animation: pulse-slow 8s ease-in-out infinite;
-        }
-        .animate-glow {
-          animation: glow 2s ease-in-out infinite;
-        }
-      `}</style>
     </div>
   );
 }
