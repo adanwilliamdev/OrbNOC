@@ -11,9 +11,26 @@ import * as XLSX from 'xlsx';
 const API_BASE_URL = 'https://orbnoc-backend-nmlq.onrender.com';
 const WS_BASE_URL = 'wss://orbnoc-backend-nmlq.onrender.com';
 
+// Função auxiliar para determinar cor da latência
+const getLatencyColor = (latency) => {
+  if (!latency) return 'text-slate-500';
+  if (latency <= 50) return 'text-emerald-400';
+  if (latency <= 100) return 'text-amber-400';
+  return 'text-rose-400';
+};
+
+// Função auxiliar para cor da barra de latência
+const getLatencyBarColor = (latency) => {
+  if (!latency) return 'bg-slate-600';
+  if (latency <= 50) return 'bg-emerald-500';
+  if (latency <= 100) return 'bg-amber-500';
+  return 'bg-rose-500';
+};
+
 export default function Home() {
   const router = useRouter();
   const dashboardRef = useRef(null);
+  const chartContainerRef = useRef(null);
 
   // States principais
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -48,6 +65,7 @@ export default function Home() {
   const [telegramConfig, setTelegramConfig] = useState({ enabled: false, botToken: '', chatId: '' });
   const [savingTelegram, setSavingTelegram] = useState(false);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [chartTimeWindow, setChartTimeWindow] = useState(60); // segundos de histórico
 
   // Filtros avançados
   const [filters, setFilters] = useState({
@@ -529,35 +547,55 @@ export default function Home() {
     return filtered;
   };
 
+  // Função para preparar dados do gráfico em tempo real com rolling window
   const getRealtimeChartData = useCallback(() => {
     const onlineDevices = getFilteredAndSortedDevices().filter(d => d.status === 'online').slice(0, 5);
     if (onlineDevices.length === 0) return [];
 
     const allPoints = [];
+    const now = Date.now();
+    const windowMs = chartTimeWindow * 1000; // converter para milissegundos
+
     onlineDevices.forEach(device => {
       const history = realtimeLatencyData[device.id] || [];
-      history.slice(-20).forEach(point => {
+      // Filtrar pontos dentro da janela de tempo
+      const recentPoints = history.filter(point => point && (now - point.timestamp) <= windowMs);
+
+      recentPoints.forEach(point => {
         if (point && point.latency) {
           allPoints.push({
             deviceId: device.id,
             deviceName: device.name,
             time: new Date(point.timestamp).toLocaleTimeString().slice(0, 5),
+            timestamp: point.timestamp,
             latency: point.latency
           });
         }
       });
     });
 
-    const groupedByTime = {};
+    // Ordenar por timestamp
+    allPoints.sort((a, b) => a.timestamp - b.timestamp);
+
+    // Agrupar e criar dados para o gráfico
+    const chartData = [];
+    const timeMap = new Map();
+
     allPoints.forEach(point => {
-      if (!groupedByTime[point.time]) {
-        groupedByTime[point.time] = { time: point.time };
+      const timeKey = point.time;
+      if (!timeMap.has(timeKey)) {
+        timeMap.set(timeKey, { time: timeKey });
       }
-      groupedByTime[point.time][point.deviceName] = point.latency;
+      const entry = timeMap.get(timeKey);
+      entry[point.deviceName] = point.latency;
     });
 
-    return Object.values(groupedByTime).sort((a, b) => a.time.localeCompare(b.time));
-  }, [devices, realtimeLatencyData, getFilteredAndSortedDevices]);
+    timeMap.forEach((value, key) => {
+      chartData.push(value);
+    });
+
+    return chartData.sort((a, b) => a.time.localeCompare(b.time));
+  }, [devices, realtimeLatencyData, getFilteredAndSortedDevices, chartTimeWindow]);
 
   if (!isAuthenticated || loading) {
     return (
@@ -707,6 +745,19 @@ export default function Home() {
             <svg className="w-3 h-3 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14M12 5l7 7-7 7" /></svg>
             <span className="text-slate-500">Dispositivos: {devices.length}</span>
           </div>
+          <div className="flex items-center gap-2">
+            <span className="text-slate-500">📊 Janela: {chartTimeWindow}s</span>
+            <select
+              value={chartTimeWindow}
+              onChange={(e) => setChartTimeWindow(parseInt(e.target.value))}
+              className="bg-slate-800 border border-slate-700 rounded px-2 py-0.5 text-xs"
+            >
+              <option value={30}>30s</option>
+              <option value={60}>60s</option>
+              <option value={120}>120s</option>
+              <option value={300}>5min</option>
+            </select>
+          </div>
         </div>
 
         {/* KPI Cards */}
@@ -801,11 +852,11 @@ export default function Home() {
                 <table className="w-full text-sm">
                   <thead className="bg-slate-800 border-b border-slate-700">
                     <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 cursor-pointer hover:text-slate-300 transition-colors" onClick={() => handleSort('status')}>Status {sortField === 'status' && (sortDirection === 'asc' ? '↑' : '↓')}</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 cursor-pointer hover:text-slate-300 transition-colors" onClick={() => handleSort('name')}>Dispositivo {sortField === 'name' && (sortDirection === 'asc' ? '↑' : '↓')}</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 cursor-pointer hover:text-slate-300 transition-colors" onClick={() => handleSort('ip')}>IP {sortField === 'ip' && (sortDirection === 'asc' ? '↑' : '↓')}</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 cursor-pointer hover:text-slate-300 transition-colors" onClick={() => handleSort('latency')}>Latência {sortField === 'latency' && (sortDirection === 'asc' ? '↑' : '↓')}</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-slate-400">Ações</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 cursor-pointer hover:text-slate-300 transition-colors w-24" onClick={() => handleSort('status')}>Status</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 cursor-pointer hover:text-slate-300 transition-colors" onClick={() => handleSort('name')}>Dispositivo</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 cursor-pointer hover:text-slate-300 transition-colors" onClick={() => handleSort('ip')}>IP</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 cursor-pointer hover:text-slate-300 transition-colors w-32" onClick={() => handleSort('latency')}>Latência</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 w-28">Ações</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-700">
@@ -814,15 +865,58 @@ export default function Home() {
                     ) : (
                       filteredDevices.map((device) => (
                         <Fragment key={device.id}>
-                          <tr onClick={() => setExpandedDevice(expandedDevice === device.id ? null : device.id)} className={`cursor-pointer transition-colors hover:bg-slate-700/30 ${expandedDevice === device.id ? 'bg-slate-700/20' : ''}`}>
-                            <td className="px-4 py-3"><div className="flex items-center gap-2"><div className={`w-1.5 h-1.5 rounded-full ${device.status === 'online' ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`}></div><span className={`text-xs font-medium ${device.status === 'online' ? 'text-emerald-400' : 'text-rose-400'}`}>{device.status === 'online' ? 'ONLINE' : 'OFFLINE'}</span></div></td>
-                            <td className="px-4 py-3"><div className="font-medium text-slate-200">{device.name}</div>{device.location && <div className="text-[10px] text-slate-500">{device.location}</div>}</td>
+                          <tr className="group cursor-pointer transition-colors hover:bg-slate-700/30" onClick={() => setExpandedDevice(expandedDevice === device.id ? null : device.id)}>
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-2">
+                                <div className={`w-1.5 h-1.5 rounded-full ${device.status === 'online' ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`}></div>
+                                <span className={`text-xs font-medium ${device.status === 'online' ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                  {device.status === 'online' ? 'ONLINE' : 'OFFLINE'}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="font-medium text-slate-200">{device.name}</div>
+                              {device.location && <div className="text-[10px] text-slate-500">{device.location}</div>}
+                            </td>
                             <td className="px-4 py-3 font-mono text-xs text-slate-400">{device.ip}</td>
-                            <td className="px-4 py-3">{device.latency && device.status === 'online' ? (<div className="flex items-center gap-2"><div className="w-12 bg-slate-700 rounded-full h-1"><div className={`h-1 rounded-full ${device.latency < 40 ? 'bg-emerald-500' : device.latency < 100 ? 'bg-amber-500' : 'bg-rose-500'}`} style={{ width: `${Math.min(100, device.latency / 10)}%` }}></div></div><span className={`text-xs font-mono ${device.latency < 40 ? 'text-emerald-400' : device.latency < 100 ? 'text-amber-400' : 'text-rose-400'}`}>{device.latency}ms</span></div>) : <span className="text-slate-500 text-xs">—</span>}</td>
-                            <td className="px-4 py-3"><div className="flex justify-center gap-2"><button onClick={(e) => { e.stopPropagation(); pingDevice(device.id); }} disabled={pingingDevice === device.id} className="px-3 py-1.5 bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white rounded-lg text-xs font-medium transition-all flex items-center gap-1"><svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>Ping</button><button onClick={(e) => { e.stopPropagation(); removeDevice(device.id, device.name); }} className="px-3 py-1.5 bg-rose-500/20 hover:bg-rose-500 text-rose-400 hover:text-white rounded-lg text-xs font-medium transition-all flex items-center gap-1"><svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>Remover</button></div></td>
+                            <td className="px-4 py-3">
+                              {device.latency && device.status === 'online' ? (
+                                <div className="flex items-center gap-2 w-full">
+                                  <div className="w-20 bg-slate-700 rounded-full h-1.5 overflow-hidden">
+                                    <div
+                                      className={`h-1.5 rounded-full ${getLatencyBarColor(device.latency)} transition-all duration-300`}
+                                      style={{ width: `${Math.min(100, device.latency / 10)}%` }}
+                                    ></div>
+                                  </div>
+                                  <span className={`text-xs font-mono w-12 ${getLatencyColor(device.latency)}`}>
+                                    {device.latency}ms
+                                  </span>
+                                </div>
+                              ) : <span className="text-slate-500 text-xs">—</span>}
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex justify-start gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                                <button onClick={(e) => { e.stopPropagation(); pingDevice(device.id); }} disabled={pingingDevice === device.id} className="px-2 py-1 bg-slate-700 hover:bg-blue-600 text-slate-400 hover:text-white rounded-md text-xs font-medium transition-all flex items-center gap-1">
+                                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                                  Ping
+                                </button>
+                                <button onClick={(e) => { e.stopPropagation(); removeDevice(device.id, device.name); }} className="px-2 py-1 bg-slate-700 hover:bg-rose-600 text-slate-400 hover:text-white rounded-md text-xs font-medium transition-all flex items-center gap-1">
+                                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                  Remover
+                                </button>
+                              </div>
+                            </td>
                           </tr>
                           {expandedDevice === device.id && (
-                            <tr className="bg-slate-800/30"><td colSpan="5" className="px-4 py-3"><div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs"><div><p className="text-slate-500">Localização</p><p className="text-slate-300">{device.location || '—'}</p></div><div><p className="text-slate-500">Último check</p><p className="text-slate-300">{device.last_check ? new Date(device.last_check).toLocaleString() : '—'}</p></div><div><p className="text-slate-500">Alerta SLA</p>{alertThresholds[device.id] ? (<div className="flex items-center gap-2"><span className="text-amber-400">Limite: {alertThresholds[device.id]}ms</span><button onClick={() => removeAlertConfig(device.id)} className="text-rose-400 text-xs">Remover</button></div>) : (<button onClick={() => { setSelectedAlertDevice(device); setShowAlertConfig(true); }} className="text-blue-400 hover:text-blue-300 text-xs">Configurar alerta</button>)}</div></div></td></tr>
+                            <tr className="bg-slate-800/30">
+                              <td colSpan="5" className="px-4 py-3">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                                  <div><p className="text-slate-500">Localização</p><p className="text-slate-300">{device.location || '—'}</p></div>
+                                  <div><p className="text-slate-500">Último check</p><p className="text-slate-300">{device.last_check ? new Date(device.last_check).toLocaleString() : '—'}</p></div>
+                                  <div><p className="text-slate-500">Alerta SLA</p>{alertThresholds[device.id] ? (<div className="flex items-center gap-2"><span className="text-amber-400">Limite: {alertThresholds[device.id]}ms</span><button onClick={() => removeAlertConfig(device.id)} className="text-rose-400 text-xs">Remover</button></div>) : (<button onClick={() => { setSelectedAlertDevice(device); setShowAlertConfig(true); }} className="text-blue-400 hover:text-blue-300 text-xs">Configurar alerta</button>)}</div>
+                                </div>
+                              </td>
+                            </tr>
                           )}
                         </Fragment>
                       ))
@@ -835,13 +929,54 @@ export default function Home() {
 
           {/* Right - Analytics */}
           <div className="space-y-6">
+            {/* Real-time Latency Chart */}
             <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 rounded-lg border border-slate-700 p-4">
-              <div className="flex justify-between items-center mb-4"><h3 className="text-sm font-semibold text-slate-300 flex items-center gap-2"><span className="w-1 h-5 bg-blue-500 rounded-full"></span>Latência em Tempo Real</h3><button onClick={() => { const onlineDevices = getFilteredAndSortedDevices().filter(d => d.status === 'online'); onlineDevices.forEach(d => pingDevice(d.id)); addAlert(`📡 Testando ${onlineDevices.length} dispositivos...`, 'success'); }} className="px-2 py-1 bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white rounded text-xs transition-all">Testar Todos</button></div>
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-sm font-semibold text-slate-300 flex items-center gap-2">
+                  <span className="w-1 h-5 bg-blue-500 rounded-full"></span>
+                  Latência em Tempo Real
+                </h3>
+                <button onClick={() => { const onlineDevices = getFilteredAndSortedDevices().filter(d => d.status === 'online'); onlineDevices.forEach(d => pingDevice(d.id)); addAlert(`📡 Testando ${onlineDevices.length} dispositivos...`, 'success'); }} className="px-2 py-1 bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white rounded text-xs transition-all">
+                  Testar Todos
+                </button>
+              </div>
               {getFilteredAndSortedDevices().filter(d => d.status === 'online').length > 0 ? (
-                <div className="h-72 w-full"><ResponsiveContainer width="100%" height="100%"><LineChart data={realtimeChartData}><CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} /><XAxis dataKey="time" stroke="#64748b" fontSize={10} tickLine={false} /><YAxis stroke="#64748b" fontSize={10} tickLine={false} /><Tooltip contentStyle={{ backgroundColor: '#0f172a', borderRadius: '8px', border: '1px solid #1e293b' }} labelStyle={{ color: '#94a3b8', fontSize: '10px' }} formatter={(value, name) => [`${value}ms`, name]} itemStyle={{ color: '#e2e8f0', fontSize: '11px' }} /><Legend wrapperStyle={{ fontSize: '10px' }} verticalAlign="bottom" height={30} />{getFilteredAndSortedDevices().filter(d => d.status === 'online').slice(0, 5).map((device, idx) => { const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ec4899', '#06b6d4']; return <Line key={device.id} type="monotone" dataKey={device.name} stroke={colors[idx % colors.length]} strokeWidth={1.5} dot={false} name={device.name} isAnimationActive={false} />;})}</LineChart></ResponsiveContainer></div>
-              ) : (<div className="h-72 flex items-center justify-center text-slate-500 text-sm">Nenhum dispositivo online</div>)}
+                <div className="h-72 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={realtimeChartData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+                      <XAxis dataKey="time" stroke="#64748b" fontSize={10} tickLine={false} />
+                      <YAxis stroke="#64748b" fontSize={10} tickLine={false} domain={[0, 'auto']} />
+                      <Tooltip
+                        contentStyle={{ backgroundColor: '#0f172a', borderRadius: '8px', border: '1px solid #1e293b' }}
+                        labelStyle={{ color: '#94a3b8', fontSize: '10px' }}
+                        formatter={(value, name) => [`${value}ms`, name]}
+                        itemStyle={{ color: '#e2e8f0', fontSize: '11px' }}
+                      />
+                      <Legend wrapperStyle={{ fontSize: '10px' }} verticalAlign="bottom" height={30} />
+                      {getFilteredAndSortedDevices().filter(d => d.status === 'online').slice(0, 5).map((device, idx) => {
+                        const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ec4899', '#06b6d4'];
+                        return <Line
+                          key={device.id}
+                          type="monotone"
+                          dataKey={device.name}
+                          stroke={colors[idx % colors.length]}
+                          strokeWidth={2}
+                          dot={{ r: 3, fill: colors[idx % colors.length], fillOpacity: 0.8, stroke: '#fff', strokeWidth: 1 }}
+                          activeDot={{ r: 5 }}
+                          name={device.name}
+                          isAnimationActive={false}
+                        />;
+                      })}
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <div className="h-72 flex items-center justify-center text-slate-500 text-sm">Nenhum dispositivo online</div>
+              )}
             </div>
 
+            {/* Uptime History */}
             {history.length > 0 && (
               <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 rounded-lg border border-slate-700 p-4">
                 <h3 className="text-sm font-semibold text-slate-300 mb-3 flex items-center gap-2"><span className="w-1 h-5 bg-emerald-500 rounded-full"></span>Disponibilidade (Últimas 24h)</h3>
@@ -849,11 +984,13 @@ export default function Home() {
               </div>
             )}
 
+            {/* Status Pie */}
             <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 rounded-lg border border-slate-700 p-4">
               <h3 className="text-sm font-semibold text-slate-300 mb-3 flex items-center gap-2"><span className="w-1 h-5 bg-amber-500 rounded-full"></span>Distribuição</h3>
               <div className="h-40"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={chartData.statusData} cx="50%" cy="50%" innerRadius={40} outerRadius={55} paddingAngle={3} dataKey="value"><Cell fill="#10b981" /><Cell fill="#ef4444" /></Pie><Tooltip contentStyle={{ backgroundColor: '#0f172a', borderRadius: '8px', border: '1px solid #1e293b' }} /><Legend wrapperStyle={{ fontSize: '10px' }} verticalAlign="bottom" height={30} /></PieChart></ResponsiveContainer></div>
             </div>
 
+            {/* Alert History */}
             {alertHistory.length > 0 && (
               <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 rounded-lg border border-slate-700 p-4">
                 <div className="flex justify-between items-center mb-3"><h3 className="text-sm font-semibold text-slate-300 flex items-center gap-2"><span className="w-1 h-5 bg-rose-500 rounded-full"></span>Alertas Recentes{unreadAlerts > 0 && <span className="px-1.5 py-0.5 bg-amber-500/20 text-amber-400 text-[10px] rounded-full animate-pulse">{unreadAlerts}</span>}</h3><button onClick={clearAlertHistory} className="text-[10px] text-slate-500 hover:text-slate-400 transition-colors">Limpar</button></div>
@@ -869,6 +1006,9 @@ export default function Home() {
             <div className="flex gap-4 text-slate-500">
               <span className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>Polling: 30s</span>
               <span className="flex items-center gap-1"><div className={`w-1.5 h-1.5 rounded-full ${connected ? 'bg-emerald-500' : 'bg-rose-500'}`}></div>WebSocket: {connected ? 'Conectado' : 'Desconectado'}</span>
+              <span className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>🟢 &lt;50ms</span>
+              <span className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-amber-500"></div>🟡 51-100ms</span>
+              <span className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-rose-500"></div>🔴 &gt;101ms</span>
             </div>
             <div className="text-slate-500 text-center">
               OrbNOC Network Operations Center © 2026 • Desenvolvido por <span className="text-blue-400 hover:text-blue-300 transition-colors">Adan W O Santos</span>
@@ -900,6 +1040,14 @@ export default function Home() {
           </div>
         </div>
       )}
+
+      <style jsx>{`
+        @keyframes fade-in {
+          from { opacity: 0; transform: translateX(-50%) translateY(10px); }
+          to { opacity: 1; transform: translateX(-50%) translateY(0); }
+        }
+        .animate-fade-in { animation: fade-in 0.3s ease-out forwards; }
+      `}</style>
     </div>
   );
 }
