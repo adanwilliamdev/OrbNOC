@@ -26,7 +26,7 @@ const CustomNode = ({ data }) => {
   return (
     <div className="relative group cursor-pointer">
       <div
-        className="bg-gradient-to-br from-[#0d1117] to-[#0a0e12] rounded-xl border-2 p-3 min-w-[140px] shadow-lg transition-all duration-300 hover:scale-105 hover:shadow-xl"
+        className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl border-2 p-3 min-w-[140px] shadow-lg transition-all duration-300 hover:scale-105 hover:shadow-xl"
         style={{ borderColor: statusColor }}
       >
         <div className="flex items-center gap-2 mb-2">
@@ -49,10 +49,6 @@ const CustomNode = ({ data }) => {
       {data.status === 'offline' && (
         <div className="absolute -top-1 -right-1 w-3 h-3 bg-rose-500 rounded-full animate-ping" />
       )}
-      {/* Efeito de glow ao passar o mouse */}
-      <div className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
-        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent rounded-xl" />
-      </div>
     </div>
   );
 };
@@ -103,9 +99,7 @@ export default function NetworkMap() {
     const newNodes = [];
     const newEdges = [];
 
-    // Nó central (Core/Internet)
-    const onlineCount = onlineDevices.length;
-    const availability = devicesList.length ? Math.round((onlineCount / devicesList.length) * 100) : 0;
+    const availability = devicesList.length ? Math.round((onlineDevices.length / devicesList.length) * 100) : 0;
 
     newNodes.push({
       id: 'core',
@@ -120,7 +114,6 @@ export default function NetworkMap() {
       style: { zIndex: 10 }
     });
 
-    // Layout dos dispositivos
     const radius = 220;
     const centerX = 400;
     const centerY = 280;
@@ -157,7 +150,6 @@ export default function NetworkMap() {
         }
       });
 
-      // Conexão com o core
       newEdges.push({
         id: `edge-core-${device.id}`,
         source: 'core',
@@ -171,9 +163,7 @@ export default function NetworkMap() {
         },
         markerEnd: {
           type: MarkerType.ArrowClosed,
-          color: device.status === 'online' ? '#10b981' : '#ef4444',
-          width: 15,
-          height: 15
+          color: device.status === 'online' ? '#10b981' : '#ef4444'
         }
       });
     });
@@ -201,42 +191,35 @@ export default function NetworkMap() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#0a0a0f] to-[#0f0f1a] flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center">
         <div className="text-center">
           <div className="w-8 h-8 border-2 border-blue-500/20 border-t-blue-500 rounded-full animate-spin mx-auto" />
           <p className="text-slate-400 mt-3 text-sm">Carregando mapa de rede...</p>
-          <p className="text-slate-600 text-xs mt-1">Buscando dispositivos...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0a0a0f] via-[#0f0f1a] to-[#0a0a0f]">
-      {/* Animated Background Orbs */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-20 -left-40 w-96 h-96 bg-blue-500/5 rounded-full blur-3xl animate-pulse-slow" />
-        <div className="absolute bottom-20 -right-40 w-96 h-96 bg-purple-500/5 rounded-full blur-3xl animate-pulse-slow" style={{ animationDelay: '2s' }} />
-      </div>
-
-      <div className="max-w-7xl mx-auto p-6 relative z-10">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
+      <div className="max-w-7xl mx-auto p-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row items-center justify-between mb-6 gap-4">
           <div>
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+            <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">
               🗺️ Mapa de Rede
             </h1>
             <p className="text-sm text-slate-500 mt-1">Visualização topológica da infraestrutura em tempo real</p>
           </div>
           <div className="flex items-center gap-3">
             {/* View Mode Selector */}
-            <div className="flex gap-1 bg-[#0d1117]/50 rounded-lg p-1 border border-slate-800">
+            <div className="flex gap-1 bg-slate-800/30 rounded-lg p-1 border border-slate-700">
               <button
                 onClick={() => setViewMode('hierarchical')}
                 className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-200 ${
                   viewMode === 'hierarchical'
                     ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-[#1a1f2e]'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'
                 }`}
               >
                 🌳 Hierárquico
@@ -246,7 +229,7 @@ export default function NetworkMap() {
                 className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-200 ${
                   viewMode === 'radial'
                     ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-[#1a1f2e]'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'
                 }`}
               >
                 🕸️ Radial
@@ -256,7 +239,7 @@ export default function NetworkMap() {
                 className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-200 ${
                   viewMode === 'grid'
                     ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-[#1a1f2e]'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'
                 }`}
               >
                 📐 Grade
@@ -264,7 +247,7 @@ export default function NetworkMap() {
             </div>
             <button
               onClick={() => router.push('/')}
-              className="px-3 py-2 bg-[#0d1117] hover:bg-[#1a1f2e] rounded-lg text-sm transition-all duration-200 border border-slate-700 text-slate-400 hover:text-white flex items-center gap-1"
+              className="px-3 py-2 bg-slate-800/50 hover:bg-slate-700/50 rounded-lg text-sm transition-all duration-200 border border-slate-700 text-slate-400 hover:text-white flex items-center gap-1"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
@@ -276,27 +259,26 @@ export default function NetworkMap() {
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <div className="bg-gradient-to-br from-[#0d1117] to-[#0a0e12] rounded-xl border border-slate-800 p-4 text-center hover:border-emerald-500/30 transition-all duration-300 group">
-            <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/0 via-emerald-500/5 to-emerald-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-xl" />
-            <p className="text-3xl font-bold text-emerald-400 relative z-10">{online}</p>
-            <p className="text-xs text-slate-500 mt-1 relative z-10">🟢 ONLINE</p>
+          <div className="bg-slate-900/40 rounded-xl border border-slate-800 p-4 text-center hover:border-emerald-500/30 transition-all duration-300">
+            <p className="text-3xl font-bold text-emerald-400">{online}</p>
+            <p className="text-xs text-slate-500 mt-1">🟢 ONLINE</p>
           </div>
-          <div className="bg-gradient-to-br from-[#0d1117] to-[#0a0e12] rounded-xl border border-slate-800 p-4 text-center hover:border-rose-500/30 transition-all duration-300 group">
+          <div className="bg-slate-900/40 rounded-xl border border-slate-800 p-4 text-center hover:border-rose-500/30 transition-all duration-300">
             <p className="text-3xl font-bold text-rose-400">{offline}</p>
             <p className="text-xs text-slate-500 mt-1">🔴 OFFLINE</p>
           </div>
-          <div className="bg-gradient-to-br from-[#0d1117] to-[#0a0e12] rounded-xl border border-slate-800 p-4 text-center hover:border-blue-500/30 transition-all duration-300 group">
+          <div className="bg-slate-900/40 rounded-xl border border-slate-800 p-4 text-center hover:border-blue-500/30 transition-all duration-300">
             <p className="text-3xl font-bold text-blue-400">{availability}%</p>
             <p className="text-xs text-slate-500 mt-1">📊 DISPONIBILIDADE</p>
           </div>
-          <div className="bg-gradient-to-br from-[#0d1117] to-[#0a0e12] rounded-xl border border-slate-800 p-4 text-center hover:border-purple-500/30 transition-all duration-300 group">
-            <p className="text-3xl font-bold text-purple-400">{devices.length}</p>
+          <div className="bg-slate-900/40 rounded-xl border border-slate-800 p-4 text-center hover:border-indigo-500/30 transition-all duration-300">
+            <p className="text-3xl font-bold text-indigo-400">{devices.length}</p>
             <p className="text-xs text-slate-500 mt-1">🖥️ TOTAL</p>
           </div>
         </div>
 
         {/* React Flow Container */}
-        <div className="bg-[#0d1117]/30 rounded-xl border border-slate-800 overflow-hidden shadow-2xl">
+        <div className="bg-slate-900/30 rounded-xl border border-slate-800 overflow-hidden shadow-2xl">
           <div style={{ height: 'calc(100vh - 320px)', minHeight: '500px' }}>
             <ReactFlow
               nodes={nodes}
@@ -316,10 +298,10 @@ export default function NetworkMap() {
             >
               <Background color="#1e293b" gap={20} size={0.5} />
               <Controls
-                className="bg-[#0d1117] border border-slate-700 rounded-lg shadow-lg [&>button]:bg-[#0d1117] [&>button]:border-slate-700 [&>button]:text-slate-400 [&>button:hover]:bg-[#1a1f2e] [&>button:hover]:text-white"
+                className="bg-slate-800 border border-slate-700 rounded-lg shadow-lg [&>button]:bg-slate-800 [&>button]:border-slate-700 [&>button]:text-slate-400 [&>button:hover]:bg-slate-700 [&>button:hover]:text-white"
               />
               <MiniMap
-                className="bg-[#0d1117] border border-slate-700 rounded-lg shadow-lg"
+                className="bg-slate-900 border border-slate-700 rounded-lg shadow-lg"
                 nodeColor={(node) => {
                   if (node.id === 'core') return '#3b82f6';
                   return node.data?.status === 'online' ? '#10b981' : '#ef4444';
@@ -332,31 +314,27 @@ export default function NetworkMap() {
 
         {/* Legend */}
         <div className="mt-4 flex flex-wrap justify-center gap-6 text-xs">
-          <div className="flex items-center gap-2 bg-[#0d1117]/50 px-3 py-1.5 rounded-full border border-slate-800">
+          <div className="flex items-center gap-2 bg-slate-800/50 px-3 py-1.5 rounded-full border border-slate-700">
             <div className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse" />
             <span className="text-slate-400">Online</span>
           </div>
-          <div className="flex items-center gap-2 bg-[#0d1117]/50 px-3 py-1.5 rounded-full border border-slate-800">
+          <div className="flex items-center gap-2 bg-slate-800/50 px-3 py-1.5 rounded-full border border-slate-700">
             <div className="w-3 h-3 rounded-full bg-rose-500" />
             <span className="text-slate-400">Offline</span>
           </div>
-          <div className="flex items-center gap-2 bg-[#0d1117]/50 px-3 py-1.5 rounded-full border border-slate-800">
+          <div className="flex items-center gap-2 bg-slate-800/50 px-3 py-1.5 rounded-full border border-slate-700">
             <div className="w-3 h-3 rounded-full bg-blue-500" />
             <span className="text-slate-400">Core/Gateway</span>
           </div>
-          <div className="flex items-center gap-2 bg-[#0d1117]/50 px-3 py-1.5 rounded-full border border-slate-800">
+          <div className="flex items-center gap-2 bg-slate-800/50 px-3 py-1.5 rounded-full border border-slate-700">
             <div className="w-3 h-3 rounded-full border border-dashed border-emerald-500" />
             <span className="text-slate-400">Conexão ativa</span>
-          </div>
-          <div className="flex items-center gap-2 bg-[#0d1117]/50 px-3 py-1.5 rounded-full border border-slate-800">
-            <div className="w-3 h-3 rounded-full border border-dashed border-rose-500" />
-            <span className="text-slate-400">Conexão inativa</span>
           </div>
         </div>
 
         {/* Tooltip para nó selecionado */}
         {selectedNode && (
-          <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-gradient-to-br from-[#0d1117] to-[#0a0e12] rounded-xl shadow-2xl border border-slate-700 p-4 z-50 animate-fade-in min-w-[220px]">
+          <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 bg-slate-800 rounded-xl shadow-2xl border border-slate-700 p-4 z-50 animate-fade-in min-w-[220px]">
             <div className="flex items-center gap-3">
               <div className={`w-2 h-2 rounded-full ${selectedNode.data.status === 'online' ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`} />
               <div className="flex-1">
@@ -383,16 +361,9 @@ export default function NetworkMap() {
       </div>
 
       <style jsx>{`
-        @keyframes pulse-slow {
-          0%, 100% { opacity: 0.3; transform: scale(1); }
-          50% { opacity: 0.5; transform: scale(1.05); }
-        }
         @keyframes fade-in {
           from { opacity: 0; transform: translateX(-50%) translateY(10px); }
           to { opacity: 1; transform: translateX(-50%) translateY(0); }
-        }
-        .animate-pulse-slow {
-          animation: pulse-slow 8s ease-in-out infinite;
         }
         .animate-fade-in {
           animation: fade-in 0.3s ease-out forwards;
