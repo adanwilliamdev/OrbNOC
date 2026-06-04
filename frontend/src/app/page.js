@@ -868,9 +868,14 @@ export default function Home() {
 
         {/* Footer */}
         <footer className="border-t border-slate-800 pt-4 mt-4">
-          <div className="flex flex-wrap justify-between text-xs">
-            <div className="flex gap-4 text-slate-500"><span className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>Polling: 30s</span><span className="flex items-center gap-1"><div className={`w-1.5 h-1.5 rounded-full ${connected ? 'bg-emerald-500' : 'bg-rose-500'}`}></div>WebSocket: {connected ? 'Conectado' : 'Desconectado'}</span></div>
-            <div className="text-slate-500">OrbNOC Network Operations Center © 2026</div>
+          <div className="flex flex-wrap justify-between items-center text-xs">
+            <div className="flex gap-4 text-slate-500">
+              <span className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>Polling: 30s</span>
+              <span className="flex items-center gap-1"><div className={`w-1.5 h-1.5 rounded-full ${connected ? 'bg-emerald-500' : 'bg-rose-500'}`}></div>WebSocket: {connected ? 'Conectado' : 'Desconectado'}</span>
+            </div>
+            <div className="text-slate-500 text-center">
+              OrbNOC Network Operations Center © 2026 • Desenvolvido por <span className="text-blue-400 hover:text-blue-300 transition-colors">Adan W O Santos</span>
+            </div>
           </div>
         </footer>
       </div>
