@@ -77,7 +77,6 @@ async function criarTabelas() {
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )`,
 
-    // ⬇️⬇️⬇️ NOVA TABELA DE ALERTAS SLA ⬇️⬇️⬇️
     `CREATE TABLE IF NOT EXISTS sla_alerts (
       id SERIAL PRIMARY KEY,
       user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
@@ -124,36 +123,46 @@ const io = socketIo(server, {
   transports: ['websocket', 'polling']
 });
 
-// ==================== FUNÇÃO DE PING VIA TCP ====================
-async function tcpPing(ip, timeout = 3000) {
-  const ports = [80, 443];
+// ==================== FUNÇÃO DE PING VIA TCP MELHORADA ====================
+async function tcpPing(ip, timeout = 5000) {
+  // Portas comuns para teste
+  const ports = [80, 443, 53, 8080, 8443];
+
   for (const port of ports) {
     try {
       const latency = await new Promise((resolve) => {
         const startTime = Date.now();
         const socket = new net.Socket();
+
         socket.setTimeout(timeout);
-        socket.connect(port, ip, () => {
+
+        socket.once('connect', () => {
           const latency = Date.now() - startTime;
           socket.destroy();
           resolve(latency);
         });
-        socket.on('error', () => {
+
+        socket.once('error', () => {
           socket.destroy();
           resolve(null);
         });
-        socket.on('timeout', () => {
+
+        socket.once('timeout', () => {
           socket.destroy();
           resolve(null);
         });
+
+        socket.connect(port, ip);
       });
+
       if (latency !== null) {
         return { alive: true, latency, port };
       }
     } catch (err) {
-      continue;
+      // Continua para próxima porta
     }
   }
+
   return { alive: false, latency: null, port: null };
 }
 
@@ -166,7 +175,7 @@ function calculateJitter(latencies) {
   return Math.round(jitter / (latencies.length - 1));
 }
 
-// ==================== FUNÇÃO TELEGRAM MELHORADA ====================
+// ==================== FUNÇÃO TELEGRAM ====================
 async function sendTelegramAlert(botToken, chatId, message, type, deviceName = null, deviceIp = null) {
   if (!botToken || !chatId) return false;
 
@@ -278,7 +287,7 @@ app.get('/api/devices', authenticateToken, async (req, res) => {
   }
 });
 
-// ==================== ADICIONAR DISPOSITIVO COM NOTIFICAÇÃO ====================
+// ADICIONAR DISPOSITIVO COM NOTIFICAÇÃO
 app.post('/api/devices', authenticateToken, async (req, res) => {
   const { name, ip, location } = req.body;
 
@@ -287,7 +296,6 @@ app.post('/api/devices', authenticateToken, async (req, res) => {
   }
 
   try {
-    // Verificar se o dispositivo já existe
     const existingDevice = await pool.query(
       'SELECT * FROM user_devices WHERE user_id = $1 AND ip = $2',
       [req.user.id, ip]
@@ -303,7 +311,7 @@ app.post('/api/devices', authenticateToken, async (req, res) => {
     );
     const newDevice = result.rows[0];
 
-    // 🔔 NOTIFICAÇÃO: Dispositivo adicionado
+    // Notificação ao adicionar dispositivo
     try {
       const userResult = await pool.query('SELECT * FROM users WHERE id = $1', [req.user.id]);
       const user = userResult.rows[0];
@@ -323,7 +331,7 @@ app.post('/api/devices', authenticateToken, async (req, res) => {
   }
 });
 
-// ==================== REMOVER DISPOSITIVO ====================
+// REMOVER DISPOSITIVO
 app.delete('/api/devices/:id', authenticateToken, async (req, res) => {
   try {
     const result = await pool.query(
@@ -335,11 +343,15 @@ app.delete('/api/devices/:id', authenticateToken, async (req, res) => {
       return res.status(404).json({ error: 'Dispositivo não encontrado' });
     }
 
-    // Opcional: Notificar remoção no Telegram
+    const removedDevice = result.rows[0];
+
+    // Remover também os alertas SLA associados
+    await pool.query('DELETE FROM sla_alerts WHERE user_id = $1 AND device_id = $2', [req.user.id, req.params.id]);
+
+    // Notificar remoção
     try {
       const userResult = await pool.query('SELECT * FROM users WHERE id = $1', [req.user.id]);
       const user = userResult.rows[0];
-      const removedDevice = result.rows[0];
 
       if (user && user.telegram_alerts_enabled && user.telegram_bot_token && user.telegram_chat_id) {
         const message = `🗑️ *DISPOSITIVO REMOVIDO*\n\n• Nome: ${removedDevice.name}\n• IP: ${removedDevice.ip}\n\n⏹️ O monitoramento foi interrompido.`;
@@ -356,7 +368,7 @@ app.delete('/api/devices/:id', authenticateToken, async (req, res) => {
   }
 });
 
-// ==================== ROTA DE PING MANUAL ====================
+// ROTA DE PING MANUAL
 app.get('/api/devices/:id/ping', authenticateToken, async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM user_devices WHERE id = $1 AND user_id = $2', [req.params.id, req.user.id]);
@@ -364,14 +376,21 @@ app.get('/api/devices/:id/ping', authenticateToken, async (req, res) => {
     if (!device) return res.status(404).json({ error: 'Dispositivo não encontrado' });
     const pingResult = await tcpPing(device.ip);
     await pool.query('UPDATE user_devices SET latency = $1, last_check = CURRENT_TIMESTAMP WHERE id = $2', [pingResult.latency, device.id]);
-    res.json({ id: device.id, name: device.name, ip: device.ip, status: pingResult.alive ? 'online' : 'offline', latency_ms: pingResult.latency, timestamp: new Date().toISOString() });
+    res.json({
+      id: device.id,
+      name: device.name,
+      ip: device.ip,
+      status: pingResult.alive ? 'online' : 'offline',
+      latency_ms: pingResult.latency,
+      timestamp: new Date().toISOString()
+    });
   } catch (error) {
     console.error('Erro ao realizar ping:', error);
     res.status(500).json({ error: 'Erro ao realizar ping' });
   }
 });
 
-// ==================== MONITORAMENTO DE PORTAS ====================
+// MONITORAMENTO DE PORTAS
 app.post('/api/devices/:id/check-port', authenticateToken, (req, res) => {
   const { port } = req.body;
   if (!port) return res.status(400).json({ error: 'Porta é obrigatória' });
@@ -460,7 +479,6 @@ app.post('/api/alerts/sla/configure', authenticateToken, async (req, res) => {
   }
 
   try {
-    // Salvar no banco
     await pool.query(
       `INSERT INTO sla_alerts (user_id, device_id, threshold, created_at)
        VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
@@ -469,11 +487,9 @@ app.post('/api/alerts/sla/configure', authenticateToken, async (req, res) => {
       [req.user.id, deviceId, threshold]
     );
 
-    // Buscar informações do dispositivo
     const deviceResult = await pool.query('SELECT * FROM user_devices WHERE id = $1 AND user_id = $2', [deviceId, req.user.id]);
     const device = deviceResult.rows[0];
 
-    // 🔔 NOTIFICAÇÃO: Alerta SLA configurado
     const userResult = await pool.query('SELECT * FROM users WHERE id = $1', [req.user.id]);
     const user = userResult.rows[0];
 
@@ -585,7 +601,6 @@ app.post('/api/diagnostic/traceroute', authenticateToken, async (req, res) => {
     return res.status(400).json({ error: 'Host é obrigatório' });
   }
 
-  // Simulação de hops para demonstração
   const hops = [
     { hop: 1, ip: '192.168.1.1', latency: 2 },
     { hop: 2, ip: '10.0.0.1', latency: 5 },
@@ -674,9 +689,7 @@ app.post('/api/diagnostic/dns-lookup', authenticateToken, async (req, res) => {
       try {
         const hostname = await lookup(records[0].value);
         reverseLookup = hostname;
-      } catch (err) {
-        // Ignora erro de reverse lookup
-      }
+      } catch (err) {}
     }
 
     res.json({
@@ -708,7 +721,6 @@ app.post('/api/diagnostic/full-diagnostic', authenticateToken, async (req, res) 
   const startTime = Date.now();
   const results = {};
 
-  // Ping
   try {
     let successCount = 0;
     const latencies = [];
@@ -729,7 +741,6 @@ app.post('/api/diagnostic/full-diagnostic', authenticateToken, async (req, res) 
     results.ping = { error: err.message };
   }
 
-  // DNS
   try {
     const addresses = await resolve(host, 'A');
     results.dns = { success: true, records: addresses };
@@ -737,7 +748,6 @@ app.post('/api/diagnostic/full-diagnostic', authenticateToken, async (req, res) 
     results.dns = { success: false, error: err.message };
   }
 
-  // Portas
   const portResults = [];
   for (const port of ports) {
     const result = await new Promise((resolve) => {
@@ -761,8 +771,6 @@ app.post('/api/diagnostic/full-diagnostic', authenticateToken, async (req, res) 
   results.ports = portResults;
 
   const duration = Date.now() - startTime;
-
-  // Diagnóstico inteligente
   const diagnosis = [];
 
   if (results.dns?.success) diagnosis.push('✅ DNS resolve corretamente');
@@ -800,51 +808,88 @@ const latencyHistory = new Map();
 
 async function checkUserDevices(userId) {
   try {
+    // Carregar limites SLA do banco
+    const slaAlertsResult = await pool.query(
+      'SELECT device_id, threshold FROM sla_alerts WHERE user_id = $1',
+      [userId]
+    );
+    const slaAlerts = {};
+    for (const alert of slaAlertsResult.rows) {
+      slaAlerts[alert.device_id] = alert.threshold;
+    }
+
     const result = await pool.query('SELECT * FROM user_devices WHERE user_id = $1', [userId]);
     const devices = result.rows;
     const updatedDevices = [];
+
     for (const device of devices) {
       try {
         if (!latencyHistory.has(device.id)) latencyHistory.set(device.id, []);
         let history = latencyHistory.get(device.id);
+
         const pingResult = await tcpPing(device.ip);
         const latency = pingResult.latency;
-        if (latency) { history.push(latency); if (history.length > 10) history.shift(); }
-        else { history.push(null); if (history.length > 10) history.shift(); }
+
+        if (latency) {
+          history.push(latency);
+          if (history.length > 10) history.shift();
+        } else {
+          history.push(null);
+          if (history.length > 10) history.shift();
+        }
         latencyHistory.set(device.id, history);
+
         const validLatencies = history.filter(l => l !== null);
         const avgLatency = validLatencies.length > 0 ? validLatencies.reduce((a, b) => a + b, 0) / validLatencies.length : null;
         const jitter = calculateJitter(validLatencies);
         const packetLoss = history.length > 0 ? ((history.filter(l => l === null).length / history.length) * 100) : 0;
+
         const previousStatus = device.status;
         const newStatus = pingResult.alive ? 'online' : 'offline';
-        await pool.query(`UPDATE user_devices SET status = $1, last_check = CURRENT_TIMESTAMP, latency = $2, avg_latency = $3, jitter = $4, packet_loss = $5 WHERE id = $6`, [newStatus, latency, avgLatency ? Math.round(avgLatency) : null, jitter, Math.round(packetLoss), device.id]);
+
+        await pool.query(
+          `UPDATE user_devices SET status = $1, last_check = CURRENT_TIMESTAMP, latency = $2,
+            avg_latency = $3, jitter = $4, packet_loss = $5 WHERE id = $6`,
+          [newStatus, latency, avgLatency ? Math.round(avgLatency) : null, jitter, Math.round(packetLoss), device.id]
+        );
+
         device.status = newStatus;
         device.latency = latency;
         device.avg_latency = avgLatency;
         device.jitter = jitter;
         device.packet_loss = Math.round(packetLoss);
         device.last_check = new Date().toISOString();
-        if (previousStatus && previousStatus !== newStatus && newStatus === 'offline') {
+
+        // Notificação de mudança de status
+        if (previousStatus && previousStatus !== newStatus) {
           const userResult = await pool.query('SELECT * FROM users WHERE id = $1', [userId]);
           const user = userResult.rows[0];
+
           if (user && user.telegram_alerts_enabled && user.telegram_bot_token && user.telegram_chat_id) {
-            await sendTelegramAlert(user.telegram_bot_token, user.telegram_chat_id, `🔴 HOST OFFLINE: ${device.name} (${device.ip}) está fora do ar!`, 'error');
+            let alertMessage, alertType;
+            if (newStatus === 'offline') {
+              alertMessage = `🔴 *HOST OFFLINE* 🔴\n\n• Nome: ${device.name}\n• IP: ${device.ip}\n\n⚠️ O host ficou inativo!`;
+              alertType = 'error';
+            } else {
+              alertMessage = `🟢 *HOST ONLINE* 🟢\n\n• Nome: ${device.name}\n• IP: ${device.ip}\n• Latência: ${latency || 'N/A'}ms\n\n✅ Host恢复正常!`;
+              alertType = 'success';
+            }
+            await sendTelegramAlert(user.telegram_bot_token, user.telegram_chat_id, alertMessage, alertType, device.name, device.ip);
           }
         }
-        // Dentro da função checkUserDevices, após obter o pingResult, adicione:
 
-        // 🔔 VERIFICAÇÃO DE LIMITE SLA
-        const userSlaResult = await pool.query('SELECT * FROM users WHERE id = $1', [userId]);
-        const userSla = userSlaResult.rows[0];
+        // Verificação de limite SLA
+        const threshold = slaAlerts[device.id];
+        if (threshold && latency && latency > threshold) {
+          const userResult = await pool.query('SELECT * FROM users WHERE id = $1', [userId]);
+          const user = userResult.rows[0];
 
-        // Buscar limites configurados para este dispositivo
-        const threshold = alertThresholds ? alertThresholds[device.id] : null;
-
-        if (threshold && latency && latency > threshold && userSla && userSla.telegram_alerts_enabled && userSla.telegram_bot_token && userSla.telegram_chat_id) {
-          const alertMessage = `⚠️ *LIMITE DE LATÊNCIA EXCEDIDO* ⚠️\n\n• Limite configurado: ${threshold}ms\n• Latência atual: ${latency}ms\n• Excedente: ${latency - threshold}ms\n\n📡 ${device.name} (${device.ip})`;
-          await sendTelegramAlert(userSla.telegram_bot_token, userSla.telegram_chat_id, alertMessage, 'warning', device.name, device.ip);
+          if (user && user.telegram_alerts_enabled && user.telegram_bot_token && user.telegram_chat_id) {
+            const alertMessage = `⚠️ *LIMITE DE LATÊNCIA EXCEDIDO* ⚠️\n\n• Dispositivo: ${device.name}\n• IP: ${device.ip}\n• Limite configurado: ${threshold}ms\n• Latência atual: ${latency}ms\n• Excedente: ${latency - threshold}ms`;
+            await sendTelegramAlert(user.telegram_bot_token, user.telegram_chat_id, alertMessage, 'warning', device.name, device.ip);
+          }
         }
+
         updatedDevices.push(device);
       } catch (error) {
         console.error(`Erro ao verificar ${device.ip}:`, error.message);
@@ -895,11 +940,11 @@ const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {
   console.log(`\n🚀 Servidor backend rodando em http://localhost:${PORT}`);
   console.log(`📡 WebSocket disponível para conexões`);
-  console.log(`📊 Monitoramento via TCP Connect (portas 80/443) ativo`);
+  console.log(`📊 Monitoramento via TCP Connect ativo`);
   console.log(`✅ CORS configurado para o frontend`);
   console.log(`🤖 Telegram alerts ready`);
   console.log(`🔧 Diagnostic routes available\n`);
 });
 
-setInterval(monitorDevices, 10000);
+setInterval(monitorDevices, 30000);
 monitorDevices();
