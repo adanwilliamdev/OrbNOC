@@ -7,9 +7,14 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const net = require('net');
 const { Pool } = require('pg');
+const dns = require('dns');
+const util = require('util');
 
 const app = express();
 const JWT_SECRET = process.env.JWT_SECRET || 'orbnoc_secret_key_2024_change_this_in_production';
+
+const resolve = util.promisify(dns.resolve);
+const lookup = util.promisify(dns.lookup);
 
 // ==================== CONEXÃO COM POSTGRESQL ====================
 const pool = new Pool({
@@ -413,6 +418,257 @@ app.post('/api/alerts/test-host', authenticateToken, async (req, res) => {
   }
 });
 
+// ==================== ROTAS DE DIAGNÓSTICO ====================
+
+// Ping Avançado
+app.post('/api/diagnostic/ping', authenticateToken, async (req, res) => {
+  const { host, count = 5 } = req.body;
+
+  if (!host) {
+    return res.status(400).json({ error: 'Host é obrigatório' });
+  }
+
+  const latencies = [];
+  let successCount = 0;
+
+  for (let i = 0; i < count; i++) {
+    try {
+      const pingResult = await tcpPing(host);
+      if (pingResult.alive && pingResult.latency) {
+        latencies.push(pingResult.latency);
+        successCount++;
+      }
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    } catch (err) {
+      console.error('Erro no ping:', err);
+    }
+  }
+
+  const packetLoss = ((count - successCount) / count) * 100;
+  const avgLatency = latencies.length > 0 ? Math.round(latencies.reduce((a, b) => a + b, 0) / latencies.length) : null;
+  const minLatency = latencies.length > 0 ? Math.min(...latencies) : null;
+  const maxLatency = latencies.length > 0 ? Math.max(...latencies) : null;
+
+  res.json({
+    host,
+    status: successCount > 0 ? 'online' : 'offline',
+    packet_loss: Math.round(packetLoss),
+    avg_latency: avgLatency,
+    min_latency: minLatency,
+    max_latency: maxLatency,
+    success_count: successCount,
+    total_count: count
+  });
+});
+
+// Traceroute
+app.post('/api/diagnostic/traceroute', authenticateToken, async (req, res) => {
+  const { host } = req.body;
+
+  if (!host) {
+    return res.status(400).json({ error: 'Host é obrigatório' });
+  }
+
+  // Simulação de hops para demonstração
+  const hops = [
+    { hop: 1, ip: '192.168.1.1', latency: 2 },
+    { hop: 2, ip: '10.0.0.1', latency: 5 },
+    { hop: 3, ip: '172.16.0.1', latency: 12 },
+    { hop: 4, ip: '201.12.34.56', latency: 18 },
+    { hop: 5, ip: '187.12.34.56', latency: 25 },
+    { hop: 6, ip: host, latency: 30 }
+  ];
+
+  res.json({ hops, target: host });
+});
+
+// Teste de Porta
+app.post('/api/diagnostic/port-check', authenticateToken, async (req, res) => {
+  const { host, port } = req.body;
+
+  if (!host || !port) {
+    return res.status(400).json({ error: 'Host e porta são obrigatórios' });
+  }
+
+  const checkPort = async (p) => {
+    return new Promise((resolve) => {
+      const socket = new net.Socket();
+      const startTime = Date.now();
+      socket.setTimeout(3000);
+      socket.connect(p, host, () => {
+        const latency = Date.now() - startTime;
+        socket.destroy();
+        resolve({ port: p, open: true, latency });
+      });
+      socket.on('error', () => {
+        socket.destroy();
+        resolve({ port: p, open: false, latency: null });
+      });
+      socket.on('timeout', () => {
+        socket.destroy();
+        resolve({ port: p, open: false, latency: null });
+      });
+    });
+  };
+
+  const ports = Array.isArray(port) ? port : [parseInt(port)];
+  const results = [];
+
+  for (const p of ports) {
+    const result = await checkPort(p);
+    results.push(result);
+  }
+
+  res.json({ host, results });
+});
+
+// DNS Lookup
+app.post('/api/diagnostic/dns-lookup', authenticateToken, async (req, res) => {
+  const { domain, recordType = 'A' } = req.body;
+
+  if (!domain) {
+    return res.status(400).json({ error: 'Domínio é obrigatório' });
+  }
+
+  try {
+    let records = [];
+
+    if (recordType === 'A') {
+      const addresses = await resolve(domain, 'A');
+      records = addresses.map(addr => ({ value: addr }));
+    } else if (recordType === 'AAAA') {
+      const addresses = await resolve(domain, 'AAAA');
+      records = addresses.map(addr => ({ value: addr }));
+    } else if (recordType === 'MX') {
+      const mxRecords = await resolve(domain, 'MX');
+      records = mxRecords.map(mx => ({ value: `${mx.exchange} (priority ${mx.priority})` }));
+    } else if (recordType === 'TXT') {
+      const txtRecords = await resolve(domain, 'TXT');
+      records = txtRecords.map(txt => ({ value: txt.join(' ') }));
+    } else if (recordType === 'CNAME') {
+      const cnameRecords = await resolve(domain, 'CNAME');
+      records = cnameRecords.map(cname => ({ value: cname }));
+    } else {
+      const addresses = await resolve(domain, recordType);
+      records = addresses.map(addr => ({ value: addr }));
+    }
+
+    let reverseLookup = null;
+    if (records[0]?.value && recordType === 'A') {
+      try {
+        const hostname = await lookup(records[0].value);
+        reverseLookup = hostname;
+      } catch (err) {
+        // Ignora erro de reverse lookup
+      }
+    }
+
+    res.json({
+      domain,
+      record_type: recordType,
+      records,
+      reverse_lookup: reverseLookup,
+      success: true
+    });
+  } catch (error) {
+    res.json({
+      domain,
+      record_type: recordType,
+      records: [],
+      error: error.message,
+      success: false
+    });
+  }
+});
+
+// Diagnóstico Completo
+app.post('/api/diagnostic/full-diagnostic', authenticateToken, async (req, res) => {
+  const { host, ports = [80, 443, 22] } = req.body;
+
+  if (!host) {
+    return res.status(400).json({ error: 'Host é obrigatório' });
+  }
+
+  const startTime = Date.now();
+  const results = {};
+
+  // Ping
+  try {
+    let successCount = 0;
+    const latencies = [];
+    for (let i = 0; i < 3; i++) {
+      const pingResult = await tcpPing(host);
+      if (pingResult.alive && pingResult.latency) {
+        latencies.push(pingResult.latency);
+        successCount++;
+      }
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+    results.ping = {
+      status: successCount > 0 ? 'online' : 'offline',
+      packet_loss: Math.round(((3 - successCount) / 3) * 100),
+      avg_latency: latencies.length > 0 ? Math.round(latencies.reduce((a, b) => a + b, 0) / latencies.length) : null
+    };
+  } catch (err) {
+    results.ping = { error: err.message };
+  }
+
+  // DNS
+  try {
+    const addresses = await resolve(host, 'A');
+    results.dns = { success: true, records: addresses };
+  } catch (err) {
+    results.dns = { success: false, error: err.message };
+  }
+
+  // Portas
+  const portResults = [];
+  for (const port of ports) {
+    const result = await new Promise((resolve) => {
+      const socket = new net.Socket();
+      socket.setTimeout(2000);
+      socket.connect(port, host, () => {
+        socket.destroy();
+        resolve({ port, open: true });
+      });
+      socket.on('error', () => {
+        socket.destroy();
+        resolve({ port, open: false });
+      });
+      socket.on('timeout', () => {
+        socket.destroy();
+        resolve({ port, open: false });
+      });
+    });
+    portResults.push(result);
+  }
+  results.ports = portResults;
+
+  const duration = Date.now() - startTime;
+
+  // Diagnóstico inteligente
+  const diagnosis = [];
+
+  if (results.dns?.success) diagnosis.push('✅ DNS resolve corretamente');
+  else diagnosis.push('❌ Falha na resolução DNS');
+
+  if (results.ping?.status === 'online') diagnosis.push('✅ Host responde ao ping');
+  else if (results.ping?.packet_loss > 50) diagnosis.push('⚠️ Alta perda de pacotes');
+  else diagnosis.push('❌ Host não responde ao ping');
+
+  for (const port of portResults) {
+    diagnosis.push(port.open ? `✅ Porta ${port.port} aberta` : `❌ Porta ${port.port} fechada`);
+  }
+
+  res.json({
+    host,
+    duration_ms: duration,
+    results,
+    diagnosis: diagnosis.join(' | '),
+    timestamp: new Date().toISOString()
+  });
+});
+
 // ==================== WEBSOCKET & MONITORAMENTO ====================
 io.use((socket, next) => {
   const token = socket.handshake.auth.token;
@@ -505,9 +761,6 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => console.log(`🔌 Usuário desconectado: ${socket.user.username}`));
 });
 
-// ==================== ROTA DE DIAGNÓSTICO ====================
-app.use('/api/diagnostic', require('./routes/diagnostic'));
-
 // ==================== INICIAR SERVIDOR ====================
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {
@@ -515,7 +768,8 @@ server.listen(PORT, () => {
   console.log(`📡 WebSocket disponível para conexões`);
   console.log(`📊 Monitoramento via TCP Connect (portas 80/443) ativo`);
   console.log(`✅ CORS configurado para o frontend`);
-  console.log(`🤖 Telegram alerts ready\n`);
+  console.log(`🤖 Telegram alerts ready`);
+  console.log(`🔧 Diagnostic routes available\n`);
 });
 
 setInterval(monitorDevices, 10000);
