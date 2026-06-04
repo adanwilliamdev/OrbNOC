@@ -1,286 +1,343 @@
-# 🛰️ OrbNOC
+🛰️ OrbNOC
 
-<div align="center">
+<div align="center">Enterprise Network Operations Center Platform
 
-# Enterprise Network Operations Center Platform
+Plataforma moderna para monitoramento de infraestrutura, disponibilidade e desempenho em tempo real.
 
-Monitoramento de infraestrutura, disponibilidade e desempenho em tempo real.
+"Version" (https://img.shields.io/badge/version-2.1.0-blue)
+"Status" (https://img.shields.io/badge/status-active-success)
+"Next.js" (https://img.shields.io/badge/Next.js-14-black)
+"Node.js" (https://img.shields.io/badge/Node.js-20+-green)
+"PostgreSQL" (https://img.shields.io/badge/PostgreSQL-16-blue)
+"Socket.IO" (https://img.shields.io/badge/WebSocket-Realtime-purple)
+"License" (https://img.shields.io/badge/license-MIT-orange)
 
-![Version](https://img.shields.io/badge/version-2.1.0-blue)
-![Status](https://img.shields.io/badge/status-active-success)
-![Next.js](https://img.shields.io/badge/Next.js-14-black)
-![Node.js](https://img.shields.io/badge/Node.js-20+-green)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-blue)
-![Socket.IO](https://img.shields.io/badge/WebSocket-Realtime-purple)
-![License](https://img.shields.io/badge/license-MIT-orange)
+Real-Time Monitoring • Alert Management • Network Visualization • Operational Analytics
 
-### 🌐 Acesso Online
+🌐 Ambiente Online
 
-**Frontend:** https://orbnoc-taer.onrender.com
+Frontend: https://orbnoc-taer.onrender.com
 
-**API:** https://orbnoc-backend-nmlq.onrender.com
+Backend API: https://orbnoc-backend-nmlq.onrender.com
 
-</div>
+</div>---
 
----
+📖 Sobre o Projeto
 
-## 📖 Sobre
+O OrbNOC é uma plataforma de monitoramento de infraestrutura desenvolvida para equipes de Network Operations Center (NOC), provedores de internet, administradores de sistemas e profissionais de tecnologia que necessitam de visibilidade operacional em tempo real.
 
-O OrbNOC é uma plataforma moderna para monitoramento de infraestrutura desenvolvida para equipes de NOC, provedores de internet e profissionais de TI.
+A solução centraliza informações críticas da infraestrutura em uma única interface, permitindo acompanhar disponibilidade, desempenho, incidentes e indicadores operacionais de forma simples e eficiente.
 
-A solução oferece monitoramento contínuo, visualização em tempo real, geração de alertas inteligentes e análise operacional através de dashboards interativos.
-
----
-
-## ✨ Principais Funcionalidades
-
-### 📡 Monitoramento
-
-* Disponibilidade de Hosts
-* TCP Connect Monitoring
-* Latência
-* Jitter
-* Packet Loss
-* Uptime
-* SLA
-
-### 🔔 Sistema de Alertas
-
-* Alertas em Tempo Real
-* Integração Telegram
-* Integração Email
-* Histórico de Incidentes
-* Reconhecimento de Alertas
-
-### 📊 Dashboard Operacional
-
-* KPIs Executivos
-* Gráficos Interativos
-* Filtros Avançados
-* Busca por IP ou Host
-* Atualização via WebSocket
-
-### 🗺️ Mapa de Rede
-
-* React Flow
-* Layout Hierárquico
-* Layout Radial
-* Layout em Grade
-* Topologia Visual
-
-### 📈 Relatórios
-
-* Exportação PDF
-* Exportação Excel
-* Histórico de Disponibilidade
-* Tendência de Latência
-* Filtros por Período
+Com comunicação em tempo real via WebSocket, geração automática de alertas e dashboards interativos, o OrbNOC auxilia equipes na redução do tempo de resposta a incidentes e na melhoria da confiabilidade dos serviços monitorados.
 
 ---
 
-## 🖼️ Screenshots
+📸 Visão Geral da Plataforma
 
-### Dashboard Principal
+Dashboard Operacional
 
-![Dashboard](frontend/public/assets/images/dashboard-1.png)
+Monitoramento centralizado dos dispositivos, métricas e indicadores em tempo real.
 
-### Mapa de Rede
+Centro de Alertas
 
-![Network Map](frontend/public/assets/images/Mapa-de-rede.png)
+Gerenciamento de incidentes, reconhecimento de alertas e análise de criticidade.
 
-### Centro de Alertas
+Mapa de Rede
 
-![Alerts](frontend/public/assets/images/Central-alertas.png)
+Visualização topológica da infraestrutura utilizando React Flow.
 
----
+Wallboard
 
-## 🏗️ Arquitetura
-
-```mermaid
-flowchart TD
-
-A[Browser]
-B[Next.js Frontend]
-C[WebSocket]
-D[Node.js Backend]
-E[PostgreSQL]
-F[Monitor Engine]
-G[Alert Engine]
-H[Telegram]
-I[Email]
-
-A --> B
-B --> C
-C --> D
-
-D --> E
-D --> F
-D --> G
-
-G --> H
-G --> I
-```
-
-## 🛠️ Stack Tecnológica
-
-### Frontend
-
-* Next.js 14
-* React
-* TailwindCSS
-* Socket.IO Client
-* React Flow
-* Recharts
-* jsPDF
-* SheetJS
-
-### Backend
-
-* Node.js
-* Express.js
-* Socket.IO
-* JWT
-* bcrypt
-* node-cron
-
-### Banco de Dados
-
-* PostgreSQL
-* SQLite
-
-### DevOps
-
-* Docker
-* Docker Compose
-* GitHub Actions
-* Render
+Modo otimizado para exibição em televisores e painéis de operação.
 
 ---
 
-## 📁 Estrutura do Projeto
+🎯 Principais Diferenciais
 
-```text
-OrbNOC
-├── backend
-├── frontend
-├── docs
+- Monitoramento em tempo real via WebSocket
+- Dashboard operacional moderno e responsivo
+- Mapa de rede interativo com React Flow
+- Sistema profissional de alertas e incidentes
+- Integração com Telegram para notificações
+- Relatórios operacionais e métricas históricas
+- Diagnóstico avançado de conectividade
+- Wallboard dedicado para ambientes NOC
+- Arquitetura Full Stack escalável
+
+---
+
+✨ Funcionalidades
+
+📡 Monitoramento em Tempo Real
+
+- Disponibilidade de hosts
+- TCP Connect Monitoring
+- Latência, jitter e perda de pacotes
+- Uptime e indicadores de SLA
+- Atualização automática em tempo real
+
+🔔 Gestão de Alertas
+
+- Alertas visuais e sonoros
+- Integração com Telegram
+- Histórico de incidentes
+- Reconhecimento de alertas
+- Controle de criticidade
+- Monitoramento de SLA
+
+📊 Dashboard Operacional
+
+- Indicadores de desempenho (KPIs)
+- Gráficos interativos
+- Filtros avançados
+- Pesquisa rápida
+- Ordenação dinâmica
+- Atualização via WebSocket
+
+🗺️ Mapa de Rede
+
+- Visualização topológica
+- Layout hierárquico
+- Layout radial
+- Layout em grade
+- Status visual por dispositivo
+- Conexões animadas
+
+🚨 Centro de Alertas
+
+- Filtros por severidade
+- Estatísticas operacionais
+- Reconhecimento de incidentes
+- Tendências de alertas
+
+📈 Relatórios
+
+- Exportação para Excel (CSV)
+- Relatórios de disponibilidade
+- Histórico de latência
+- Filtros por período
+- Indicadores operacionais
+
+🔧 Diagnóstico Avançado
+
+- Ping avançado
+- Teste de portas TCP
+- DNS Lookup
+- Traceroute simulado
+- Diagnóstico automatizado
+
+📺 Wallboard
+
+- Exibição em tela cheia
+- Atualização automática
+- Interface otimizada para NOC
+- Indicadores ampliados para monitoramento contínuo
+
+🔒 Segurança
+
+- Autenticação JWT
+- Hash de senhas com bcrypt
+- Controle de sessões
+- Configuração segura de CORS
+
+---
+
+🏗️ Arquitetura da Solução
+
+                    ┌─────────────┐
+                    │   Browser   │
+                    └──────┬──────┘
+                           │
+                           ▼
+                  ┌─────────────────┐
+                  │ Next.js Frontend│
+                  └────────┬────────┘
+                           │
+                     WebSocket (WSS)
+                           │
+                           ▼
+                  ┌─────────────────┐
+                  │ Node.js Backend │
+                  └────────┬────────┘
+                           │
+      ┌────────────────────┼────────────────────┐
+      ▼                    ▼                    ▼
+
+ PostgreSQL        Monitor Engine       Alert Engine
+      │                    │                    │
+      ▼                    ▼                    ▼
+
+ Database         TCP Checks        Telegram / Email
+
+---
+
+🛠️ Stack Tecnológica
+
+Frontend
+
+Tecnologia| Finalidade
+Next.js 14| Framework principal
+React| Construção da interface
+Tailwind CSS| Estilização
+Socket.IO Client| Comunicação em tempo real
+React Flow| Topologia de rede
+Recharts| Visualização de dados
+jsPDF| Relatórios PDF
+SheetJS| Exportação Excel
+
+Backend
+
+Tecnologia| Finalidade
+Node.js| Runtime
+Express.js| API REST
+Socket.IO| Comunicação em tempo real
+JWT| Autenticação
+bcrypt| Segurança
+node-cron| Agendamentos
+
+Banco de Dados
+
+Tecnologia| Finalidade
+PostgreSQL| Produção
+SQLite| Desenvolvimento
+
+DevOps
+
+Tecnologia| Finalidade
+Docker| Containerização
+Docker Compose| Orquestração local
+GitHub Actions| CI/CD
+Render| Hospedagem
+
+---
+
+📈 Métricas do Projeto
+
+- Plataforma Full Stack
+- Comunicação em tempo real
+- Mais de 10 módulos operacionais
+- Integração com Telegram
+- Dashboard responsivo
+- Deploy em nuvem
+- Arquitetura escalável
+
+---
+
+📁 Estrutura do Projeto
+
+OrbNOC/
+├── backend/
+│   └── server.js
+├── frontend/
+│   └── src/app/
+│       ├── page.js
+│       ├── alerts/page.js
+│       ├── reports/page.js
+│       ├── network-map/page.js
+│       ├── diagnostic/page.js
+│       ├── wallboard/page.js
+│       ├── login/page.js
+│       └── register/page.js
+├── docs/
 ├── docker-compose.yml
 └── README.md
-```
 
 ---
 
-## 🔐 Credenciais Demo
+🚀 Instalação Local
 
-```text
-Usuário: admin
-Senha: admin123
-```
+Pré-requisitos
 
----
+- Node.js 20+
+- NPM
+- PostgreSQL (Opcional)
 
-## 🚀 Instalação
+Backend
 
-### Backend
-
-```bash
 cd backend
 npm install
+cp .env.example .env
 npm start
-```
 
-### Frontend
+Servidor disponível em:
 
-```bash
+http://localhost:3001
+
+Frontend
+
 cd frontend
 npm install
 npm run dev
-```
+
+Aplicação disponível em:
+
+http://localhost:3000
 
 ---
 
-## ⚙️ Variáveis de Ambiente
+☁️ Deploy
 
-### Backend
+A plataforma está preparada para implantação em ambientes cloud utilizando Render, Docker ou infraestrutura própria.
 
-```env
-DATABASE_URL=
-JWT_SECRET=
+Backend
 
-TELEGRAM_BOT_TOKEN=
-TELEGRAM_CHAT_ID=
+DATABASE_URL=postgresql://...
+JWT_SECRET=sua_chave_secreta
+PORT=10000
 
-SMTP_HOST=
-SMTP_USER=
-SMTP_PASSWORD=
-```
+Frontend
 
-### Frontend
+NEXT_PUBLIC_API_URL=https://seu-backend.onrender.com
+NEXT_PUBLIC_WS_URL=wss://seu-backend.onrender.com
 
-```env
-NEXT_PUBLIC_API_URL=
-NEXT_PUBLIC_WS_URL=
-```
+«Observação: Ambientes Render não permitem ICMP Ping nativo. O OrbNOC utiliza TCP Connect Monitoring como alternativa.»
 
 ---
 
-## 📌 Roadmap
+🛣️ Roadmap
 
-### v2.1
-
-* ✅ Dashboard em Tempo Real
-* ✅ Centro de Alertas
-* ✅ Mapa de Rede
-* ✅ Relatórios Avançados
-
-### v2.5
-
-* 🚧 SLA por Cliente
-* 🚧 Wallboard NOC
-* 🚧 Monitoramento de Portas
-
-### v3.0
-
-* 🔮 AI Incident Analysis
-* 🔮 Root Cause Analysis
-* 🔮 Predictive Monitoring
-* 🔮 Multi-Tenant
+Versão| Status| Recursos
+2.1| ✅ Concluído| Dashboard, Alertas, Relatórios, Mapa de Rede, Wallboard
+2.5| 🚧 Em Desenvolvimento| SLA por Cliente, E-mail, Agendamento de Relatórios
+3.0| 🔮 Planejado| Inteligência Artificial, RCA, Multi-Tenant, API Pública
 
 ---
 
-## 📊 Status
+📊 Status do Projeto
 
-| Módulo      | Status |
-| ----------- | ------ |
-| Dashboard   | ✅      |
-| WebSocket   | ✅      |
-| Alertas     | ✅      |
-| Relatórios  | ✅      |
-| JWT Auth    | ✅      |
-| Network Map | ✅      |
-| Deploy      | ✅      |
+Módulo| Status
+Dashboard| ✅
+WebSocket| ✅
+Centro de Alertas| ✅
+Relatórios| ✅
+Mapa de Rede| ✅
+Diagnóstico| ✅
+Wallboard| ✅
+Autenticação JWT| ✅
+Integração Telegram| ✅
+Deploy Cloud| ✅
 
 ---
 
-## 🤝 Contribuição
+🤝 Contribuição
 
-```bash
+Contribuições são bem-vindas.
+
 git checkout -b feature/minha-feature
 git commit -m "feat: nova funcionalidade"
 git push origin feature/minha-feature
-```
+
+Após isso, abra um Pull Request.
 
 ---
 
-## 📄 Licença
+📄 Licença
 
-MIT License
+Distribuído sob a licença MIT.
 
 ---
 
-<div align="center">
-
-### Desenvolvido por Adan W. O. Santos
+<div align="center">Desenvolvido por Adan W. O. Santos
 
 OrbNOC Platform
 
