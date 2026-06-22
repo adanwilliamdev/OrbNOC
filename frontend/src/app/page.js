@@ -5,7 +5,7 @@ export const revalidate = 0;
 
 import React, { useEffect, useState, useRef, Fragment, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
 import * as XLSX from 'xlsx';
 
 const API_BASE_URL = 'https://orbnoc-backend-nmlq.onrender.com';
@@ -25,6 +25,14 @@ const getLatencyBarColor = (latency) => {
   if (latency <= 50) return 'bg-emerald-500';
   if (latency <= 100) return 'bg-amber-500';
   return 'bg-rose-500';
+};
+
+// Função auxiliar para cor da barra no gráfico
+const getLatencyChartColor = (latency) => {
+  if (!latency) return '#64748b';
+  if (latency <= 50) return '#10b981';
+  if (latency <= 100) return '#f59e0b';
+  return '#ef4444';
 };
 
 export default function Home() {
@@ -65,7 +73,7 @@ export default function Home() {
   const [telegramConfig, setTelegramConfig] = useState({ enabled: false, botToken: '', chatId: '' });
   const [savingTelegram, setSavingTelegram] = useState(false);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
-  const [chartTimeWindow, setChartTimeWindow] = useState(60); // segundos de histórico
+  const [chartTimeWindow, setChartTimeWindow] = useState(60);
 
   // Filtros avançados
   const [filters, setFilters] = useState({
@@ -547,55 +555,21 @@ export default function Home() {
     return filtered;
   };
 
-  // Função para preparar dados do gráfico em tempo real com rolling window
-  const getRealtimeChartData = useCallback(() => {
-    const onlineDevices = getFilteredAndSortedDevices().filter(d => d.status === 'online').slice(0, 5);
-    if (onlineDevices.length === 0) return [];
+  // Função para preparar dados do gráfico de barras horizontal
+  const getBarChartData = useCallback(() => {
+    const onlineDevices = getFilteredAndSortedDevices()
+      .filter(d => d.status === 'online' && d.latency !== null)
+      .sort((a, b) => (b.latency || 0) - (a.latency || 0))
+      .slice(0, 15);
 
-    const allPoints = [];
-    const now = Date.now();
-    const windowMs = chartTimeWindow * 1000; // converter para milissegundos
-
-    onlineDevices.forEach(device => {
-      const history = realtimeLatencyData[device.id] || [];
-      // Filtrar pontos dentro da janela de tempo
-      const recentPoints = history.filter(point => point && (now - point.timestamp) <= windowMs);
-
-      recentPoints.forEach(point => {
-        if (point && point.latency) {
-          allPoints.push({
-            deviceId: device.id,
-            deviceName: device.name,
-            time: new Date(point.timestamp).toLocaleTimeString().slice(0, 5),
-            timestamp: point.timestamp,
-            latency: point.latency
-          });
-        }
-      });
-    });
-
-    // Ordenar por timestamp
-    allPoints.sort((a, b) => a.timestamp - b.timestamp);
-
-    // Agrupar e criar dados para o gráfico
-    const chartData = [];
-    const timeMap = new Map();
-
-    allPoints.forEach(point => {
-      const timeKey = point.time;
-      if (!timeMap.has(timeKey)) {
-        timeMap.set(timeKey, { time: timeKey });
-      }
-      const entry = timeMap.get(timeKey);
-      entry[point.deviceName] = point.latency;
-    });
-
-    timeMap.forEach((value, key) => {
-      chartData.push(value);
-    });
-
-    return chartData.sort((a, b) => a.time.localeCompare(b.time));
-  }, [devices, realtimeLatencyData, getFilteredAndSortedDevices, chartTimeWindow]);
+    return onlineDevices.map(d => ({
+      name: d.name.length > 18 ? d.name.substring(0, 15) + '...' : d.name,
+      fullName: d.name,
+      latency: d.latency || 0,
+      status: d.status,
+      id: d.id
+    }));
+  }, [devices, getFilteredAndSortedDevices]);
 
   if (!isAuthenticated || loading) {
     return (
@@ -617,9 +591,11 @@ export default function Home() {
     : 0;
   const chartData = getChartData();
   const unreadAlerts = alertHistory.filter(a => !a.read).length;
-  const realtimeChartData = getRealtimeChartData();
   const hasOfflineDevices = offline > 0;
   const availability = devices.length ? Math.round((online / devices.length) * 100) : 0;
+
+  // Dados para o gráfico de barras
+  const barChartData = getBarChartData();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-200" ref={dashboardRef}>
@@ -929,50 +905,128 @@ export default function Home() {
 
           {/* Right - Analytics */}
           <div className="space-y-6">
-            {/* Real-time Latency Chart */}
+            {/* Real-time Latency Chart - BARRAS HORIZONTAIS */}
             <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 rounded-lg border border-slate-700 p-4">
-              <div className="flex justify-between items-center mb-4">
+              <div className="flex justify-between items-center mb-3">
                 <h3 className="text-sm font-semibold text-slate-300 flex items-center gap-2">
                   <span className="w-1 h-5 bg-blue-500 rounded-full"></span>
                   Latência em Tempo Real
                 </h3>
-                <button onClick={() => { const onlineDevices = getFilteredAndSortedDevices().filter(d => d.status === 'online'); onlineDevices.forEach(d => pingDevice(d.id)); addAlert(`📡 Testando ${onlineDevices.length} dispositivos...`, 'success'); }} className="px-2 py-1 bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white rounded text-xs transition-all">
+                <button
+                  onClick={() => {
+                    const onlineDevices = getFilteredAndSortedDevices().filter(d => d.status === 'online');
+                    onlineDevices.forEach(d => pingDevice(d.id));
+                    addAlert(`📡 Testando ${onlineDevices.length} dispositivos...`, 'success');
+                  }}
+                  className="px-2 py-1 bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white rounded text-xs transition-all"
+                >
                   Testar Todos
                 </button>
               </div>
-              {getFilteredAndSortedDevices().filter(d => d.status === 'online').length > 0 ? (
-                <div className="h-72 w-full">
+
+              {/* Indicadores de latência */}
+              {barChartData.length > 0 && (
+                <div className="flex items-center gap-4 mb-3 text-xs">
+                  <div className="flex items-center gap-1">
+                    <span className="text-slate-500">Média:</span>
+                    <span className="text-amber-400 font-mono">
+                      {Math.round(barChartData.reduce((acc, d) => acc + d.latency, 0) / barChartData.length)}ms
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="text-slate-500">Máxima:</span>
+                    <span className="text-rose-400 font-mono">
+                      {Math.max(...barChartData.map(d => d.latency))}ms
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="text-slate-500">Mínima:</span>
+                    <span className="text-emerald-400 font-mono">
+                      {Math.min(...barChartData.map(d => d.latency))}ms
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1 ml-auto">
+                    <span className="text-slate-500">📊 {barChartData.length} dispositivos</span>
+                  </div>
+                </div>
+              )}
+
+              {barChartData.length > 0 ? (
+                <div className="h-80 w-full">
                   <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={realtimeChartData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
-                      <XAxis dataKey="time" stroke="#64748b" fontSize={10} tickLine={false} />
-                      <YAxis stroke="#64748b" fontSize={10} tickLine={false} domain={[0, 'auto']} />
-                      <Tooltip
-                        contentStyle={{ backgroundColor: '#0f172a', borderRadius: '8px', border: '1px solid #1e293b' }}
-                        labelStyle={{ color: '#94a3b8', fontSize: '10px' }}
-                        formatter={(value, name) => [`${value}ms`, name]}
-                        itemStyle={{ color: '#e2e8f0', fontSize: '11px' }}
+                    <BarChart
+                      layout="vertical"
+                      data={barChartData}
+                      margin={{ top: 5, right: 20, left: 10, bottom: 5 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" horizontal={false} />
+                      <XAxis
+                        type="number"
+                        stroke="#64748b"
+                        fontSize={10}
+                        tickLine={false}
+                        axisLine={{ stroke: '#1e293b' }}
+                        domain={[0, 'dataMax + 10']}
+                        tickFormatter={(value) => `${value}ms`}
                       />
-                      <Legend wrapperStyle={{ fontSize: '10px' }} verticalAlign="bottom" height={30} />
-                      {getFilteredAndSortedDevices().filter(d => d.status === 'online').slice(0, 5).map((device, idx) => {
-                        const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ec4899', '#06b6d4'];
-                        return <Line
-                          key={device.id}
-                          type="monotone"
-                          dataKey={device.name}
-                          stroke={colors[idx % colors.length]}
-                          strokeWidth={2}
-                          dot={{ r: 3, fill: colors[idx % colors.length], fillOpacity: 0.8, stroke: '#fff', strokeWidth: 1 }}
-                          activeDot={{ r: 5 }}
-                          name={device.name}
-                          isAnimationActive={false}
-                        />;
-                      })}
-                    </LineChart>
+                      <YAxis
+                        type="category"
+                        dataKey="name"
+                        stroke="#94a3b8"
+                        fontSize={11}
+                        tickLine={false}
+                        axisLine={{ stroke: '#1e293b' }}
+                        width={90}
+                        tick={{ fill: '#94a3b8' }}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: '#0f172a',
+                          borderRadius: '8px',
+                          border: '1px solid #1e293b',
+                          color: '#e2e8f0',
+                          fontSize: '12px'
+                        }}
+                        labelStyle={{ color: '#94a3b8', fontSize: '10px' }}
+                        formatter={(value) => [`${value}ms`, 'Latência']}
+                        labelFormatter={(label, payload) => {
+                          if (payload && payload.length > 0) {
+                            return `Dispositivo: ${payload[0].payload.fullName || label}`;
+                          }
+                          return `Dispositivo: ${label}`;
+                        }}
+                      />
+                      <Legend
+                        wrapperStyle={{ fontSize: '10px', color: '#94a3b8' }}
+                        verticalAlign="bottom"
+                        height={25}
+                        payload={[
+                          { value: '🟢 < 50ms', type: 'circle', color: '#10b981' },
+                          { value: '🟡 50-100ms', type: 'circle', color: '#f59e0b' },
+                          { value: '🔴 > 100ms', type: 'circle', color: '#ef4444' }
+                        ]}
+                      />
+                      <Bar
+                        dataKey="latency"
+                        radius={[0, 6, 6, 0]}
+                        barSize={18}
+                        animationDuration={500}
+                        animationEasing="ease-out"
+                      >
+                        {barChartData.map((entry, index) => {
+                          const color = getLatencyChartColor(entry.latency);
+                          return <Cell key={`cell-${index}`} fill={color} />;
+                        })}
+                      </Bar>
+                    </BarChart>
                   </ResponsiveContainer>
                 </div>
               ) : (
-                <div className="h-72 flex items-center justify-center text-slate-500 text-sm">Nenhum dispositivo online</div>
+                <div className="h-80 flex items-center justify-center text-slate-500 text-sm">
+                  {devices.filter(d => d.status === 'online').length > 0
+                    ? 'Aguardando dados de latência...'
+                    : 'Nenhum dispositivo online'}
+                </div>
               )}
             </div>
 
@@ -980,7 +1034,7 @@ export default function Home() {
             {history.length > 0 && (
               <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 rounded-lg border border-slate-700 p-4">
                 <h3 className="text-sm font-semibold text-slate-300 mb-3 flex items-center gap-2"><span className="w-1 h-5 bg-emerald-500 rounded-full"></span>Disponibilidade (Últimas 24h)</h3>
-                <div className="flex items-center justify-between"><div className="text-center"><p className="text-3xl font-bold text-emerald-400">{history[0]?.uptime || 100}%</p><p className="text-xs text-slate-500 mt-1">SLA Atual</p></div><div className="w-32"><ResponsiveContainer width="100%" height={80}><LineChart data={history.slice(0, 24).reverse()}><Line type="monotone" dataKey="uptime" stroke="#10b981" strokeWidth={2} dot={false} isAnimationActive={false} /></LineChart></ResponsiveContainer></div></div>
+                <div className="flex items-center justify-between"><div className="text-center"><p className="text-3xl font-bold text-emerald-400">{history[0]?.uptime || 100}%</p><p className="text-xs text-slate-500 mt-1">SLA Atual</p></div><div className="w-32"><ResponsiveContainer width="100%" height={80}><AreaChart data={history.slice(0, 24).reverse()}><Area type="monotone" dataKey="uptime" stroke="#10b981" strokeWidth={2} fill="none" dot={false} isAnimationActive={false} /></AreaChart></ResponsiveContainer></div></div>
               </div>
             )}
 
