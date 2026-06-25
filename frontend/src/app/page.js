@@ -1,3 +1,5 @@
+// page.js - versão corrigida
+
 'use client';
 
 export const dynamic = 'force-dynamic';
@@ -228,12 +230,22 @@ export default function Home() {
     }
   };
 
+  // CORREÇÃO: Adicionar tratamento de erro 403
   const loadTelegramConfig = async () => {
     try {
       const token = localStorage.getItem('token');
+      if (!token) return;
+
       const response = await fetch(`${API_BASE_URL}/api/alerts/telegram`, {
         headers: { Authorization: `Bearer ${token}` }
       });
+
+      // Se for 403, apenas ignora silenciosamente
+      if (response.status === 403) {
+        console.warn('Telegram config not available (403)');
+        return;
+      }
+
       if (response.ok) {
         const config = await response.json();
         setTelegramConfig({
@@ -247,12 +259,22 @@ export default function Home() {
     }
   };
 
+  // CORREÇÃO: Adicionar tratamento de erro 403
   const loadEmailConfig = async () => {
     try {
       const token = localStorage.getItem('token');
+      if (!token) return;
+
       const response = await fetch(`${API_BASE_URL}/api/alerts/email`, {
         headers: { Authorization: `Bearer ${token}` }
       });
+
+      // Se for 403, apenas ignora silenciosamente
+      if (response.status === 403) {
+        console.warn('Email config not available (403)');
+        return;
+      }
+
       if (response.ok) {
         const config = await response.json();
         setEmailConfig(config);
@@ -274,6 +296,11 @@ export default function Home() {
         },
         body: JSON.stringify({ enabled, botToken, chatId })
       });
+
+      if (response.status === 403) {
+        addAlert('❌ Permissão negada para configurar Telegram', 'error');
+        return;
+      }
 
       if (response.ok) {
         setTelegramConfig({ enabled, botToken, chatId });
@@ -558,7 +585,7 @@ export default function Home() {
   // Função para preparar dados do gráfico de barras horizontal
   const getBarChartData = useCallback(() => {
     const onlineDevices = getFilteredAndSortedDevices()
-      .filter(d => d.status === 'online' && d.latency !== null)
+      .filter(d => d.status === 'online' && d.latency !== null && d.latency !== undefined)
       .sort((a, b) => (b.latency || 0) - (a.latency || 0))
       .slice(0, 15);
 
@@ -570,6 +597,10 @@ export default function Home() {
       id: d.id
     }));
   }, [devices, getFilteredAndSortedDevices]);
+
+  // CORREÇÃO: Verificar se dados existem antes de renderizar
+  const barChartData = getBarChartData();
+  const hasBarData = barChartData && barChartData.length > 0;
 
   if (!isAuthenticated || loading) {
     return (
@@ -593,9 +624,6 @@ export default function Home() {
   const unreadAlerts = alertHistory.filter(a => !a.read).length;
   const hasOfflineDevices = offline > 0;
   const availability = devices.length ? Math.round((online / devices.length) * 100) : 0;
-
-  // Dados para o gráfico de barras
-  const barChartData = getBarChartData();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-200" ref={dashboardRef}>
@@ -925,7 +953,7 @@ export default function Home() {
               </div>
 
               {/* Indicadores de latência */}
-              {barChartData.length > 0 && (
+              {hasBarData && (
                 <div className="flex items-center gap-4 mb-3 text-xs">
                   <div className="flex items-center gap-1">
                     <span className="text-slate-500">Média:</span>
@@ -951,8 +979,9 @@ export default function Home() {
                 </div>
               )}
 
-              {barChartData.length > 0 ? (
-                <div className="h-80 w-full">
+              {/* CORREÇÃO: Verificação para evitar largura/altura negativa */}
+              {hasBarData ? (
+                <div className="h-80 w-full" style={{ minHeight: '320px' }}>
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart
                       layout="vertical"
@@ -1022,7 +1051,7 @@ export default function Home() {
                   </ResponsiveContainer>
                 </div>
               ) : (
-                <div className="h-80 flex items-center justify-center text-slate-500 text-sm">
+                <div className="h-80 flex items-center justify-center text-slate-500 text-sm" style={{ minHeight: '320px' }}>
                   {devices.filter(d => d.status === 'online').length > 0
                     ? 'Aguardando dados de latência...'
                     : 'Nenhum dispositivo online'}
@@ -1101,6 +1130,16 @@ export default function Home() {
           to { opacity: 1; transform: translateX(-50%) translateY(0); }
         }
         .animate-fade-in { animation: fade-in 0.3s ease-out forwards; }
+        @keyframes pulse-slow {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
+        }
+        .animate-pulse-slow { animation: pulse-slow 2s ease-in-out infinite; }
+        @keyframes slide-in {
+          from { opacity: 0; transform: translateX(20px); }
+          to { opacity: 1; transform: translateX(0); }
+        }
+        .animate-slide-in { animation: slide-in 0.3s ease-out forwards; }
       `}</style>
     </div>
   );
