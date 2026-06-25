@@ -1,4 +1,4 @@
-// page.js - versão corrigida
+// page.js - versão corrigida com foco no erro React #31
 
 'use client';
 
@@ -13,7 +13,6 @@ import * as XLSX from 'xlsx';
 const API_BASE_URL = 'https://orbnoc-backend-nmlq.onrender.com';
 const WS_BASE_URL = 'wss://orbnoc-backend-nmlq.onrender.com';
 
-// Função auxiliar para determinar cor da latência
 const getLatencyColor = (latency) => {
   if (!latency) return 'text-slate-500';
   if (latency <= 50) return 'text-emerald-400';
@@ -21,7 +20,6 @@ const getLatencyColor = (latency) => {
   return 'text-rose-400';
 };
 
-// Função auxiliar para cor da barra de latência
 const getLatencyBarColor = (latency) => {
   if (!latency) return 'bg-slate-600';
   if (latency <= 50) return 'bg-emerald-500';
@@ -29,7 +27,6 @@ const getLatencyBarColor = (latency) => {
   return 'bg-rose-500';
 };
 
-// Função auxiliar para cor da barra no gráfico
 const getLatencyChartColor = (latency) => {
   if (!latency) return '#64748b';
   if (latency <= 50) return '#10b981';
@@ -40,7 +37,6 @@ const getLatencyChartColor = (latency) => {
 export default function Home() {
   const router = useRouter();
   const dashboardRef = useRef(null);
-  const chartContainerRef = useRef(null);
 
   // States principais
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -77,7 +73,6 @@ export default function Home() {
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [chartTimeWindow, setChartTimeWindow] = useState(60);
 
-  // Filtros avançados
   const [filters, setFilters] = useState({
     minLatency: '',
     maxLatency: '',
@@ -85,7 +80,6 @@ export default function Home() {
     tags: []
   });
 
-  // Tendência de latência
   const [latencyTrend, setLatencyTrend] = useState({ value: 0, percentage: 0, direction: 'stable' });
   const [previousAvgLatency, setPreviousAvgLatency] = useState(0);
 
@@ -230,7 +224,6 @@ export default function Home() {
     }
   };
 
-  // CORREÇÃO: Adicionar tratamento de erro 403
   const loadTelegramConfig = async () => {
     try {
       const token = localStorage.getItem('token');
@@ -240,7 +233,6 @@ export default function Home() {
         headers: { Authorization: `Bearer ${token}` }
       });
 
-      // Se for 403, apenas ignora silenciosamente
       if (response.status === 403) {
         console.warn('Telegram config not available (403)');
         return;
@@ -259,7 +251,6 @@ export default function Home() {
     }
   };
 
-  // CORREÇÃO: Adicionar tratamento de erro 403
   const loadEmailConfig = async () => {
     try {
       const token = localStorage.getItem('token');
@@ -269,7 +260,6 @@ export default function Home() {
         headers: { Authorization: `Bearer ${token}` }
       });
 
-      // Se for 403, apenas ignora silenciosamente
       if (response.status === 403) {
         console.warn('Email config not available (403)');
         return;
@@ -582,25 +572,30 @@ export default function Home() {
     return filtered;
   };
 
-  // Função para preparar dados do gráfico de barras horizontal
+  // CORREÇÃO PRINCIPAL: Preparar dados do gráfico com segurança
   const getBarChartData = useCallback(() => {
-    const onlineDevices = getFilteredAndSortedDevices()
-      .filter(d => d.status === 'online' && d.latency !== null && d.latency !== undefined)
-      .sort((a, b) => (b.latency || 0) - (a.latency || 0))
-      .slice(0, 15);
+    try {
+      const onlineDevices = getFilteredAndSortedDevices()
+        .filter(d => d.status === 'online' && d.latency !== null && d.latency !== undefined && typeof d.latency === 'number')
+        .sort((a, b) => (b.latency || 0) - (a.latency || 0))
+        .slice(0, 15);
 
-    return onlineDevices.map(d => ({
-      name: d.name.length > 18 ? d.name.substring(0, 15) + '...' : d.name,
-      fullName: d.name,
-      latency: d.latency || 0,
-      status: d.status,
-      id: d.id
-    }));
+      return onlineDevices.map(d => ({
+        name: d.name.length > 18 ? d.name.substring(0, 15) + '...' : d.name,
+        fullName: d.name || 'Desconhecido',
+        latency: d.latency || 0,
+        status: d.status || 'offline',
+        id: d.id || String(Math.random())
+      }));
+    } catch (error) {
+      console.error('Erro ao preparar dados do gráfico:', error);
+      return [];
+    }
   }, [devices, getFilteredAndSortedDevices]);
 
-  // CORREÇÃO: Verificar se dados existem antes de renderizar
+  // CORREÇÃO: Validação segura para o gráfico
   const barChartData = getBarChartData();
-  const hasBarData = barChartData && barChartData.length > 0;
+  const hasBarData = Array.isArray(barChartData) && barChartData.length > 0;
 
   if (!isAuthenticated || loading) {
     return (
@@ -628,7 +623,6 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-slate-200" ref={dashboardRef}>
 
-      {/* Toast Notification */}
       {showAlert && (
         <div className="fixed top-6 right-6 z-50 animate-slide-in">
           <div className={`flex items-center gap-3 px-4 py-3 rounded-lg backdrop-blur-xl shadow-xl border ${
@@ -642,7 +636,6 @@ export default function Home() {
         </div>
       )}
 
-      {/* WebSocket Reconectando Indicator */}
       {reconnecting && !connected && (
         <div className="fixed bottom-4 left-4 z-50 bg-amber-500/10 border border-amber-500/30 rounded-lg px-3 py-1.5 text-xs text-amber-400 animate-pulse">
           🔄 Reconectando WebSocket...
@@ -651,7 +644,7 @@ export default function Home() {
 
       <div className="max-w-[1600px] mx-auto p-6 space-y-6">
 
-        {/* Header */}
+        {/* Header - mantido igual */}
         <div className="bg-slate-900/50 backdrop-blur-sm rounded-xl p-4 border border-slate-800">
           <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
             <div className="flex items-center gap-3">
@@ -821,7 +814,6 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Advanced Filters Panel */}
         {showAdvancedFilters && (
           <div className="bg-slate-800/30 rounded-lg border border-slate-700 p-4">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -933,7 +925,7 @@ export default function Home() {
 
           {/* Right - Analytics */}
           <div className="space-y-6">
-            {/* Real-time Latency Chart - BARRAS HORIZONTAIS */}
+            {/* Real-time Latency Chart - CORRIGIDO */}
             <div className="bg-gradient-to-br from-slate-800/50 to-slate-900/50 rounded-lg border border-slate-700 p-4">
               <div className="flex justify-between items-center mb-3">
                 <h3 className="text-sm font-semibold text-slate-300 flex items-center gap-2">
@@ -952,7 +944,6 @@ export default function Home() {
                 </button>
               </div>
 
-              {/* Indicadores de latência */}
               {hasBarData && (
                 <div className="flex items-center gap-4 mb-3 text-xs">
                   <div className="flex items-center gap-1">
@@ -979,7 +970,7 @@ export default function Home() {
                 </div>
               )}
 
-              {/* CORREÇÃO: Verificação para evitar largura/altura negativa */}
+              {/* CORREÇÃO PRINCIPAL: Gráfico com fallback seguro */}
               {hasBarData ? (
                 <div className="h-80 w-full" style={{ minHeight: '320px' }}>
                   <ResponsiveContainer width="100%" height="100%">
@@ -1008,6 +999,7 @@ export default function Home() {
                         width={90}
                         tick={{ fill: '#94a3b8' }}
                       />
+                      {/* CORREÇÃO: Tooltip com formatação segura */}
                       <Tooltip
                         contentStyle={{
                           backgroundColor: '#0f172a',
@@ -1017,12 +1009,15 @@ export default function Home() {
                           fontSize: '12px'
                         }}
                         labelStyle={{ color: '#94a3b8', fontSize: '10px' }}
-                        formatter={(value) => [`${value}ms`, 'Latência']}
+                        formatter={(value) => {
+                          if (value === undefined || value === null) return ['N/A', 'Latência'];
+                          return [`${value}ms`, 'Latência'];
+                        }}
                         labelFormatter={(label, payload) => {
-                          if (payload && payload.length > 0) {
-                            return `Dispositivo: ${payload[0].payload.fullName || label}`;
+                          if (payload && payload.length > 0 && payload[0]?.payload?.fullName) {
+                            return `Dispositivo: ${payload[0].payload.fullName}`;
                           }
-                          return `Dispositivo: ${label}`;
+                          return `Dispositivo: ${label || 'Desconhecido'}`;
                         }}
                       />
                       <Legend
