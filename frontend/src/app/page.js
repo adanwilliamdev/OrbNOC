@@ -1,4 +1,4 @@
-// page.js - versão com cores vivas
+// page.js - com melhorias de contraste, alinhamento e espaçamento
 
 'use client';
 
@@ -22,14 +22,14 @@ const getLatencyColor = (latency) => {
 
 const getLatencyBarColor = (latency) => {
   if (!latency) return 'bg-slate-600';
-  if (latency <= 50) return 'bg-emerald-500';
+  if (latency <= 50) return 'bg-emerald-400'; // Mais brilhante
   if (latency <= 100) return 'bg-amber-500';
   return 'bg-rose-500';
 };
 
 const getLatencyChartColor = (latency) => {
   if (!latency) return '#64748b';
-  if (latency <= 50) return '#10b981';
+  if (latency <= 50) return '#34d399'; // Verde mais vivo
   if (latency <= 100) return '#f59e0b';
   return '#ef4444';
 };
@@ -719,7 +719,8 @@ export default function Home() {
                 {telegramConfig.enabled ? 'Telegram ON' : 'Telegram OFF'}
               </button>
 
-              <button onClick={handleLogout} className="px-3 py-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-lg border border-rose-500/20 transition-all text-sm">
+              {/* Botão Sair - agora neutro */}
+              <button onClick={handleLogout} className="px-3 py-2 bg-slate-700/50 hover:bg-slate-600 text-slate-300 hover:text-white rounded-lg border border-slate-600/70 transition-all text-sm">
                 Sair
               </button>
             </div>
@@ -733,19 +734,19 @@ export default function Home() {
             <span className="text-slate-500">{connected ? 'WebSocket Conectado' : 'WebSocket Desconectado'}</span>
           </div>
           <div className="flex items-center gap-2">
-            <svg className="w-3 h-3 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-            <span className="text-slate-500">Última atualização: {lastUpdateTime ? lastUpdateTime.toLocaleTimeString() : '—'}</span>
+            <svg className="w-3 h-3 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            <span className="text-slate-400">Última atualização: {lastUpdateTime ? lastUpdateTime.toLocaleTimeString() : '—'}</span>
           </div>
           <div className="flex items-center gap-2">
-            <svg className="w-3 h-3 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14M12 5l7 7-7 7" /></svg>
-            <span className="text-slate-500">Dispositivos: {devices.length}</span>
+            <svg className="w-3 h-3 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14M12 5l7 7-7 7" /></svg>
+            <span className="text-slate-400">Dispositivos: {devices.length}</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-slate-500">📊 Janela: {chartTimeWindow}s</span>
+            <span className="text-slate-400">📊 Janela: {chartTimeWindow}s</span>
             <select
               value={chartTimeWindow}
               onChange={(e) => setChartTimeWindow(parseInt(e.target.value))}
-              className="bg-[#121a2b] border border-slate-600/70 rounded px-2 py-0.5 text-xs"
+              className="bg-[#121a2b] border border-slate-600/70 rounded px-2 py-0.5 text-xs text-slate-300"
             >
               <option value={30}>30s</option>
               <option value={60}>60s</option>
@@ -759,7 +760,7 @@ export default function Home() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           <div className="bg-gradient-to-br from-[#121a2b] to-slate-900/50 rounded-lg border border-slate-600/70 p-4 hover:border-slate-500 transition-all">
             <div className="flex items-start justify-between">
-              <div><p className="text-xs text-slate-500 uppercase tracking-wider">Total Ativos</p><p className="text-2xl font-semibold mt-1 text-white">{devices.length}</p></div>
+              <div><p className="text-xs text-slate-400 uppercase tracking-wider">Total Ativos</p><p className="text-2xl font-semibold mt-1 text-white">{devices.length}</p></div>
               <div className="w-8 h-8 bg-blue-500/10 rounded-lg flex items-center justify-center"><svg className="w-4 h-4 text-blue-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg></div>
             </div>
           </div>
@@ -780,14 +781,14 @@ export default function Home() {
 
           <div className="bg-gradient-to-br from-[#121a2b] to-slate-900/50 rounded-lg border border-slate-600/70 p-4 hover:border-slate-500 transition-all">
             <div className="flex items-start justify-between">
-              <div><p className="text-xs text-slate-500 uppercase tracking-wider">Disponibilidade</p><p className="text-2xl font-semibold mt-1 text-blue-300">{availability}%</p><p className="text-[10px] text-slate-500 mt-1">SLA</p></div>
+              <div><p className="text-xs text-slate-400 uppercase tracking-wider">Disponibilidade</p><p className="text-2xl font-semibold mt-1 text-blue-300">{availability}%</p><p className="text-[10px] text-slate-500 mt-1">SLA</p></div>
               <div className="w-12 h-8"><ResponsiveContainer width="100%" height="100%"><AreaChart data={history.slice(0, 20).reverse()}><Area type="monotone" dataKey="uptime" stroke="#3b82f6" strokeWidth={1} fill="url(#uptimeGradient)" /><defs><linearGradient id="uptimeGradient" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#3b82f6" stopOpacity={0.3} /><stop offset="100%" stopColor="#3b82f6" stopOpacity={0} /></linearGradient></defs></AreaChart></ResponsiveContainer></div>
             </div>
           </div>
 
           <div className="bg-gradient-to-br from-[#121a2b] to-slate-900/50 rounded-lg border border-slate-600/70 p-4 hover:border-slate-500 transition-all">
             <div className="flex items-start justify-between">
-              <div><p className="text-xs text-slate-500 uppercase tracking-wider">Latência Média</p><p className="text-2xl font-semibold mt-1 text-yellow-300">{avgLatency ? `${Math.round(avgLatency)}ms` : '—'}</p>{latencyTrend.value > 0 && latencyTrend.direction !== 'stable' && (<div className={`flex items-center gap-1 mt-1 text-[10px] ${latencyTrend.direction === 'down' ? 'text-emerald-300' : 'text-rose-400'}`}>{latencyTrend.direction === 'down' ? '↓' : '↑'} {latencyTrend.value}ms ({latencyTrend.percentage}%)</div>)}</div>
+              <div><p className="text-xs text-slate-400 uppercase tracking-wider">Latência Média</p><p className="text-2xl font-semibold mt-1 text-yellow-300">{avgLatency ? `${Math.round(avgLatency)}ms` : '—'}</p>{latencyTrend.value > 0 && latencyTrend.direction !== 'stable' && (<div className={`flex items-center gap-1 mt-1 text-[10px] ${latencyTrend.direction === 'down' ? 'text-emerald-300' : 'text-rose-400'}`}>{latencyTrend.direction === 'down' ? '↓' : '↑'} {latencyTrend.value}ms ({latencyTrend.percentage}%)</div>)}</div>
               <div className="w-8 h-8 bg-amber-500/10 rounded-lg flex items-center justify-center"><svg className="w-4 h-4 text-yellow-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg></div>
             </div>
           </div>
@@ -796,8 +797,8 @@ export default function Home() {
         {/* Search e Filters */}
         <div className="flex flex-col sm:flex-row justify-between gap-4">
           <div className="relative w-full sm:w-96">
-            <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-            <input type="text" placeholder="Buscar host, IP ou localização..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full bg-[#121a2b] border border-slate-600/70 rounded-lg pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-200 placeholder:text-slate-600" />
+            <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+            <input type="text" placeholder="Buscar host, IP ou localização..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full bg-[#121a2b] border border-slate-600/70 rounded-lg pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all text-slate-200 placeholder:text-slate-500" />
           </div>
           <div className="flex gap-2">
             <div className="flex gap-1 bg-slate-800/30 p-1 rounded-lg border border-slate-600/70">
@@ -815,9 +816,9 @@ export default function Home() {
         {showAdvancedFilters && (
           <div className="bg-slate-800/30 rounded-lg border border-slate-600/70 p-4">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div><label className="text-xs text-slate-400 block mb-1">Latência Mínima (ms)</label><input type="number" placeholder="0" value={filters.minLatency} onChange={(e) => setFilters(prev => ({ ...prev, minLatency: e.target.value }))} className="w-full bg-[#121a2b] border border-slate-600/70 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500" /></div>
-              <div><label className="text-xs text-slate-400 block mb-1">Latência Máxima (ms)</label><input type="number" placeholder="100" value={filters.maxLatency} onChange={(e) => setFilters(prev => ({ ...prev, maxLatency: e.target.value }))} className="w-full bg-[#121a2b] border border-slate-600/70 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500" /></div>
-              <div className="flex items-end"><button onClick={() => setFilters({ minLatency: '', maxLatency: '', minUptime: '', tags: [] })} className="px-3 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm transition-colors">Limpar Filtros</button></div>
+              <div><label className="text-xs text-slate-400 block mb-1">Latência Mínima (ms)</label><input type="number" placeholder="0" value={filters.minLatency} onChange={(e) => setFilters(prev => ({ ...prev, minLatency: e.target.value }))} className="w-full bg-[#121a2b] border border-slate-600/70 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 text-slate-200 placeholder:text-slate-500" /></div>
+              <div><label className="text-xs text-slate-400 block mb-1">Latência Máxima (ms)</label><input type="number" placeholder="100" value={filters.maxLatency} onChange={(e) => setFilters(prev => ({ ...prev, maxLatency: e.target.value }))} className="w-full bg-[#121a2b] border border-slate-600/70 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 text-slate-200 placeholder:text-slate-500" /></div>
+              <div className="flex items-end"><button onClick={() => setFilters({ minLatency: '', maxLatency: '', minUptime: '', tags: [] })} className="px-3 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm transition-colors text-slate-300">Limpar Filtros</button></div>
             </div>
           </div>
         )}
@@ -827,16 +828,16 @@ export default function Home() {
           {/* Left - Device Table */}
           <div className="lg:col-span-2 space-y-4">
             <div className="flex justify-between items-center">
-              <h2 className="text-sm font-semibold text-slate-300 flex items-center gap-2"><span className="w-1 h-5 bg-[#4F8CFF] rounded-full"></span>Dispositivos<span className="text-xs text-slate-500 font-normal">({filteredDevices.length})</span></h2>
+              <h2 className="text-sm font-semibold text-slate-300 flex items-center gap-2"><span className="w-1 h-5 bg-[#4F8CFF] rounded-full"></span>Dispositivos<span className="text-xs text-slate-400 font-normal">({filteredDevices.length})</span></h2>
               <button onClick={() => setShowForm(!showForm)} className="px-3 py-1.5 bg-[#4F8CFF] hover:bg-blue-500 text-white text-sm rounded-lg transition-all shadow-lg shadow-blue-500/20 flex items-center gap-1"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>Adicionar</button>
             </div>
 
             {showForm && (
               <form onSubmit={addDevice} className="bg-slate-800/30 p-4 rounded-lg border border-blue-500/30">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <input name="name" placeholder="Nome do equipamento" required className="bg-[#121a2b] border border-slate-600/70 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 text-slate-200" />
-                  <input name="ip" placeholder="Endereço IP" required className="bg-[#121a2b] border border-slate-600/70 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 text-slate-200" />
-                  <div className="flex gap-2"><input name="location" placeholder="Localização" className="flex-1 bg-[#121a2b] border border-slate-600/70 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 text-slate-200" /><button type="submit" className="px-4 bg-[#4F8CFF] hover:bg-blue-500 rounded-lg text-sm transition-colors">Salvar</button></div>
+                  <input name="name" placeholder="Nome do equipamento" required className="bg-[#121a2b] border border-slate-600/70 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 text-slate-200 placeholder:text-slate-500" />
+                  <input name="ip" placeholder="Endereço IP" required className="bg-[#121a2b] border border-slate-600/70 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 text-slate-200 placeholder:text-slate-500" />
+                  <div className="flex gap-2"><input name="location" placeholder="Localização" className="flex-1 bg-[#121a2b] border border-slate-600/70 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 text-slate-200 placeholder:text-slate-500" /><button type="submit" className="px-4 bg-[#4F8CFF] hover:bg-blue-500 rounded-lg text-sm transition-colors text-white">Salvar</button></div>
                 </div>
               </form>
             )}
@@ -849,7 +850,7 @@ export default function Home() {
                       <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 cursor-pointer hover:text-slate-300 transition-colors w-24" onClick={() => handleSort('status')}>Status</th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 cursor-pointer hover:text-slate-300 transition-colors" onClick={() => handleSort('name')}>Dispositivo</th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 cursor-pointer hover:text-slate-300 transition-colors" onClick={() => handleSort('ip')}>IP</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 cursor-pointer hover:text-slate-300 transition-colors w-32" onClick={() => handleSort('latency')}>Latência</th>
+                      <th className="px-4 py-3 text-right text-xs font-medium text-slate-400 cursor-pointer hover:text-slate-300 transition-colors w-32" onClick={() => handleSort('latency')}>Latência</th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 w-28">Ações</th>
                     </tr>
                   </thead>
@@ -870,23 +871,23 @@ export default function Home() {
                             </td>
                             <td className="px-4 py-3">
                               <div className="font-medium text-slate-200">{device.name}</div>
-                              {device.location && <div className="text-[10px] text-slate-500">{device.location}</div>}
+                              {device.location && <div className="text-[10px] text-slate-400">{device.location}</div>}
                             </td>
-                            <td className="px-4 py-3 font-mono text-xs text-slate-400">{device.ip}</td>
+                            <td className="px-4 py-3 font-mono text-xs text-slate-300">{device.ip}</td>
                             <td className="px-4 py-3">
                               {device.latency && device.status === 'online' ? (
-                                <div className="flex items-center gap-2 w-full">
+                                <div className="flex items-center justify-end gap-2 w-full">
                                   <div className="w-20 bg-slate-700 rounded-full h-1.5 overflow-hidden">
                                     <div
                                       className={`h-1.5 rounded-full ${getLatencyBarColor(device.latency)} transition-all duration-300`}
                                       style={{ width: `${Math.min(100, device.latency / 10)}%` }}
                                     ></div>
                                   </div>
-                                  <span className={`text-xs font-mono w-12 ${getLatencyColor(device.latency)}`}>
+                                  <span className={`text-xs font-mono w-12 text-right ${getLatencyColor(device.latency)}`}>
                                     {device.latency}ms
                                   </span>
                                 </div>
-                              ) : <span className="text-slate-500 text-xs">—</span>}
+                              ) : <span className="text-slate-500 text-xs text-right block">—</span>}
                             </td>
                             <td className="px-4 py-3">
                               <div className="flex justify-start gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
@@ -905,9 +906,9 @@ export default function Home() {
                             <tr className="bg-slate-800/30">
                               <td colSpan="5" className="px-4 py-3">
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-                                  <div><p className="text-slate-500">Localização</p><p className="text-slate-300">{device.location || '—'}</p></div>
-                                  <div><p className="text-slate-500">Último check</p><p className="text-slate-300">{device.last_check ? new Date(device.last_check).toLocaleString() : '—'}</p></div>
-                                  <div><p className="text-slate-500">Alerta SLA</p>{alertThresholds[device.id] ? (<div className="flex items-center gap-2"><span className="text-yellow-300">Limite: {alertThresholds[device.id]}ms</span><button onClick={() => removeAlertConfig(device.id)} className="text-rose-400 text-xs">Remover</button></div>) : (<button onClick={() => { setSelectedAlertDevice(device); setShowAlertConfig(true); }} className="text-blue-300 hover:text-blue-200 text-xs">Configurar alerta</button>)}</div>
+                                  <div><p className="text-slate-400">Localização</p><p className="text-slate-300">{device.location || '—'}</p></div>
+                                  <div><p className="text-slate-400">Último check</p><p className="text-slate-300">{device.last_check ? new Date(device.last_check).toLocaleString() : '—'}</p></div>
+                                  <div><p className="text-slate-400">Alerta SLA</p>{alertThresholds[device.id] ? (<div className="flex items-center gap-2"><span className="text-yellow-300">Limite: {alertThresholds[device.id]}ms</span><button onClick={() => removeAlertConfig(device.id)} className="text-rose-400 text-xs">Remover</button></div>) : (<button onClick={() => { setSelectedAlertDevice(device); setShowAlertConfig(true); }} className="text-blue-300 hover:text-blue-200 text-xs">Configurar alerta</button>)}</div>
                                 </div>
                               </td>
                             </tr>
@@ -923,7 +924,7 @@ export default function Home() {
 
           {/* Right - Analytics */}
           <div className="space-y-6">
-            {/* Real-time Latency Chart */}
+            {/* Real-time Latency Chart - Com mais espaçamento vertical */}
             <div className="bg-gradient-to-br from-[#121a2b] to-slate-900/50 rounded-lg border border-slate-600/70 p-4">
               <div className="flex justify-between items-center mb-3">
                 <h3 className="text-sm font-semibold text-slate-300 flex items-center gap-2">
@@ -945,25 +946,25 @@ export default function Home() {
               {hasBarData && (
                 <div className="flex items-center gap-4 mb-3 text-xs">
                   <div className="flex items-center gap-1">
-                    <span className="text-slate-500">Média:</span>
+                    <span className="text-slate-400">Média:</span>
                     <span className="text-yellow-300 font-mono">
                       {Math.round(barChartData.reduce((acc, d) => acc + d.latency, 0) / barChartData.length)}ms
                     </span>
                   </div>
                   <div className="flex items-center gap-1">
-                    <span className="text-slate-500">Máxima:</span>
+                    <span className="text-slate-400">Máxima:</span>
                     <span className="text-rose-400 font-mono">
                       {Math.max(...barChartData.map(d => d.latency))}ms
                     </span>
                   </div>
                   <div className="flex items-center gap-1">
-                    <span className="text-slate-500">Mínima:</span>
+                    <span className="text-slate-400">Mínima:</span>
                     <span className="text-emerald-300 font-mono">
                       {Math.min(...barChartData.map(d => d.latency))}ms
                     </span>
                   </div>
                   <div className="flex items-center gap-1 ml-auto">
-                    <span className="text-slate-500">📊 {barChartData.length} dispositivos</span>
+                    <span className="text-slate-400">📊 {barChartData.length} dispositivos</span>
                   </div>
                 </div>
               )}
@@ -974,7 +975,8 @@ export default function Home() {
                     <BarChart
                       layout="vertical"
                       data={barChartData}
-                      margin={{ top: 5, right: 20, left: 10, bottom: 5 }}
+                      margin={{ top: 10, right: 20, left: 10, bottom: 10 }}
+                      barCategoryGap={8} // Mais espaçamento entre as barras
                     >
                       <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" horizontal={false} />
                       <XAxis
@@ -1021,7 +1023,7 @@ export default function Home() {
                         verticalAlign="bottom"
                         height={25}
                         payload={[
-                          { value: '🟢 < 50ms', type: 'circle', color: '#10b981' },
+                          { value: '🟢 < 50ms', type: 'circle', color: '#34d399' },
                           { value: '🟡 50-100ms', type: 'circle', color: '#f59e0b' },
                           { value: '🔴 > 100ms', type: 'circle', color: '#ef4444' }
                         ]}
@@ -1029,7 +1031,7 @@ export default function Home() {
                       <Bar
                         dataKey="latency"
                         radius={[0, 6, 6, 0]}
-                        barSize={18}
+                        barSize={20} // Barras um pouco mais grossas
                         animationDuration={500}
                         animationEasing="ease-out"
                       >
@@ -1054,21 +1056,21 @@ export default function Home() {
             {history.length > 0 && (
               <div className="bg-gradient-to-br from-[#121a2b] to-slate-900/50 rounded-lg border border-slate-600/70 p-4">
                 <h3 className="text-sm font-semibold text-slate-300 mb-3 flex items-center gap-2"><span className="w-1 h-5 bg-emerald-500 rounded-full"></span>Disponibilidade (Últimas 24h)</h3>
-                <div className="flex items-center justify-between"><div className="text-center"><p className="text-3xl font-bold text-emerald-300">{history[0]?.uptime || 100}%</p><p className="text-xs text-slate-500 mt-1">SLA Atual</p></div><div className="w-32"><ResponsiveContainer width="100%" height={80}><AreaChart data={history.slice(0, 24).reverse()}><Area type="monotone" dataKey="uptime" stroke="#10b981" strokeWidth={2} fill="none" dot={false} isAnimationActive={false} /></AreaChart></ResponsiveContainer></div></div>
+                <div className="flex items-center justify-between"><div className="text-center"><p className="text-3xl font-bold text-emerald-300">{history[0]?.uptime || 100}%</p><p className="text-xs text-slate-400 mt-1">SLA Atual</p></div><div className="w-32"><ResponsiveContainer width="100%" height={80}><AreaChart data={history.slice(0, 24).reverse()}><Area type="monotone" dataKey="uptime" stroke="#10b981" strokeWidth={2} fill="none" dot={false} isAnimationActive={false} /></AreaChart></ResponsiveContainer></div></div>
               </div>
             )}
 
             {/* Status Pie */}
             <div className="bg-gradient-to-br from-[#121a2b] to-slate-900/50 rounded-lg border border-slate-600/70 p-4">
               <h3 className="text-sm font-semibold text-slate-300 mb-3 flex items-center gap-2"><span className="w-1 h-5 bg-yellow-500 rounded-full"></span>Distribuição</h3>
-              <div className="h-40"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={chartData.statusData} cx="50%" cy="50%" innerRadius={40} outerRadius={55} paddingAngle={3} dataKey="value"><Cell fill="#10b981" /><Cell fill="#ef4444" /></Pie><Tooltip contentStyle={{ backgroundColor: '#0f172a', borderRadius: '8px', border: '1px solid #1e293b' }} /><Legend wrapperStyle={{ fontSize: '10px' }} verticalAlign="bottom" height={30} /></PieChart></ResponsiveContainer></div>
+              <div className="h-40"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={chartData.statusData} cx="50%" cy="50%" innerRadius={40} outerRadius={55} paddingAngle={3} dataKey="value"><Cell fill="#10b981" /><Cell fill="#ef4444" /></Pie><Tooltip contentStyle={{ backgroundColor: '#0f172a', borderRadius: '8px', border: '1px solid #1e293b' }} /><Legend wrapperStyle={{ fontSize: '10px', color: '#94a3b8' }} verticalAlign="bottom" height={30} /></PieChart></ResponsiveContainer></div>
             </div>
 
             {/* Alert History */}
             {alertHistory.length > 0 && (
               <div className="bg-gradient-to-br from-[#121a2b] to-slate-900/50 rounded-lg border border-slate-600/70 p-4">
-                <div className="flex justify-between items-center mb-3"><h3 className="text-sm font-semibold text-slate-300 flex items-center gap-2"><span className="w-1 h-5 bg-rose-500 rounded-full"></span>Alertas Recentes{unreadAlerts > 0 && <span className="px-1.5 py-0.5 bg-amber-500/20 text-yellow-300 text-[10px] rounded-full animate-pulse">{unreadAlerts}</span>}</h3><button onClick={clearAlertHistory} className="text-[10px] text-slate-500 hover:text-slate-400 transition-colors">Limpar</button></div>
-                <div className="space-y-2 max-h-64 overflow-y-auto">{alertHistory.slice(0, 10).map(alert => (<div key={alert.id} className={`p-2 rounded border transition-all ${alert.type === 'error' ? 'bg-rose-500/10 border-rose-500/20' : alert.type === 'warning' ? 'bg-amber-500/10 border-amber-500/20' : 'bg-emerald-500/10 border-emerald-500/20'}`}><p className="text-xs">{alert.message}</p><p className="text-[10px] text-slate-500 mt-1">{alert.timestamp}</p></div>))}</div>
+                <div className="flex justify-between items-center mb-3"><h3 className="text-sm font-semibold text-slate-300 flex items-center gap-2"><span className="w-1 h-5 bg-rose-500 rounded-full"></span>Alertas Recentes{unreadAlerts > 0 && <span className="px-1.5 py-0.5 bg-amber-500/20 text-yellow-300 text-[10px] rounded-full animate-pulse">{unreadAlerts}</span>}</h3><button onClick={clearAlertHistory} className="text-[10px] text-slate-400 hover:text-slate-300 transition-colors">Limpar</button></div>
+                <div className="space-y-2 max-h-64 overflow-y-auto">{alertHistory.slice(0, 10).map(alert => (<div key={alert.id} className={`p-2 rounded border transition-all ${alert.type === 'error' ? 'bg-rose-500/10 border-rose-500/20' : alert.type === 'warning' ? 'bg-amber-500/10 border-amber-500/20' : 'bg-emerald-500/10 border-emerald-500/20'}`}><p className="text-xs text-slate-200">{alert.message}</p><p className="text-[10px] text-slate-400 mt-1">{alert.timestamp}</p></div>))}</div>
               </div>
             )}
           </div>
@@ -1077,14 +1079,14 @@ export default function Home() {
         {/* Footer */}
         <footer className="border-t border-slate-600/70 pt-4 mt-4">
           <div className="flex flex-wrap justify-between items-center text-xs">
-            <div className="flex gap-4 text-slate-500">
+            <div className="flex gap-4 text-slate-400">
               <span className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-[#4F8CFF]"></div>Polling: 30s</span>
               <span className="flex items-center gap-1"><div className={`w-1.5 h-1.5 rounded-full ${connected ? 'bg-emerald-500' : 'bg-rose-500'}`}></div>WebSocket: {connected ? 'Conectado' : 'Desconectado'}</span>
-              <span className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>🟢 &lt;50ms</span>
+              <span className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-emerald-400"></div>🟢 &lt;50ms</span>
               <span className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-amber-500"></div>🟡 51-100ms</span>
               <span className="flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-rose-500"></div>🔴 &gt;101ms</span>
             </div>
-            <div className="text-slate-500 text-center">
+            <div className="text-slate-400 text-center">
               OrbNOC Network Operations Center © 2026 • Desenvolvido por <span className="text-blue-300 hover:text-blue-200 transition-colors">Adan W O Santos</span>
             </div>
           </div>
