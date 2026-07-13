@@ -24,8 +24,14 @@ const lookup = util.promisify(dns.lookup);
 // ==================== CONEXÃO COM POSTGRESQL ====================
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+  ssl: {
+    rejectUnauthorized: false,  // Aceita certificados auto-assinados
+    // Opcional: forçar SSL
+    require: true,
+  },
+  family: 4, // Força IPv4
 });
+
 
 pool.connect((err, client, release) => {
   if (err) {
