@@ -25,11 +25,10 @@ const lookup = util.promisify(dns.lookup);
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: {
-    rejectUnauthorized: false,  // Aceita certificados auto-assinados
-    // Opcional: forçar SSL
+    rejectUnauthorized: false,
     require: true,
   },
-  family: 4, // Força IPv4
+  family: 4,
 });
 
 
