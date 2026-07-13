@@ -1,4 +1,10 @@
 require('dotenv').config();
+
+// ============ FORÇAR IPv4 PARA SUPABASE ============
+const dns = require('dns');
+dns.setDefaultResultOrder('ipv4first');
+// ==================================================
+
 const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
@@ -7,7 +13,6 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const net = require('net');
 const { Pool } = require('pg');
-const dns = require('dns');
 const util = require('util');
 
 const app = express();
