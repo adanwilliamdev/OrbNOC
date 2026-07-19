@@ -3,18 +3,12 @@ node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-package-lock.json
-yarn.lock
 
-# Banco de dados
-*.db
-*.sqlite
-*.sqlite3
-*.db-journal
-
-# Arquivos de ambiente
+# Variáveis de ambiente (NUNCA versionar - contêm credenciais reais)
 .env
 .env.local
+.env.development
+.env.production
 .env.*.local
 
 # Build
@@ -44,12 +38,5 @@ desktop.ini
 *.temp
 *.cache
 
-# Relatórios gerados
-*.pdf
-*.xlsx
-*.csv
+# Relatórios gerados em runtime
 reports/
-
-# Configurações locais
-orbnoc.db
-database.sqlite

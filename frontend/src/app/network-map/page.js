@@ -7,8 +7,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import ReactFlow, { Background, Controls, MiniMap, useNodesState, useEdgesState, addEdge, MarkerType } from 'reactflow';
 import 'reactflow/dist/style.css';
+import { API_BASE_URL } from '../../config';
 
-const API_BASE_URL = 'https://orbnoc-backend-nmlq.onrender.com';
 
 const CustomNode = ({ data }) => {
   const statusColor = data.status === 'online' ? '#10b981' : '#ef4444';

@@ -1,9 +1,17 @@
-FROM openjdk:17-jdk-slim
+FROM node:18-alpine
+
 WORKDIR /app
 
-# Copiar o JAR diretamente
-COPY target/orbnoc-backend-1.0.0.jar app.jar
+# iputils-ping garante um comando `ping` com saída padronizada (usado no
+# monitoramento e diagnóstico ICMP real, mais confiável que TCP connect
+# para dispositivos sem portas abertas, como celulares e IoT).
+RUN apk add --no-cache iputils-ping
 
-EXPOSE 8080
+COPY package*.json ./
+RUN npm install --omit=dev
 
-CMD ["java", "-jar", "app.jar"]
+COPY . .
+
+EXPOSE 3001
+
+CMD ["node", "server.js"]

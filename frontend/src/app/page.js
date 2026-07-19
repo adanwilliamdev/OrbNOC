@@ -9,9 +9,7 @@ import React, { useEffect, useState, useRef, Fragment, useCallback } from 'react
 import { useRouter } from 'next/navigation';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
 import * as XLSX from 'xlsx';
-
-const API_BASE_URL = 'https://orbnoc-backend-nmlq.onrender.com';
-const WS_BASE_URL = 'wss://orbnoc-backend-nmlq.onrender.com';
+import { API_BASE_URL, WS_BASE_URL } from '../config';
 
 const getLatencyColor = (latency) => {
   if (!latency) return 'text-slate-500';

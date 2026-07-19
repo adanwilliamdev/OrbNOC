@@ -5,8 +5,8 @@ export const revalidate = 0;
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { API_BASE_URL } from '../../config';
 
-const API_BASE_URL = 'https://orbnoc-backend-nmlq.onrender.com';
 
 export default function DiagnosticPage() {
   const router = useRouter();

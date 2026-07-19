@@ -15,12 +15,7 @@
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-blue)]()
 [![License](https://img.shields.io/badge/license-MIT-orange)]()
 
-### 🚀 Live Demo
-
-| Ambiente    | URL                                      |
-| ----------- | ---------------------------------------- |
-| Frontend    | https://orbnoc-taer.onrender.com         |
-| Backend API | https://orbnoc-backend-nmlq.onrender.com |
+### 🖥️ Projeto configurado para rodar 100% localmente
 
 </div>
 
@@ -33,7 +28,7 @@
 * Screenshots
 * Arquitetura
 * Stack Tecnológica
-* Instalação
+* Rodando Localmente
 * Roadmap
 * Licença
 
@@ -65,8 +60,7 @@ Projetado para provedores de internet, equipes de operações, MSPs e administra
 
 ## 📡 Monitoramento
 
-* Disponibilidade de Hosts
-* TCP Connectivity Checks
+* Disponibilidade de Hosts (ICMP + fallback TCP)
 * Monitoramento de Portas
 * Latência
 * Jitter
@@ -187,33 +181,74 @@ H --> L[Email]
 
 ## Infraestrutura
 
-* Render
-* GitHub Actions
-* Docker (Roadmap)
+* Docker / Docker Compose (local)
 
 ---
 
-# 🚀 Instalação
+# 🚀 Rodando Localmente
 
-## Clonar Projeto
+## Pré-requisitos
+
+* [Docker Desktop](https://www.docker.com/products/docker-desktop/) instalado e rodando (para a Opção 1)
+* Ou, para rodar sem Docker: Node.js 20+ e PostgreSQL instalados localmente
+
+## Opção 1 — Docker Compose (recomendado, sobe tudo com 1 comando)
+
+Sobe o PostgreSQL, o backend e o frontend juntos, já configurados para se falarem via `localhost`. As tabelas do banco e um usuário de demonstração são criados automaticamente na primeira inicialização.
 
 ```bash
-git clone https://github.com/seuusuario/orbnoc.git
-
-cd orbnoc
+docker compose up --build
 ```
 
-## Backend
+Acesse:
+
+* **Frontend:** http://localhost:3000
+* **Backend API:** http://localhost:3001
+* **PostgreSQL:** localhost:5433 (usuário `postgres`, senha `postgres`, banco `orbnoc`)
+
+**Login de demonstração** (criado automaticamente):
+
+```
+usuário: admin
+senha:   admin123
+```
+
+Para parar:
+
+```bash
+docker compose down
+```
+
+Para parar **e apagar os dados do banco** (útil se algo ficou inconsistente e você quer recomeçar do zero):
+
+```bash
+docker compose down -v
+```
+
+### Problemas comuns
+
+| Sintoma | Causa provável | Solução |
+| --- | --- | --- |
+| `Conflict. The container name "/orbnoc-db" is already in use` | Sobrou container de uma execução anterior | `docker compose down` e rode `up --build` de novo |
+| Erro 500 ao logar / `relation "..." does not exist` nos logs | Backend subiu antes do Postgres estar pronto | Já tratado via healthcheck + retry automático; se persistir, rode `docker compose down -v` para recriar o banco do zero |
+| Falha ao baixar imagens (`no such host`, `registry-1.docker.io`) | Problema de DNS/rede do Docker Desktop | Reinicie o Docker Desktop, ou configure DNS manual (8.8.8.8 / 1.1.1.1) em *Settings → Docker Engine* |
+
+## Opção 2 — Rodando manualmente (sem Docker)
+
+### Backend
 
 ```bash
 cd backend
 
 npm install
 
+cp ../.env.example .env
+# edite o .env e ajuste DATABASE_URL para o seu PostgreSQL local
+
 npm run dev
 ```
 
-## Frontend
+### Frontend
 
 ```bash
 cd frontend
@@ -221,6 +256,12 @@ cd frontend
 npm install
 
 npm run dev
+```
+
+Por padrão o frontend já aponta para `http://localhost:3001` (backend local), sem precisar configurar nada — mas se quiser ser explícito, crie um `.env.local` em `frontend/` com:
+
+```
+NEXT_PUBLIC_API_URL=http://localhost:3001
 ```
 
 ---
@@ -239,8 +280,6 @@ npm run dev
 * [ ] SNMP Monitoring
 * [ ] NetFlow
 * [ ] Syslog Server
-* [ ] Docker Deployment
-* [ ] Kubernetes Deployment
 * [ ] Mobile App
 * [ ] Dark/Light Themes
 

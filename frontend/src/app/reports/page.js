@@ -7,8 +7,8 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import * as XLSX from 'xlsx';
+import { API_BASE_URL } from '../../config';
 
-const API_BASE_URL = 'https://orbnoc-backend-nmlq.onrender.com';
 
 export default function ReportsPage() {
   const router = useRouter();
