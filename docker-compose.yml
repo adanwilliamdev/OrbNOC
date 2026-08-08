@@ -20,13 +20,14 @@ services:
 
   backend:
     build:
-      context: ./backend
+      context: ./backend-python
     container_name: orbnoc-backend
     environment:
       PORT: 3001
-      DATABASE_URL: postgres://postgres:postgres@postgres:5432/orbnoc
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/orbnoc
       JWT_SECRET: change_this_in_production
       FRONTEND_URL: http://localhost:3000
+      MONITOR_INTERVAL_MS: 10000
     ports:
       - "3001:3001"
     depends_on:

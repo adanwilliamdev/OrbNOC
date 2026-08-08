@@ -15,7 +15,6 @@ export default function DiagnosticPage() {
   const [results, setResults] = useState(null);
   const [host, setHost] = useState('google.com');
   const [port, setPort] = useState('443');
-  const [domain, setDomain] = useState('google.com');
   const [recordType, setRecordType] = useState('A');
 
   const getToken = () => localStorage.getItem('token');
@@ -25,7 +24,7 @@ export default function DiagnosticPage() {
   const runPing = async () => { if (!checkAuth()) return; setLoading(true); try { const res = await fetch(`${API_BASE_URL}/api/diagnostic/ping`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` }, body: JSON.stringify({ host, count: 5 }) }); setResults(await res.json()); } catch (error) { setResults({ error: error.message }); } setLoading(false); };
   const runTraceroute = async () => { if (!checkAuth()) return; setLoading(true); try { const res = await fetch(`${API_BASE_URL}/api/diagnostic/traceroute`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` }, body: JSON.stringify({ host }) }); setResults(await res.json()); } catch (error) { setResults({ error: error.message }); } setLoading(false); };
   const runPortCheck = async () => { if (!checkAuth()) return; setLoading(true); try { const res = await fetch(`${API_BASE_URL}/api/diagnostic/port-check`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` }, body: JSON.stringify({ host, port: parseInt(port) }) }); setResults(await res.json()); } catch (error) { setResults({ error: error.message }); } setLoading(false); };
-  const runDNSLookup = async () => { if (!checkAuth()) return; setLoading(true); try { const res = await fetch(`${API_BASE_URL}/api/diagnostic/dns-lookup`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` }, body: JSON.stringify({ domain, recordType }) }); setResults(await res.json()); } catch (error) { setResults({ error: error.message }); } setLoading(false); };
+  const runDNSLookup = async () => { if (!checkAuth()) return; setLoading(true); try { const res = await fetch(`${API_BASE_URL}/api/diagnostic/dns-lookup`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` }, body: JSON.stringify({ domain: host, recordType }) }); setResults(await res.json()); } catch (error) { setResults({ error: error.message }); } setLoading(false); };
   const runFullDiagnostic = async () => { if (!checkAuth()) return; setLoading(true); try { const res = await fetch(`${API_BASE_URL}/api/diagnostic/full-diagnostic`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` }, body: JSON.stringify({ host, ports: [80, 443, 22] }) }); setResults(await res.json()); } catch (error) { setResults({ error: error.message }); } setLoading(false); };
 
   const renderResults = () => {

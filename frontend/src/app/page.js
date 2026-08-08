@@ -44,7 +44,7 @@ export default function Home() {
   const [reconnecting, setReconnecting] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [history, setHistory] = useState([]);
-  const [alertSound, setAlertSound] = useState(true);
+  const alertSound = true;
   const [showAlert, setShowAlert] = useState(false);
   const [alertMessage, setAlertMessage] = useState('');
   const [user, setUser] = useState(null);
@@ -59,13 +59,11 @@ export default function Home() {
   const [showAlertConfig, setShowAlertConfig] = useState(false);
   const [alertHistory, setAlertHistory] = useState([]);
   const [selectedAlertDevice, setSelectedAlertDevice] = useState(null);
-  const [realtimeLatencyData, setRealtimeLatencyData] = useState({});
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [expandedDevice, setExpandedDevice] = useState(null);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [lastUpdateTime, setLastUpdateTime] = useState(null);
   const [showTelegramModal, setShowTelegramModal] = useState(false);
-  const [emailConfig, setEmailConfig] = useState({ enabled: false, email: '' });
   const [telegramConfig, setTelegramConfig] = useState({ enabled: false, botToken: '', chatId: '' });
   const [savingTelegram, setSavingTelegram] = useState(false);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
@@ -249,29 +247,6 @@ export default function Home() {
     }
   };
 
-  const loadEmailConfig = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) return;
-
-      const response = await fetch(`${API_BASE_URL}/api/alerts/email`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
-      if (response.status === 403) {
-        console.warn('Email config not available (403)');
-        return;
-      }
-
-      if (response.ok) {
-        const config = await response.json();
-        setEmailConfig(config);
-      }
-    } catch (error) {
-      console.error('Erro ao carregar config Email:', error);
-    }
-  };
-
   const saveTelegramConfig = async (enabled, botToken, chatId) => {
     setSavingTelegram(true);
     try {
@@ -306,7 +281,6 @@ export default function Home() {
   useEffect(() => {
     if (!user?.id) return;
     loadTelegramConfig();
-    loadEmailConfig();
 
     const savedThresholds = localStorage.getItem(`orbnoc_thresholds_${user.id}`);
     if (savedThresholds) setAlertThresholds(JSON.parse(savedThresholds));
@@ -384,12 +358,6 @@ export default function Home() {
         addAlert(`🔴 ${data.name}: Host offline`, 'error');
       }
 
-      setRealtimeLatencyData(prev => {
-        const dData = prev[deviceId] || [];
-        const newData = [...dData, { timestamp: Date.now(), latency: data.latency_ms }].slice(-50);
-        return { ...prev, [deviceId]: newData };
-      });
-
       setDevices(prev => prev.map(d => d.id === deviceId ? { ...d, latency: data.latency_ms, status: data.status, last_check: data.timestamp } : d));
       setLastUpdateTime(new Date());
     } catch (error) {
@@ -453,14 +421,6 @@ export default function Home() {
 
         socket.on('devices_update', (updatedDevices) => {
           updatedDevices.forEach(device => {
-            if (device.latency) {
-              setRealtimeLatencyData(prev => {
-                const dData = prev[device.id] || [];
-                const newData = [...dData, { timestamp: Date.now(), latency: device.latency }].slice(-50);
-                return { ...prev, [device.id]: newData };
-              });
-            }
-
             const old = devicesRef.current.find(d => d.id === device.id);
             if (old && old.status !== device.status) {
               addAlert(`${device.status === 'offline' ? '🔴 Host Down' : '🟢 Host Up'}: ${device.name}`, device.status === 'offline' ? 'error' : 'success');

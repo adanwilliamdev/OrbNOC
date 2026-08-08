@@ -11,8 +11,9 @@
 [![Version](https://img.shields.io/badge/version-2.1.0-blue)]()
 [![Status](https://img.shields.io/badge/status-active-success)]()
 [![Next.js](https://img.shields.io/badge/Next.js-14-black)]()
-[![Node.js](https://img.shields.io/badge/Node.js-20+-green)]()
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-blue)]()
+[![Python](https://img.shields.io/badge/Python-3.12-blue)]()
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.115-05998b)]()
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-blue)]()
 [![License](https://img.shields.io/badge/license-MIT-orange)]()
 
 ### 🖥️ Projeto configurado para rodar 100% localmente
@@ -28,8 +29,11 @@
 * Screenshots
 * Arquitetura
 * Stack Tecnológica
+* Estrutura do Projeto
 * Rodando Localmente
+* Variáveis de Ambiente
 * Roadmap
+* Contribuição
 * Licença
 
 ---
@@ -40,18 +44,15 @@ O **OrbNOC** é uma plataforma moderna de **Network Operations Center (NOC)** de
 
 Projetado para provedores de internet, equipes de operações, MSPs e administradores de sistemas, o OrbNOC fornece uma visão centralizada da saúde operacional do ambiente através de dashboards em tempo real, alertas inteligentes e ferramentas avançadas de diagnóstico.
 
+O backend é escrito em **Python (FastAPI)**. O contrato da API REST e o protocolo WebSocket (Socket.IO) são compatíveis com o `socket.io-client` usado pelo frontend em Next.js.
+
 ### Principais Benefícios
 
 ✅ Monitoramento em tempo real
-
 ✅ Alertas automatizados
-
 ✅ Diagnóstico integrado
-
 ✅ Dashboard operacional moderno
-
 ✅ Wallboard para NOC
-
 ✅ Arquitetura escalável
 
 ---
@@ -83,7 +84,7 @@ Projetado para provedores de internet, equipes de operações, MSPs e administra
 * Filtros avançados
 * Busca instantânea
 * Ordenação dinâmica
-* Atualização WebSocket
+* Atualização via WebSocket
 
 ## 🗺️ Topologia de Rede
 
@@ -98,7 +99,7 @@ Projetado para provedores de internet, equipes de operações, MSPs e administra
 
 * Ping Avançado
 * Traceroute
-* DNS Lookup
+* DNS Lookup (com reverse lookup via registro PTR)
 * TCP Port Scanner
 * Diagnóstico Inteligente
 
@@ -137,7 +138,7 @@ A[Browser] --> B[Next.js Frontend]
 B --> C[Socket.IO]
 B --> D[REST API]
 
-C --> E[Node.js Backend]
+C --> E[Python Backend / FastAPI]
 D --> E
 
 E --> F[(PostgreSQL)]
@@ -145,11 +146,10 @@ E --> F[(PostgreSQL)]
 E --> G[Monitor Engine]
 E --> H[Alert Engine]
 
-G --> I[TCP Checks]
+G --> I[TCP / ICMP Checks]
 G --> J[Latency Monitoring]
 
 H --> K[Telegram]
-H --> L[Email]
 ```
 
 ---
@@ -168,20 +168,47 @@ H --> L[Email]
 
 ## Backend
 
-* Node.js
-* Express
-* Prisma ORM
-* Socket.IO
-* JWT Authentication
+* Python 3.12
+* FastAPI
+* asyncpg (driver PostgreSQL assíncrono)
+* python-socketio
+* PyJWT + bcrypt
+* httpx (alertas Telegram)
+* dnspython (diagnóstico DNS)
 
 ## Banco de Dados
 
 * PostgreSQL
-* Prisma Migrations
 
 ## Infraestrutura
 
 * Docker / Docker Compose (local)
+
+---
+
+# 📂 Estrutura do Projeto
+
+```
+OrbNOC/
+├── backend-python/       # Backend em Python (FastAPI + Socket.IO)
+│   ├── app/
+│   │   ├── app.py             # Criação da app FastAPI (CORS, rotas, logger)
+│   │   ├── config.py          # Variáveis de ambiente
+│   │   ├── database.py        # Pool asyncpg, criação de tabelas, seed do admin
+│   │   ├── security.py        # Hash de senha + JWT
+│   │   ├── auth_dependency.py # Dependência de autenticação das rotas
+│   │   ├── sockets.py          # Servidor Socket.IO
+│   │   ├── routes/             # auth, devices, alerts, diagnostic, public
+│   │   └── services/           # ping, dns, telegram, monitor
+│   ├── server.py               # Entrypoint (uvicorn + loop de monitoramento)
+│   ├── requirements.txt
+│   ├── .env.example
+│   └── Dockerfile
+├── frontend/               # Next.js
+│   └── .env.example
+├── docker-compose.yml
+└── README.md
+```
 
 ---
 
@@ -190,7 +217,7 @@ H --> L[Email]
 ## Pré-requisitos
 
 * [Docker Desktop](https://www.docker.com/products/docker-desktop/) instalado e rodando (para a Opção 1)
-* Ou, para rodar sem Docker: Node.js 20+ e PostgreSQL instalados localmente
+* Ou, para rodar sem Docker: Python 3.11+, Node.js 20+ e PostgreSQL instalados localmente
 
 ## Opção 1 — Docker Compose (recomendado, sobe tudo com 1 comando)
 
@@ -238,31 +265,45 @@ docker compose down -v
 ### Backend
 
 ```bash
-cd backend
-
-npm install
-
-cp ../.env.example .env
-# edite o .env e ajuste DATABASE_URL para o seu PostgreSQL local
-
-npm run dev
+cd backend-python
+python3 -m venv .venv
+source .venv/bin/activate      # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+cp .env.example .env
+# edite .env e ajuste DATABASE_URL para o seu PostgreSQL local
+python server.py
 ```
+
+> Requer Python 3.11+ e o comando `ping` disponível no sistema (no Linux,
+> pacote `iputils-ping`; no Windows/macOS já vem instalado por padrão).
 
 ### Frontend
 
 ```bash
 cd frontend
-
 npm install
-
 npm run dev
 ```
 
-Por padrão o frontend já aponta para `http://localhost:3001` (backend local), sem precisar configurar nada — mas se quiser ser explícito, crie um `.env.local` em `frontend/` com:
+Por padrão o frontend já aponta para `http://localhost:3001` (backend local), sem precisar configurar nada — mas se quiser ser explícito:
 
+```bash
+cd frontend
+cp .env.example .env.local
 ```
-NEXT_PUBLIC_API_URL=http://localhost:3001
-```
+
+---
+
+# 🔧 Variáveis de Ambiente (backend-python)
+
+| Variável | Padrão | Descrição |
+| --- | --- | --- |
+| `PORT` | `3001` | Porta HTTP do backend |
+| `JWT_SECRET` | *(valor de dev, trocar em produção)* | Segredo usado para assinar os tokens JWT |
+| `DATABASE_URL` | — | String de conexão PostgreSQL (`postgresql://user:pass@host:5432/db`) |
+| `DATABASE_SSL` | `false` | `true` para exigir SSL (bancos remotos) |
+| `FRONTEND_URL` | `http://localhost:3000` | Usado no CORS do WebSocket |
+| `MONITOR_INTERVAL_MS` | `10000` | Intervalo entre varreduras de monitoramento |
 
 ---
 
@@ -273,6 +314,7 @@ NEXT_PUBLIC_API_URL=http://localhost:3001
 * [x] Topologia de Rede
 * [x] Diagnóstico Integrado
 * [x] Wallboard
+* [x] Backend em Python (FastAPI)
 
 ### Próximas Funcionalidades
 
