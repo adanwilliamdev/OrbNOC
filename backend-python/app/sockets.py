@@ -8,8 +8,8 @@ import jwt
 import socketio
 
 from . import database, security
-from .services.telegram_service import send_telegram_alert
 from .services.monitor_service import register_user_sessions_getter
+from .services.telegram_service import send_telegram_alert
 
 logger = logging.getLogger("orbnoc.sockets")
 

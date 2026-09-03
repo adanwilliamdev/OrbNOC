@@ -69,6 +69,24 @@ TABLE_DEFINITIONS = [
         UNIQUE(user_id, device_id)
     )
     """,
+    """
+    -- Série temporal das leituras de ping. Antes o projeto só guardava o
+    -- último valor em user_devices, então não dava pra montar um gráfico
+    -- de uptime/latência histórico — apenas o estado "agora".
+    CREATE TABLE IF NOT EXISTS device_metrics (
+        id BIGSERIAL PRIMARY KEY,
+        device_id INTEGER NOT NULL REFERENCES user_devices(id) ON DELETE CASCADE,
+        status VARCHAR(20) NOT NULL,
+        latency INTEGER,
+        packet_loss INTEGER,
+        jitter INTEGER,
+        recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    """,
+    """
+    CREATE INDEX IF NOT EXISTS idx_device_metrics_device_time
+        ON device_metrics (device_id, recorded_at DESC)
+    """,
 ]
 
 pool: asyncpg.Pool | None = None

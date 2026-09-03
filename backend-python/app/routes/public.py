@@ -3,7 +3,9 @@ import time
 from datetime import datetime, timezone
 
 import psutil  # type: ignore
-from fastapi import APIRouter
+from fastapi import APIRouter, Response
+
+from .. import config, database
 
 router = APIRouter(tags=["public"])
 
@@ -36,7 +38,7 @@ async def root():
 
 
 @router.get("/health")
-async def health():
+async def health(response: Response):
     try:
         process = psutil.Process()
         mem = process.memory_info()
@@ -48,13 +50,29 @@ async def health():
     except Exception:  # noqa: BLE001
         memory = {"rss": "n/a", "heapTotal": "n/a", "heapUsed": "n/a"}
 
+    # Antes esse campo era um valor fixo "connected", ou seja, o health
+    # check nunca detectava o banco fora do ar. Agora fazemos um SELECT 1
+    # de verdade, que é o que um orquestrador (Docker/K8s) precisa para
+    # decidir se reinicia o container.
+    database_status = "connected"
+    try:
+        pool = database.get_pool()
+        async with pool.acquire() as conn:
+            await conn.fetchval("SELECT 1")
+    except Exception:  # noqa: BLE001
+        database_status = "disconnected"
+
+    overall_status = "healthy" if database_status == "connected" else "degraded"
+    if overall_status != "healthy":
+        response.status_code = 503
+
     return {
-        "status": "healthy",
+        "status": overall_status,
         "uptime": _uptime_seconds(),
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "memory": memory,
-        "environment": "production",
-        "database": "connected",
+        "environment": config.ENVIRONMENT,
+        "database": database_status,
         "websocket": "active",
     }
 

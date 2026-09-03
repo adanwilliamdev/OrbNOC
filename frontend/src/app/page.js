@@ -2,9 +2,6 @@
 
 'use client';
 
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
-
 import React, { useEffect, useState, useRef, Fragment, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';

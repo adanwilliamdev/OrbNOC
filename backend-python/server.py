@@ -11,7 +11,7 @@ import uvicorn
 
 from app import config, database
 from app.app import create_app
-from app.services.monitor_service import monitor_all_users
+from app.services.monitor_service import cleanup_old_metrics, monitor_all_users
 from app.sockets import sio
 
 logging.basicConfig(
@@ -29,6 +29,7 @@ fastapi_app = create_app()
 asgi_app = socketio.ASGIApp(sio, other_asgi_app=fastapi_app, socketio_path="socket.io")
 
 _monitor_task: asyncio.Task | None = None
+_cleanup_task: asyncio.Task | None = None
 
 
 async def _monitor_loop() -> None:
@@ -41,9 +42,19 @@ async def _monitor_loop() -> None:
         await asyncio.sleep(interval)
 
 
+async def _cleanup_loop() -> None:
+    """Roda a limpeza de métricas antigas a cada hora (não a cada tick de monitoramento)."""
+    while True:
+        await asyncio.sleep(3600)
+        try:
+            await cleanup_old_metrics()
+        except Exception as exc:  # noqa: BLE001
+            logger.error("Erro na limpeza periódica: %s", exc)
+
+
 @fastapi_app.on_event("startup")
 async def on_startup() -> None:
-    global _monitor_task
+    global _monitor_task, _cleanup_task
     await database.connect()
 
     logger.info("\n🚀 Servidor backend rodando em http://localhost:%s", config.PORT)
@@ -61,12 +72,15 @@ async def on_startup() -> None:
     # _monitor_loop já executa uma varredura imediata antes do primeiro sleep,
     # e repete a cada MONITOR_INTERVAL_MS a partir daí.
     _monitor_task = asyncio.create_task(_monitor_loop())
+    _cleanup_task = asyncio.create_task(_cleanup_loop())
 
 
 @fastapi_app.on_event("shutdown")
 async def on_shutdown() -> None:
     if _monitor_task:
         _monitor_task.cancel()
+    if _cleanup_task:
+        _cleanup_task.cancel()
     await database.close()
 
 

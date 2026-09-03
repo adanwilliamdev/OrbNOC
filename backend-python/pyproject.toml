@@ -1,0 +1,18 @@
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B"]
+# E501: comprimento de linha não é crítico aqui.
+# B008: `Depends(...)` como valor padrão de parâmetro é o idiom padrão do
+#       FastAPI, não um bug de "mutable default argument".
+# B904: o projeto usa deliberadamente `except Exception: raise ApiError(...)`
+#       para não vazar detalhes internos ao cliente — chaining explícito
+#       não traz valor aqui e geraria ~46 alterações só de estilo.
+ignore = ["E501", "B008", "B904"]

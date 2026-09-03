@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 
 from ..auth_dependency import ApiError, get_current_user
-from ..services import dns_service, ping_service
+from ..services import dns_service, ping_service, traceroute_service
 
 router = APIRouter(prefix="/api/diagnostic", tags=["diagnostic"])
 
@@ -89,17 +89,12 @@ async def traceroute(body: TracerouteBody, current_user: dict = Depends(get_curr
     if not body.host:
         raise ApiError(400, "Host é obrigatório")
 
-    # Mantido como no original: hops ilustrativos (não é um traceroute real).
-    hops = [
-        {"hop": 1, "ip": "192.168.1.1", "latency": 2},
-        {"hop": 2, "ip": "10.0.0.1", "latency": 5},
-        {"hop": 3, "ip": "172.16.0.1", "latency": 12},
-        {"hop": 4, "ip": "201.12.34.56", "latency": 18},
-        {"hop": 5, "ip": "187.12.34.56", "latency": 25},
-        {"hop": 6, "ip": body.host, "latency": 30},
-    ]
+    try:
+        result = await traceroute_service.run_traceroute(body.host)
+    except traceroute_service.InvalidHostError as exc:
+        raise ApiError(400, str(exc))
 
-    return {"hops": hops, "target": body.host}
+    return result
 
 
 @router.post("/port-check")

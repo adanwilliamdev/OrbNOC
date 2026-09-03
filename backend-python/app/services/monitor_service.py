@@ -97,13 +97,13 @@ async def check_user_devices(user_id: int) -> list[dict[str, Any]]:
                 if len(history) > 10:
                     history.pop(0)
 
-                valid_latencies = [l for l in history if l is not None]
+                valid_latencies = [v for v in history if v is not None]
                 avg_latency = (
                     sum(valid_latencies) / len(valid_latencies) if valid_latencies else None
                 )
                 jitter = ping_service.calculate_jitter(valid_latencies)
                 packet_loss = (
-                    (len([l for l in history if l is None]) / len(history)) * 100
+                    (len([v for v in history if v is None]) / len(history)) * 100
                     if history
                     else 0
                 )
@@ -124,6 +124,19 @@ async def check_user_devices(user_id: int) -> list[dict[str, Any]]:
                         jitter,
                         round(packet_loss),
                         device["id"],
+                    )
+                    # Grava um ponto na série temporal (usado pelo gráfico de
+                    # histórico/uptime em GET /api/devices/{id}/history).
+                    await conn.execute(
+                        """
+                        INSERT INTO device_metrics (device_id, status, latency, packet_loss, jitter)
+                        VALUES ($1, $2, $3, $4, $5)
+                        """,
+                        device["id"],
+                        new_status,
+                        latency,
+                        round(packet_loss),
+                        jitter,
                     )
 
                 device["status"] = new_status
@@ -154,6 +167,25 @@ async def check_user_devices(user_id: int) -> list[dict[str, Any]]:
     except Exception as exc:  # noqa: BLE001
         logger.error("Erro ao verificar dispositivos: %s", exc)
         return []
+
+
+async def cleanup_old_metrics(retention_days: int = 30) -> None:
+    """Remove pontos de device_metrics mais antigos que `retention_days`.
+
+    Sem isso, a tabela cresce indefinidamente (uma linha a cada ciclo de
+    monitoramento por dispositivo). Chamado periodicamente pelo server.py,
+    não a cada tick do monitor.
+    """
+    pool = database.get_pool()
+    try:
+        async with pool.acquire() as conn:
+            deleted = await conn.execute(
+                "DELETE FROM device_metrics WHERE recorded_at < NOW() - ($1 || ' days')::interval",
+                str(retention_days),
+            )
+        logger.info("🧹 Limpeza de métricas antigas: %s", deleted)
+    except Exception as exc:  # noqa: BLE001
+        logger.error("Erro ao limpar métricas antigas: %s", exc)
 
 
 async def monitor_all_users(sio) -> None:

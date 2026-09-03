@@ -1,4 +1,5 @@
 """Rotas de autenticação. Equivalente a src/routes/auth.routes.js."""
+import re
 from typing import Any
 
 import asyncpg
@@ -7,8 +8,12 @@ from pydantic import BaseModel
 
 from .. import database, security
 from ..auth_dependency import ApiError, get_current_user
+from ..config import LOGIN_RATE_LIMIT, REGISTER_RATE_LIMIT
+from ..rate_limit import limiter
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
+
+_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
 class RegisterBody(BaseModel):
@@ -26,10 +31,27 @@ def _client_ip(request: Request) -> str:
     return request.client.host if request.client else ""
 
 
+def _validate_password_strength(password: str) -> str | None:
+    """Retorna uma mensagem de erro se a senha for fraca, ou None se ok."""
+    if len(password) < 8:
+        return "A senha deve ter pelo menos 8 caracteres"
+    if not re.search(r"[A-Za-z]", password) or not re.search(r"\d", password):
+        return "A senha deve conter letras e números"
+    return None
+
+
 @router.post("/register")
-async def register(body: RegisterBody, request: Request):
+@limiter.limit(REGISTER_RATE_LIMIT)
+async def register(request: Request, body: RegisterBody):
     if not body.username or not body.email or not body.password:
         raise ApiError(400, "Todos os campos são obrigatórios")
+
+    if not _EMAIL_RE.match(body.email):
+        raise ApiError(400, "E-mail inválido")
+
+    password_error = _validate_password_strength(body.password)
+    if password_error:
+        raise ApiError(400, password_error)
 
     pool = database.get_pool()
     hashed = security.hash_password(body.password)
@@ -60,7 +82,8 @@ async def register(body: RegisterBody, request: Request):
 
 
 @router.post("/login")
-async def login(body: LoginBody, request: Request):
+@limiter.limit(LOGIN_RATE_LIMIT)
+async def login(request: Request, body: LoginBody):
     if not body.username or not body.password:
         raise ApiError(400, "Usuário e senha são obrigatórios")
 

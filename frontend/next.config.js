@@ -4,9 +4,14 @@ const nextConfig = {
   eslint: { ignoreDuringBuilds: true },
   output: 'standalone',
   staticPageGenerationTimeout: 120,
-  // Remove appDir - é obsoleto no Next.js 14
+  // serverComponentsExternalPackages ainda vive em `experimental` nesta
+  // versão do Next (14.2.x) — vira estável (`serverExternalPackages`) só
+  // em versões mais recentes. `recharts` foi removido da lista porque o
+  // Next passou a detectá-lo automaticamente como pacote ESM que precisa
+  // de transpilação, e mantê-lo aqui também gerava um erro de build
+  // ("transpilePackages conflict with serverComponentsExternalPackages").
   experimental: {
-    serverComponentsExternalPackages: ['recharts', 'socket.io-client']
+    serverComponentsExternalPackages: ['socket.io-client']
   }
 }
 

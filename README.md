@@ -299,11 +299,58 @@ cp .env.example .env.local
 | Variável | Padrão | Descrição |
 | --- | --- | --- |
 | `PORT` | `3001` | Porta HTTP do backend |
-| `JWT_SECRET` | *(valor de dev, trocar em produção)* | Segredo usado para assinar os tokens JWT |
+| `ENVIRONMENT` | `development` | Use `production` para ativar as travas de segurança de produção (ver abaixo) |
+| `JWT_SECRET` | *(valor de dev, trocar em produção)* | Segredo usado para assinar os tokens JWT. **Obrigatório e sem valor padrão aceito quando `ENVIRONMENT=production`** — o backend recusa subir se detectar o segredo de desenvolvimento em produção. |
 | `DATABASE_URL` | — | String de conexão PostgreSQL (`postgresql://user:pass@host:5432/db`) |
 | `DATABASE_SSL` | `false` | `true` para exigir SSL (bancos remotos) |
-| `FRONTEND_URL` | `http://localhost:3000` | Usado no CORS do WebSocket |
+| `FRONTEND_URL` | `http://localhost:3000` | Origem liberada no CORS (HTTP e WebSocket) |
+| `EXTRA_CORS_ORIGINS` | — | Origens extras liberadas no CORS, separadas por vírgula |
 | `MONITOR_INTERVAL_MS` | `10000` | Intervalo entre varreduras de monitoramento |
+| `LOGIN_RATE_LIMIT` | `5/minute` | Limite de tentativas de login por IP |
+| `REGISTER_RATE_LIMIT` | `3/minute` | Limite de registros por IP |
+
+---
+
+# 🔒 Segurança
+
+* **CORS** é restrito à(s) origem(ns) definidas em `FRONTEND_URL`/`EXTRA_CORS_ORIGINS` — nunca reflete qualquer origem.
+* **JWT_SECRET**: o backend recusa iniciar em produção (`ENVIRONMENT=production`) se detectar o segredo de desenvolvimento. Gere um valor próprio, por exemplo com `python3 -c "import secrets; print(secrets.token_urlsafe(48))"`.
+* **Rate limiting** em `/api/auth/login` e `/api/auth/register` (configurável via env vars acima).
+* **RBAC**: usuários com `role = 'admin'` têm acesso a `/api/admin/*` (listar usuários, ver logs de acesso, remover usuários). O usuário demo `admin/admin123` já nasce com essa role — troque a senha em produção.
+* **Vulnerabilidades conhecidas do frontend** (`npm audit`): a biblioteca `xlsx` (SheetJS) tem CVEs sem correção publicada no momento (prototype pollution / ReDoS). Se a exportação para Excel não for essencial, considere substituí-la por uma alternativa mantida (ex: `exceljs`) ou mover a geração para o backend.
+
+---
+
+# 🧪 Testes e Lint
+
+```bash
+cd backend-python
+pip install -r requirements-dev.txt
+pytest -v          # 39 testes: security, ping/traceroute services, rotas (RBAC etc.)
+ruff check .        # lint
+```
+
+```bash
+cd frontend
+npm run lint
+npm run build
+```
+
+O workflow `.github/workflows/ci.yml` roda automaticamente ambos em cada push/PR para `main`, além de validar que as imagens Docker buildam.
+
+---
+
+# ☁️ Deploy em Produção
+
+Checklist mínimo antes de subir o OrbNOC fora do ambiente local:
+
+1. **Defina `ENVIRONMENT=production`** e um `JWT_SECRET` forte e único (o backend recusa subir sem isso).
+2. **Configure `FRONTEND_URL`** com o domínio real do frontend (HTTPS) — não use `*` nem deixe o padrão de localhost.
+3. **Coloque um reverse proxy com TLS** na frente (Nginx, Caddy ou o load balancer do seu provedor) — nem o backend Python nem o Next.js standalone servem HTTPS diretamente.
+4. **PostgreSQL gerenciado ou com backup automatizado**: ative `DATABASE_SSL=true` se o provedor exigir, e configure backups/retenção — o schema é criado automaticamente no primeiro boot (`create_tables`), mas isso não substitui backup dos dados.
+5. **Troque a senha do usuário demo** (`admin/admin123`) criado no seed inicial, ou remova o seed em produção.
+6. **Rotação de logs**: o backend loga em stdout; em produção, capture isso com o driver de log do seu orquestrador (Docker/K8s) ou um agregador (ex: Loki, CloudWatch).
+7. **Monitore o próprio monitor**: como o loop de monitoramento roda dentro do processo do backend, rodar múltiplas réplicas duplica as leituras e os alertas — mantenha uma única instância do backend responsável pelo loop, ou externalize-o para um worker dedicado antes de escalar horizontalmente.
 
 ---
 
@@ -312,9 +359,12 @@ cp .env.example .env.local
 * [x] Dashboard Operacional
 * [x] Alertas Telegram
 * [x] Topologia de Rede
-* [x] Diagnóstico Integrado
+* [x] Diagnóstico Integrado (traceroute real via SO)
 * [x] Wallboard
 * [x] Backend em Python (FastAPI)
+* [x] Testes automatizados + CI (GitHub Actions)
+* [x] Rate limiting, RBAC e CORS restrito
+* [x] Histórico de métricas (série temporal por dispositivo)
 
 ### Próximas Funcionalidades
 
@@ -324,17 +374,14 @@ cp .env.example .env.local
 * [ ] Syslog Server
 * [ ] Mobile App
 * [ ] Dark/Light Themes
+* [ ] Notificações por e-mail e webhook genérico (hoje só Telegram está implementado, embora o schema já tenha `email_alerts_enabled`)
+* [ ] Gráfico de uptime/latência histórico no frontend consumindo `GET /api/devices/{id}/history`
 
 ---
 
 # 🤝 Contribuição
 
-Contribuições são bem-vindas.
-
-1. Fork o projeto
-2. Crie uma branch
-3. Faça commit das alterações
-4. Abra um Pull Request
+Contribuições são bem-vindas. Veja o [CONTRIBUTING.md](./CONTRIBUTING.md) para o passo a passo (setup, testes, padrão de commits e PRs).
 
 ---
 

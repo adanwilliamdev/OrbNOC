@@ -4,8 +4,12 @@ FROM node:20-alpine AS base
 FROM base AS deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
-COPY package.json ./
-RUN npm install --legacy-peer-deps
+# Copiar também o package-lock.json e usar `npm ci` (em vez de `npm install`)
+# garante que o build usa exatamente as versões resolvidas e testadas no
+# repositório, não uma resolução nova a cada build (antes o lockfile nem
+# era copiado para dentro da imagem, então era ignorado).
+COPY package.json package-lock.json ./
+RUN npm ci --legacy-peer-deps
 
 # Build da aplicação
 FROM base AS builder

@@ -2,7 +2,7 @@
 import time
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 
 from .. import database
@@ -163,6 +163,64 @@ async def ping_device(device_id: int, current_user: dict = Depends(get_current_u
         raise
     except Exception:  # noqa: BLE001
         raise ApiError(500, "Erro ao realizar ping")
+
+
+@router.get("/{device_id}/history")
+async def device_history(
+    device_id: int,
+    hours: int = Query(default=24, ge=1, le=720),
+    limit: int = Query(default=500, ge=1, le=2000),
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Série temporal de latência/status/packet_loss do dispositivo nas
+    últimas `hours` horas — usada para montar gráficos de uptime/latência
+    ao longo do tempo (antes o projeto só guardava o último valor lido).
+    """
+    pool = database.get_pool()
+    try:
+        async with pool.acquire() as conn:
+            device = await conn.fetchrow(
+                "SELECT id FROM user_devices WHERE id = $1 AND user_id = $2",
+                device_id,
+                current_user["id"],
+            )
+            if not device:
+                raise ApiError(404, "Dispositivo não encontrado")
+
+            rows = await conn.fetch(
+                """
+                SELECT status, latency, packet_loss, jitter, recorded_at
+                FROM device_metrics
+                WHERE device_id = $1 AND recorded_at > NOW() - ($2 || ' hours')::interval
+                ORDER BY recorded_at ASC
+                LIMIT $3
+                """,
+                device_id,
+                str(hours),
+                limit,
+            )
+
+        points = [_serialize(r) for r in rows]
+        online_points = [p for p in points if p["status"] == "online"]
+        uptime_pct = round((len(online_points) / len(points)) * 100, 2) if points else None
+        latencies = [p["latency"] for p in points if p["latency"] is not None]
+        avg_latency = round(sum(latencies) / len(latencies), 1) if latencies else None
+
+        return {
+            "device_id": device_id,
+            "hours": hours,
+            "points": points,
+            "summary": {
+                "uptime_pct": uptime_pct,
+                "avg_latency": avg_latency,
+                "sample_count": len(points),
+            },
+        }
+    except ApiError:
+        raise
+    except Exception:  # noqa: BLE001
+        raise ApiError(500, "Erro ao buscar histórico do dispositivo")
 
 
 @router.post("/{device_id}/check-port")
