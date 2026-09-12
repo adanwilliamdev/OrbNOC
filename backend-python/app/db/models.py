@@ -23,6 +23,11 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base
 
+# BigInteger não autoincrementa como PK no SQLite (só `Integer` vira o alias
+# do ROWID). Em Postgres (produção) isso continua BIGSERIAL normalmente;
+# esse variant só afeta o dialeto sqlite, usado nos testes de integração.
+_BigIntPk = BigInteger().with_variant(Integer(), "sqlite")
+
 
 class User(Base):
     __tablename__ = "users"
@@ -98,7 +103,7 @@ class DeviceMetric(Base):
 
     __tablename__ = "device_metrics"
 
-    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    id: Mapped[int] = mapped_column(_BigIntPk, primary_key=True)
     device_id: Mapped[int] = mapped_column(ForeignKey("user_devices.id", ondelete="CASCADE"), nullable=False)
     status: Mapped[str] = mapped_column(String(20), nullable=False)
     latency: Mapped[int | None] = mapped_column(Integer, nullable=True)

@@ -11,6 +11,7 @@ import uvicorn
 
 from app import config, database
 from app.app import create_app
+from app.db import dispose_engine, init_engine
 from app.services.monitor_service import cleanup_old_metrics, monitor_all_users
 from app.sockets import sio
 
@@ -56,6 +57,10 @@ async def _cleanup_loop() -> None:
 async def on_startup() -> None:
     global _monitor_task, _cleanup_task
     await database.connect()
+    # Engine assíncrono do SQLAlchemy, usado pelas rotas já migradas
+    # (devices.py) via Depends(get_session). Convive com o pool asyncpg
+    # legado até o resto das rotas ser migrado.
+    init_engine()
 
     logger.info("\n🚀 Servidor backend rodando em http://localhost:%s", config.PORT)
     logger.info("📡 WebSocket disponível para conexões")
@@ -81,6 +86,7 @@ async def on_shutdown() -> None:
         _monitor_task.cancel()
     if _cleanup_task:
         _cleanup_task.cancel()
+    await dispose_engine()
     await database.close()
 
 
