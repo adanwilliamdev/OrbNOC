@@ -13,6 +13,11 @@ tests/integration/, que validam o que o SQLite não consegue (tipos, sintaxe
 e comportamento específicos do dialeto Postgres). Esses testes exigem
 Docker; se não houver um daemon Docker disponível (como neste ambiente de
 sandbox), a fixture pula os testes automaticamente em vez de falhar.
+
+`reset_rate_limiter` zera o storage do slowapi antes de cada teste, para
+que testes que batem repetidamente em endpoints com rate limit (ex.:
+/api/auth/register) não "vazem" contagem de requisições de um teste para
+o outro.
 """
 import pathlib
 import subprocess
@@ -25,6 +30,14 @@ from app.db import models  # noqa: F401 — registra os models na Base
 from app.db.base import Base
 
 BACKEND_ROOT = pathlib.Path(__file__).resolve().parents[1]
+
+
+@pytest.fixture(autouse=True)
+def reset_rate_limiter():
+    from app.rate_limit import limiter
+
+    limiter.reset()
+    yield
 
 
 @pytest.fixture
