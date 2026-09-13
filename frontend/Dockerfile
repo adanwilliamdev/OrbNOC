@@ -16,6 +16,13 @@ FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+# O lockfile já tem os pacotes @next/swc-* corretos (lockfileVersion 3), mas o
+# Next tenta "corrigir" ele buscando metadados no registry do npm durante o
+# build; sem rede/registry confiável nesse passo, patch-incorrect-lockfile.js
+# quebra com "Cannot read properties of undefined (reading 'os')" — não falha
+# o build, só polui o log em todo passo do build. Como o lockfile já está
+# correto, pulamos essa checagem.
+ENV NEXT_IGNORE_INCORRECT_LOCKFILE=1
 RUN npm run build
 # Imagem de produção
 FROM base AS runner

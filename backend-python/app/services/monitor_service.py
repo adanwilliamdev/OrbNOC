@@ -112,11 +112,19 @@ async def check_user_devices(user_id: int) -> list[dict[str, Any]]:
                 new_status = "online" if ping_result["alive"] else "offline"
 
                 async with pool.acquire() as conn:
-                    await conn.execute(
+                    # `RETURNING id` deixa explícito se o dispositivo ainda existe:
+                    # como o ping é assíncrono (pode levar segundos), o usuário pode
+                    # ter apagado o dispositivo (DELETE /api/devices/{id}) entre o
+                    # SELECT que montou `devices` e este UPDATE. Sem essa checagem,
+                    # o INSERT em device_metrics logo abaixo violava a foreign key
+                    # (device_metrics.device_id -> user_devices.id) porque a linha
+                    # já não existia mais.
+                    still_exists = await conn.fetchval(
                         """
                         UPDATE user_devices SET status = $1, last_check = CURRENT_TIMESTAMP,
                             latency = $2, avg_latency = $3, jitter = $4, packet_loss = $5
                         WHERE id = $6
+                        RETURNING id
                         """,
                         new_status,
                         latency,
@@ -125,6 +133,17 @@ async def check_user_devices(user_id: int) -> list[dict[str, Any]]:
                         round(packet_loss),
                         device["id"],
                     )
+                    if still_exists is None:
+                        # Dispositivo removido durante o ciclo de checagem — não é
+                        # um erro, só encerra o processamento deste item.
+                        logger.info(
+                            "Dispositivo %s (id=%s) removido durante o ciclo de monitoramento, ignorando.",
+                            device["ip"],
+                            device["id"],
+                        )
+                        _latency_history.pop(device["id"], None)
+                        continue
+
                     # Grava um ponto na série temporal (usado pelo gráfico de
                     # histórico/uptime em GET /api/devices/{id}/history).
                     await conn.execute(

@@ -53,6 +53,8 @@ export default function Home() {
   const [connected, setConnected] = useState(false);
   const [reconnecting, setReconnecting] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const [addingDevice, setAddingDevice] = useState(false);
+  const [addDeviceError, setAddDeviceError] = useState<string | null>(null);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const alertSound = true;
   const [showAlert, setShowAlert] = useState(false);
@@ -462,8 +464,16 @@ export default function Home() {
 
   const addDevice = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    // Trava contra reenvio: se já existe uma requisição em andamento (usuário
+    // apertou Enter/clicou "Salvar" de novo antes da resposta chegar), ignora
+    // — evita a rajada de POSTs idênticos que víamos no console.
+    if (addingDevice) return;
+
     const formData = new FormData(e.currentTarget);
     const payload = { name: formData.get('name'), ip: formData.get('ip'), location: formData.get('location') || '' };
+    const formEl = e.currentTarget;
+    setAddingDevice(true);
+    setAddDeviceError(null);
     try {
       const token = localStorage.getItem('token');
       const res = await fetch(`${API_BASE_URL}/api/devices`, {
@@ -472,14 +482,25 @@ export default function Home() {
         body: JSON.stringify(payload),
       });
       if (res.ok) {
-        e.currentTarget.reset();
+        formEl.reset();
         setShowForm(false);
         fetchDevices();
         addAlert(`🚀 Host "${payload.name}" adicionado!`, 'success');
       } else {
-        addAlert(`❌ Erro ao adicionar host`, 'error');
+        // Mostra o motivo real que o backend devolveu (ex: "Dispositivo com
+        // este IP já existe") em vez de um genérico "Erro ao adicionar host"
+        // — sem isso o usuário não tem como saber por que falhou.
+        const data = await res.json().catch(() => null);
+        const message = data?.error || 'Erro ao adicionar host';
+        setAddDeviceError(message);
+        addAlert(`❌ ${message}`, 'error');
       }
-    } catch (error) { addAlert('❌ Erro ao salvar host', 'error'); }
+    } catch (error) {
+      setAddDeviceError('Erro ao salvar host');
+      addAlert('❌ Erro ao salvar host', 'error');
+    } finally {
+      setAddingDevice(false);
+    }
   };
 
   const removeDevice = async (id: Device['id'], name: string) => {
@@ -646,13 +667,13 @@ export default function Home() {
                 <span className="w-1 h-5 bg-[#4F8CFF] rounded-full"></span>
                 Dispositivos<span className="text-xs text-slate-400 font-normal">({filteredDevices.length})</span>
               </h2>
-              <button onClick={() => setShowForm(!showForm)} className="px-3 py-1.5 bg-[#4F8CFF] hover:bg-blue-500 text-white text-sm rounded-lg transition-all shadow-lg shadow-blue-500/20 flex items-center gap-1">
+              <button onClick={() => { setShowForm(!showForm); setAddDeviceError(null); }} className="px-3 py-1.5 bg-[#4F8CFF] hover:bg-blue-500 text-white text-sm rounded-lg transition-all shadow-lg shadow-blue-500/20 flex items-center gap-1">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
                 Adicionar
               </button>
             </div>
 
-            {showForm && <AddDeviceForm onSubmit={addDevice} />}
+            {showForm && <AddDeviceForm onSubmit={addDevice} submitting={addingDevice} errorMessage={addDeviceError} />}
 
             <DeviceTable
               devices={filteredDevices}
