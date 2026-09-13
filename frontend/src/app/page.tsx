@@ -426,10 +426,20 @@ export default function Home() {
           }, 25000);
         });
 
-        socket.on('disconnect', () => {
+        socket.on('disconnect', (reason: string) => {
           setConnected(false);
-          setReconnecting(true);
-          console.log('❌ WebSocket desconectado, reconectando...');
+          // 'io client disconnect' é o que o Socket.IO reporta quando SOMOS nós
+          // que chamamos socket.disconnect() (ex: saindo do Dashboard para
+          // outra página, ou fazendo logout) — não é uma queda de conexão e
+          // não há reconexão automática nesse caso, então o log anterior
+          // ("desconectado, reconectando...") era enganoso aqui.
+          const isIntentional = reason === 'io client disconnect';
+          setReconnecting(!isIntentional);
+          console.log(
+            isIntentional
+              ? '🔌 WebSocket desconectado (saída da página)'
+              : `❌ WebSocket desconectado (${reason}), reconectando...`
+          );
         });
 
         socket.on('devices_update', (updatedDevices: Device[]) => {
