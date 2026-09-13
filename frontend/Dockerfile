@@ -23,6 +23,12 @@ COPY . .
 # o build, só polui o log em todo passo do build. Como o lockfile já está
 # correto, pulamos essa checagem.
 ENV NEXT_IGNORE_INCORRECT_LOCKFILE=1
+# NEXT_PUBLIC_* é embutido no bundle JS durante `next build` (roda AGORA,
+# nesta etapa) — definir isso só como `environment:` no docker-compose (que
+# só existe quando o container já está rodando) não tem efeito nenhum sobre
+# o que vai pro navegador do usuário. Por isso precisa entrar como build arg.
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 RUN npm run build
 # Imagem de produção
 FROM base AS runner

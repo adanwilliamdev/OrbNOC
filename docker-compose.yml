@@ -35,17 +35,36 @@ services:
         condition: service_healthy
     networks:
       - orbnoc-network
+    # Sem isso, nada impede o frontend (ou você, testando no navegador) de
+    # tentar falar com o backend antes dele terminar de subir (conectar no
+    # Postgres, iniciar o Socket.IO, etc.) — daí o ERR_CONNECTION_REFUSED
+    # logo após `docker-compose up`, que some sozinho poucos segundos depois.
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:3001/health', timeout=3)"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
 
   frontend:
     build:
       context: ./frontend
+      # NEXT_PUBLIC_API_URL precisa ser passado aqui (build arg), não só em
+      # "environment:" abaixo — o Next.js grava essa variável dentro do
+      # JavaScript já na hora do `npm run build`, que roda durante a
+      # construção da imagem, antes de "environment:" existir. Se você troca
+      # essa URL, precisa rodar `docker compose build frontend` de novo (um
+      # `up` sem rebuild continua servindo o valor antigo).
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:3001
     container_name: orbnoc-frontend
     environment:
       NEXT_PUBLIC_API_URL: http://localhost:3001
     ports:
       - "3000:3000"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     networks:
       - orbnoc-network
 

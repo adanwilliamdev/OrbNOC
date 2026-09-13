@@ -1,5 +1,6 @@
 """Rotas de diagnóstico. Equivalente a src/routes/diagnostic.routes.js."""
 import asyncio
+import ipaddress
 from datetime import datetime, timezone
 from typing import Union
 
@@ -171,8 +172,28 @@ async def full_diagnostic(body: FullDiagnosticBody, current_user: dict = Depends
         results["ping"] = {"error": str(exc)}
 
     try:
-        records = await dns_service.resolve_domain(body.host, "A")
-        results["dns"] = {"success": True, "records": [r["value"] for r in records]}
+        # Se o usuário digitou um IP em vez de um domínio, uma resolução A
+        # (forward) não faz sentido — não existe "registro A de 1.1.1.1" — e
+        # sempre falhava aqui mesmo com o IP perfeitamente acessível. Nesse
+        # caso o que existe (e o que é relevante checar) é o reverse lookup
+        # (PTR). Um IP sem PTR configurado é comum e não é uma "falha real",
+        # então isso só marca sucesso quando o PTR resolve.
+        try:
+            ipaddress.ip_address(body.host)
+            is_ip = True
+        except ValueError:
+            is_ip = False
+
+        if is_ip:
+            reverse = await dns_service.reverse_lookup(body.host)
+            results["dns"] = {
+                "success": reverse is not None,
+                "records": [reverse] if reverse else [],
+                "reverse_lookup": True,
+            }
+        else:
+            records = await dns_service.resolve_domain(body.host, "A")
+            results["dns"] = {"success": True, "records": [r["value"] for r in records]}
     except Exception as exc:  # noqa: BLE001
         results["dns"] = {"success": False, "error": str(exc)}
 
