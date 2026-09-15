@@ -190,25 +190,46 @@ H --> K[Telegram]
 
 ```
 OrbNOC/
-├── backend-python/       # Backend em Python (FastAPI + Socket.IO)
+├── backend-python/
 │   ├── app/
-│   │   ├── app.py             # Criação da app FastAPI (CORS, rotas, logger)
-│   │   ├── config.py          # Variáveis de ambiente
-│   │   ├── database.py        # Pool asyncpg, criação de tabelas, seed do admin
-│   │   ├── security.py        # Hash de senha + JWT
-│   │   ├── auth_dependency.py # Dependência de autenticação das rotas
-│   │   ├── sockets.py          # Servidor Socket.IO
-│   │   ├── routes/             # auth, devices, alerts, diagnostic, public
-│   │   └── services/           # ping, dns, telegram, monitor
-│   ├── server.py               # Entrypoint (uvicorn + loop de monitoramento)
+│   │   ├── app.py               # Criação da app FastAPI (CORS, logger, registro das rotas)
+│   │   ├── config.py            # Variáveis de ambiente
+│   │   ├── database.py          # Pool asyncpg, criação de tabelas (bootstrap) e seed do admin
+│   │   ├── security.py          # Hash de senha + JWT
+│   │   ├── auth_dependency.py   # Dependência de autenticação das rotas
+│   │   ├── rate_limit.py        # Configuração do slowapi (limiter usado em login/registro)
+│   │   ├── sockets.py           # Servidor Socket.IO
+│   │   ├── db/                  # SQLAlchemy 2.0 async: engine.py, base.py, models.py
+│   │   ├── repositories/        # device_repository.py, user_repository.py
+│   │   ├── routes/              # auth, devices, alerts, diagnostic, public, admin
+│   │   └── services/            # ping, traceroute, dns, telegram, monitor, device
+│   ├── migrations/              # Alembic (env.py, versions/ — baseline do schema)
+│   ├── tests/                   # unitários (services/repositories) + tests/integration (Postgres real via testcontainers)
+│   ├── server.py                # Entrypoint (uvicorn + loop de monitoramento)
+│   ├── alembic.ini
+│   ├── pyproject.toml           # Config do pytest e do ruff
 │   ├── requirements.txt
+│   ├── requirements-dev.txt
 │   ├── .env.example
 │   └── Dockerfile
-├── frontend/               # Next.js
-│   └── .env.example
+├── frontend/                    # Next.js 14 (App Router)
+│   ├── src/
+│   │   ├── app/                 # Rotas: /, /login, /alerts, /diagnostic, /network-map, /reports, /wallboard, /health
+│   │   ├── components/dashboard/# Componentes extraídos da página principal (KPIs, tabelas, gráficos, modais)
+│   │   ├── lib/                 # Funções auxiliares (ex.: cálculo de latência)
+│   │   ├── types/                # Tipos TypeScript compartilhados
+│   │   └── config.ts
+│   ├── public/
+│   ├── package.json
+│   ├── .env.example
+│   └── Dockerfile
+├── .github/workflows/ci.yml     # Lint + testes (backend e frontend) + build das imagens Docker
 ├── docker-compose.yml
+├── CONTRIBUTING.md
 └── README.md
 ```
+
+> **Nota sobre o frontend:** o projeto está em migração de JavaScript para TypeScript (passo já iniciado do roadmap técnico). Várias rotas em `src/app/` ainda têm um par de arquivos `page.js` (versão antiga) e `page.tsx` (versão atual, componentizada) convivendo lado a lado — o `.tsx` é o que está em uso; os `.js` são resíduo da conversão e devem ser removidos em uma limpeza futura.
 
 ---
 
@@ -326,9 +347,12 @@ cp .env.example .env.local
 ```bash
 cd backend-python
 pip install -r requirements-dev.txt
-pytest -v          # 39 testes: security, ping/traceroute services, rotas (RBAC etc.)
+pytest -v          # 49 testes: security, services (ping, traceroute, device), repositories,
+                    # rotas (incl. RBAC) e testes de integração contra Postgres real
 ruff check .        # lint
 ```
+
+Os testes em `tests/integration/` sobem um PostgreSQL real via **testcontainers** e rodam as migrations do Alembic de verdade — exigem Docker disponível na máquina (em ambientes sem Docker, são pulados automaticamente em vez de falhar). Os demais testes usam SQLite in-memory com o schema gerado a partir dos models SQLAlchemy.
 
 ```bash
 cd frontend
@@ -347,7 +371,7 @@ Checklist mínimo antes de subir o OrbNOC fora do ambiente local:
 1. **Defina `ENVIRONMENT=production`** e um `JWT_SECRET` forte e único (o backend recusa subir sem isso).
 2. **Configure `FRONTEND_URL`** com o domínio real do frontend (HTTPS) — não use `*` nem deixe o padrão de localhost.
 3. **Coloque um reverse proxy com TLS** na frente (Nginx, Caddy ou o load balancer do seu provedor) — nem o backend Python nem o Next.js standalone servem HTTPS diretamente.
-4. **PostgreSQL gerenciado ou com backup automatizado**: ative `DATABASE_SSL=true` se o provedor exigir, e configure backups/retenção — o schema é criado automaticamente no primeiro boot (`create_tables`), mas isso não substitui backup dos dados.
+4. **PostgreSQL gerenciado ou com backup automatizado**: ative `DATABASE_SSL=true` se o provedor exigir, e configure backups/retenção. O schema também é criado automaticamente no primeiro boot (`create_tables`, em `database.py`) — mas o projeto já tem migrations Alembic (`backend-python/migrations/`) com o baseline do schema; isso não substitui backup dos dados.
 5. **Troque a senha do usuário demo** (`admin/admin123`) criado no seed inicial, ou remova o seed em produção.
 6. **Rotação de logs**: o backend loga em stdout; em produção, capture isso com o driver de log do seu orquestrador (Docker/K8s) ou um agregador (ex: Loki, CloudWatch).
 7. **Monitore o próprio monitor**: como o loop de monitoramento roda dentro do processo do backend, rodar múltiplas réplicas duplica as leituras e os alertas — mantenha uma única instância do backend responsável pelo loop, ou externalize-o para um worker dedicado antes de escalar horizontalmente.
