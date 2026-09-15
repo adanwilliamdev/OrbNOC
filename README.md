@@ -229,7 +229,7 @@ OrbNOC/
 └── README.md
 ```
 
-> **Nota sobre o frontend:** o projeto está em migração de JavaScript para TypeScript (passo já iniciado do roadmap técnico). Várias rotas em `src/app/` ainda têm um par de arquivos `page.js` (versão antiga) e `page.tsx` (versão atual, componentizada) convivendo lado a lado — o `.tsx` é o que está em uso; os `.js` são resíduo da conversão e devem ser removidos em uma limpeza futura.
+> **Nota sobre o frontend:** a página `/reports` (`src/app/reports/page.js`) ainda é a única rota que não passou pela conversão para TypeScript/componentização feita no restante do `app/` — continua em JavaScript puro por enquanto.
 
 ---
 
