@@ -229,7 +229,6 @@ OrbNOC/
 └── README.md
 ```
 
-> **Nota sobre o frontend:** a página `/reports` (`src/app/reports/page.js`) ainda é a única rota que não passou pela conversão para TypeScript/componentização feita no restante do `app/` — continua em JavaScript puro por enquanto.
 
 ---
 
