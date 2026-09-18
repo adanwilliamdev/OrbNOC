@@ -5,6 +5,7 @@ Equivalente a src/config/env.js da versão Node.js original.
 import logging
 import os
 import secrets
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from dotenv import load_dotenv
 
@@ -37,13 +38,35 @@ if JWT_SECRET == _DEFAULT_JWT_SECRET:
         "NÃO use isso em produção."
     )
 
-DATABASE_URL: str = os.getenv("DATABASE_URL", "")
-# Alguns provedores (Heroku, versões antigas do Render) entregam a URL como
-# `postgres://`, esquema que o SQLAlchemy não reconhece. Normalizamos aqui
-# uma única vez para `postgresql://`, que o restante do código já espera.
-if DATABASE_URL.startswith("postgres://"):
-    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
-DATABASE_SSL: bool = os.getenv("DATABASE_SSL", "false").lower() == "true"
+
+def _normalize_database_url(url: str) -> tuple[str, bool]:
+    """
+    Prepara a DATABASE_URL para asyncpg/SQLAlchemy e indica se SSL é exigido.
+
+    - `postgres://` (Heroku, Render antigo) vira `postgresql://`.
+    - Parâmetros de libpq como `sslmode` e `channel_binding` (comuns em URLs do
+      Neon/Supabase) não existem no asyncpg: o SQLAlchemy os repassa como
+      argumentos do `connect()` e quebra com "unexpected keyword argument", e o
+      asyncpg os enviaria ao servidor como configuração inválida. Removemos
+      esses parâmetros e convertemos `sslmode=require` em ssl ligado.
+    """
+    if not url:
+        return url, False
+    if url.startswith("postgres://"):
+        url = url.replace("postgres://", "postgresql://", 1)
+
+    parts = urlsplit(url)
+    query = parse_qsl(parts.query, keep_blank_values=True)
+    needs_ssl = any(
+        k == "sslmode" and v in ("require", "verify-ca", "verify-full") for k, v in query
+    )
+    kept = [(k, v) for k, v in query if k not in ("sslmode", "channel_binding")]
+    cleaned = urlunsplit(parts._replace(query=urlencode(kept)))
+    return cleaned, needs_ssl
+
+
+DATABASE_URL, _URL_REQUIRES_SSL = _normalize_database_url(os.getenv("DATABASE_URL", ""))
+DATABASE_SSL: bool = _URL_REQUIRES_SSL or os.getenv("DATABASE_SSL", "false").lower() == "true"
 
 FRONTEND_URL: str = os.getenv("FRONTEND_URL", "http://localhost:3000")
 # Lista de origens extras liberadas no CORS, separadas por vírgula
