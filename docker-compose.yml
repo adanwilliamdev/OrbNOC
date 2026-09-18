@@ -1,0 +1,76 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: orbnoc-db
+    environment:
+      POSTGRES_DB: orbnoc
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - orbnoc-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d orbnoc"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend-python
+    container_name: orbnoc-backend
+    environment:
+      PORT: 3001
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/orbnoc
+      JWT_SECRET: change_this_in_production
+      FRONTEND_URL: http://localhost:3000
+      MONITOR_INTERVAL_MS: 10000
+    ports:
+      - "3001:3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - orbnoc-network
+    # Sem isso, nada impede o frontend (ou você, testando no navegador) de
+    # tentar falar com o backend antes dele terminar de subir (conectar no
+    # Postgres, iniciar o Socket.IO, etc.) — daí o ERR_CONNECTION_REFUSED
+    # logo após `docker-compose up`, que some sozinho poucos segundos depois.
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:3001/health', timeout=3)"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+
+  frontend:
+    build:
+      context: ./frontend
+      # NEXT_PUBLIC_API_URL precisa ser passado aqui (build arg), não só em
+      # "environment:" abaixo — o Next.js grava essa variável dentro do
+      # JavaScript já na hora do `npm run build`, que roda durante a
+      # construção da imagem, antes de "environment:" existir. Se você troca
+      # essa URL, precisa rodar `docker compose build frontend` de novo (um
+      # `up` sem rebuild continua servindo o valor antigo).
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:3001
+    container_name: orbnoc-frontend
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:3001
+    ports:
+      - "3000:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - orbnoc-network
+
+volumes:
+  postgres_data:
+
+networks:
+  orbnoc-network:
+    driver: bridge
