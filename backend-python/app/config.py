@@ -76,6 +76,11 @@ ALLOWED_ORIGINS: list[str] = [FRONTEND_URL] + [
     o.strip() for o in _extra_origins.split(",") if o.strip()
 ]
 
+# Regex opcional para liberar vários domínios de uma vez (útil na Vercel, onde
+# cada branch/deploy ganha uma URL própria, ex.: projeto-git-main-usuario.vercel.app).
+# Exemplo: ^https://(meu-app|meu-app-[a-z0-9-]+-meuusuario)\.vercel\.app$
+CORS_ORIGIN_REGEX: str = os.getenv("CORS_ORIGIN_REGEX", "").strip()
+
 MONITOR_INTERVAL_MS: int = int(os.getenv("MONITOR_INTERVAL_MS", "10000"))
 MONITOR_INTERVAL_SECONDS: float = MONITOR_INTERVAL_MS / 1000
 

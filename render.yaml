@@ -40,6 +40,9 @@ services:
       # https://orbnoc.vercel.app — sem barra no final.
       - key: FRONTEND_URL
         sync: false
+      # (Opcional) regex para liberar vários domínios do frontend, ex. previews da Vercel.
+      - key: CORS_ORIGIN_REGEX
+        sync: false
       # Senha do usuário admin criado na primeira subida.
       - key: ADMIN_PASSWORD
         sync: false

@@ -3,6 +3,7 @@ Servidor Socket.IO (protocolo compatível com socket.io-client usado no
 frontend) com autenticação via JWT. Equivalente a src/sockets/index.js.
 """
 import logging
+import re
 
 import jwt
 import socketio
@@ -13,9 +14,21 @@ from .services.telegram_service import send_telegram_alert
 
 logger = logging.getLogger("orbnoc.sockets")
 
+_origin_regex = re.compile(config.CORS_ORIGIN_REGEX) if config.CORS_ORIGIN_REGEX else None
+
+
+def _origin_allowed(origin: str | None, *_args) -> bool:
+    """Mesma regra do CORS do FastAPI: lista exata de origens ou regex opcional."""
+    if not origin:
+        return False
+    if origin in config.ALLOWED_ORIGINS:
+        return True
+    return bool(_origin_regex and _origin_regex.fullmatch(origin))
+
+
 sio = socketio.AsyncServer(
     async_mode="asgi",
-    cors_allowed_origins=config.ALLOWED_ORIGINS,
+    cors_allowed_origins=_origin_allowed,
     ping_interval=25,
     ping_timeout=60,
 )
