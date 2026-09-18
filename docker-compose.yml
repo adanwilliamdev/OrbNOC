@@ -1,76 +1,58 @@
+version: "3.8"
+
 services:
   postgres:
-    image: postgres:15-alpine
-    container_name: orbnoc-db
+    image: postgres:16-alpine
+    container_name: biblioteca-postgres
+    restart: unless-stopped
     environment:
-      POSTGRES_DB: orbnoc
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: biblioteca
+      POSTGRES_USER: biblioteca
+      POSTGRES_PASSWORD: biblioteca
     ports:
-      - "5433:5432"
+      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    networks:
-      - orbnoc-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d orbnoc"]
+      test: ["CMD-SHELL", "pg_isready -U biblioteca"]
       interval: 5s
       timeout: 5s
-      retries: 10
+      retries: 5
 
   backend:
-    build:
-      context: ./backend-python
-    container_name: orbnoc-backend
-    environment:
-      PORT: 3001
-      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/orbnoc
-      JWT_SECRET: change_this_in_production
-      FRONTEND_URL: http://localhost:3000
-      MONITOR_INTERVAL_MS: 10000
-    ports:
-      - "3001:3001"
+    build: ./backend
+    container_name: biblioteca-backend
+    restart: unless-stopped
     depends_on:
       postgres:
         condition: service_healthy
-    networks:
-      - orbnoc-network
-    # Sem isso, nada impede o frontend (ou você, testando no navegador) de
-    # tentar falar com o backend antes dele terminar de subir (conectar no
-    # Postgres, iniciar o Socket.IO, etc.) — daí o ERR_CONNECTION_REFUSED
-    # logo após `docker-compose up`, que some sozinho poucos segundos depois.
+    environment:
+      # SQLAlchemy aceita tanto "postgresql://" quanto "postgresql+psycopg2://".
+      DATABASE_URL: postgresql://biblioteca:biblioteca@postgres:5432/biblioteca
+      PORT: 8080
+      # Obrigatório: crie um arquivo ".env" na raiz do projeto (veja backend/.env.example)
+      # com JWT_SECRET definido. Gere um valor com: openssl rand -base64 64
+      JWT_SECRET: ${JWT_SECRET:?defina JWT_SECRET no arquivo .env (veja backend/.env.example)}
+      JWT_EXPIRATION_MS: ${JWT_EXPIRATION_MS:-900000}
+      JWT_REFRESH_EXPIRATION_MS: ${JWT_REFRESH_EXPIRATION_MS:-604800000}
+      APP_COOKIE_SECURE: ${APP_COOKIE_SECURE:-false}
+      TMDB_API_KEY: ${TMDB_API_KEY:-}
+    ports:
+      - "8080:8080"
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:3001/health', timeout=3)"]
-      interval: 5s
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
       timeout: 5s
-      retries: 10
-      start_period: 15s
+      retries: 5
 
   frontend:
-    build:
-      context: ./frontend
-      # NEXT_PUBLIC_API_URL precisa ser passado aqui (build arg), não só em
-      # "environment:" abaixo — o Next.js grava essa variável dentro do
-      # JavaScript já na hora do `npm run build`, que roda durante a
-      # construção da imagem, antes de "environment:" existir. Se você troca
-      # essa URL, precisa rodar `docker compose build frontend` de novo (um
-      # `up` sem rebuild continua servindo o valor antigo).
-      args:
-        NEXT_PUBLIC_API_URL: http://localhost:3001
-    container_name: orbnoc-frontend
-    environment:
-      NEXT_PUBLIC_API_URL: http://localhost:3001
-    ports:
-      - "3000:3000"
+    build: ./frontend
+    container_name: biblioteca-frontend
+    restart: unless-stopped
     depends_on:
-      backend:
-        condition: service_healthy
-    networks:
-      - orbnoc-network
+      - backend
+    ports:
+      - "5173:8080"
 
 volumes:
   postgres_data:
-
-networks:
-  orbnoc-network:
-    driver: bridge
