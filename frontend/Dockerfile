@@ -27,7 +27,10 @@ ENV NEXT_IGNORE_INCORRECT_LOCKFILE=1
 # nesta etapa) — definir isso só como `environment:` no docker-compose (que
 # só existe quando o container já está rodando) não tem efeito nenhum sobre
 # o que vai pro navegador do usuário. Por isso precisa entrar como build arg.
-ARG NEXT_PUBLIC_API_URL
+# O valor padrão abaixo garante que o build de produção aponte para o backend
+# mesmo que a plataforma (Render) não repasse a variável como build arg.
+# Se ela for repassada (ou via --build-arg / docker-compose), sobrescreve o padrão.
+ARG NEXT_PUBLIC_API_URL=https://orbnoc-jj74.onrender.com
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 RUN npm run build
 # Imagem de produção
