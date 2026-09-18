@@ -16,9 +16,18 @@
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-blue)]()
 [![License](https://img.shields.io/badge/license-MIT-orange)]()
 
-### 🖥️ Projeto configurado para rodar 100% localmente
+### 🖥️ Roda localmente com Docker Compose e em produção com Render + Vercel + Neon
 
 </div>
+
+---
+
+## 🚀 Demo
+
+| Ambiente    | URL                                    |
+| ----------- | -------------------------------------- |
+| Frontend    | <https://orb-noc-hazel.vercel.app>     |
+| Backend API | <https://orbnoc-jj74.onrender.com>     |
 
 ---
 
@@ -32,6 +41,9 @@
 * Estrutura do Projeto
 * Rodando Localmente
 * Variáveis de Ambiente
+* Segurança
+* Testes e Lint
+* Deploy em Produção
 * Roadmap
 * Contribuição
 * Licença
@@ -152,6 +164,17 @@ G --> J[Latency Monitoring]
 H --> K[Telegram]
 ```
 
+### Topologia de produção
+
+```mermaid
+graph LR
+
+U[Usuário] --> V[Vercel<br/>Frontend Next.js]
+V -- REST + WebSocket --> R[Render<br/>Backend FastAPI - Docker]
+R --> N[(Neon<br/>PostgreSQL)]
+R -- ICMP / TCP --> T[Dispositivos monitorados]
+```
+
 ---
 
 # ⚙️ Stack Tecnológica
@@ -171,6 +194,7 @@ H --> K[Telegram]
 * Python 3.12
 * FastAPI
 * asyncpg (driver PostgreSQL assíncrono)
+* SQLAlchemy 2.0 (async) + Alembic
 * python-socketio
 * PyJWT + bcrypt
 * httpx (alertas Telegram)
@@ -178,11 +202,15 @@ H --> K[Telegram]
 
 ## Banco de Dados
 
-* PostgreSQL
+* PostgreSQL (local via Docker Compose; em produção, Neon ou PostgreSQL do Render)
 
 ## Infraestrutura
 
 * Docker / Docker Compose (local)
+* Render (backend, via Blueprint `render.yaml`)
+* Vercel (frontend)
+* Neon (PostgreSQL gerenciado)
+* GitHub Actions (CI)
 
 ---
 
@@ -193,7 +221,7 @@ OrbNOC/
 ├── backend-python/
 │   ├── app/
 │   │   ├── app.py               # Criação da app FastAPI (CORS, logger, registro das rotas)
-│   │   ├── config.py            # Variáveis de ambiente
+│   │   ├── config.py            # Variáveis de ambiente (inclui normalização da DATABASE_URL)
 │   │   ├── database.py          # Pool asyncpg, criação de tabelas (bootstrap) e seed do admin
 │   │   ├── security.py          # Hash de senha + JWT
 │   │   ├── auth_dependency.py   # Dependência de autenticação das rotas
@@ -210,6 +238,7 @@ OrbNOC/
 │   ├── pyproject.toml           # Config do pytest e do ruff
 │   ├── requirements.txt
 │   ├── requirements-dev.txt
+│   ├── .dockerignore
 │   ├── .env.example
 │   └── Dockerfile
 ├── frontend/                    # Next.js 14 (App Router)
@@ -217,18 +246,18 @@ OrbNOC/
 │   │   ├── app/                 # Rotas: /, /login, /alerts, /diagnostic, /network-map, /reports, /wallboard, /health
 │   │   ├── components/dashboard/# Componentes extraídos da página principal (KPIs, tabelas, gráficos, modais)
 │   │   ├── lib/                 # Funções auxiliares (ex.: cálculo de latência)
-│   │   ├── types/                # Tipos TypeScript compartilhados
-│   │   └── config.ts
+│   │   ├── types/               # Tipos TypeScript compartilhados
+│   │   └── config.ts            # URL da API (NEXT_PUBLIC_API_URL)
 │   ├── public/
 │   ├── package.json
 │   ├── .env.example
 │   └── Dockerfile
 ├── .github/workflows/ci.yml     # Lint + testes (backend e frontend) + build das imagens Docker
-├── docker-compose.yml
+├── docker-compose.yml           # Ambiente local completo (Postgres + backend + frontend)
+├── render.yaml                  # Blueprint do Render (backend + PostgreSQL)
 ├── CONTRIBUTING.md
 └── README.md
 ```
-
 
 ---
 
@@ -253,12 +282,14 @@ Acesse:
 * **Backend API:** http://localhost:3001
 * **PostgreSQL:** localhost:5433 (usuário `postgres`, senha `postgres`, banco `orbnoc`)
 
-**Login de demonstração** (criado automaticamente):
+**Login de demonstração** (criado automaticamente **apenas em desenvolvimento**):
 
 ```
 usuário: admin
 senha:   admin123
 ```
+
+Em produção (`ENVIRONMENT=production`) esse usuário **não** é criado — veja [Segurança](#-segurança).
 
 Para parar:
 
@@ -305,38 +336,53 @@ npm install
 npm run dev
 ```
 
-Por padrão o frontend já aponta para `http://localhost:3001` (backend local), sem precisar configurar nada — mas se quiser ser explícito:
+Por padrão o frontend já aponta para `http://localhost:3001` (backend local), sem precisar configurar nada — mas se quiser ser explícito, ou apontar para um backend remoto:
 
 ```bash
 cd frontend
 cp .env.example .env.local
+# edite NEXT_PUBLIC_API_URL e reinicie o `npm run dev`
 ```
 
 ---
 
-# 🔧 Variáveis de Ambiente (backend-python)
+# 🔧 Variáveis de Ambiente
+
+## Backend (`backend-python`)
 
 | Variável | Padrão | Descrição |
 | --- | --- | --- |
-| `PORT` | `3001` | Porta HTTP do backend |
-| `ENVIRONMENT` | `development` | Use `production` para ativar as travas de segurança de produção (ver abaixo) |
+| `PORT` | `3001` | Porta HTTP do backend (o Render define automaticamente) |
+| `ENVIRONMENT` | `development` | Use `production` para ativar as travas de segurança de produção (ver [Segurança](#-segurança)) |
 | `JWT_SECRET` | *(valor de dev, trocar em produção)* | Segredo usado para assinar os tokens JWT. **Obrigatório e sem valor padrão aceito quando `ENVIRONMENT=production`** — o backend recusa subir se detectar o segredo de desenvolvimento em produção. |
-| `DATABASE_URL` | — | String de conexão PostgreSQL (`postgresql://user:pass@host:5432/db`) |
-| `DATABASE_SSL` | `false` | `true` para exigir SSL (bancos remotos) |
-| `FRONTEND_URL` | `http://localhost:3000` | Origem liberada no CORS (HTTP e WebSocket) |
+| `DATABASE_URL` | — | String de conexão PostgreSQL (`postgresql://user:pass@host:5432/db`). Aceita também `postgres://`, e os parâmetros `sslmode` e `channel_binding` (comuns no Neon) são tratados automaticamente. O backend não sobe sem ela. |
+| `DATABASE_SSL` | `false` | `true` para exigir SSL. Ligado automaticamente se a URL tiver `sslmode=require` |
+| `FRONTEND_URL` | `http://localhost:3000` | Origem liberada no CORS (HTTP e WebSocket). Sem `/` no final |
 | `EXTRA_CORS_ORIGINS` | — | Origens extras liberadas no CORS, separadas por vírgula |
+| `CORS_ORIGIN_REGEX` | — | Regex opcional para liberar vários domínios de uma vez (ex.: previews da Vercel). Ex.: `^https://(meu-app\|meu-app-[a-z0-9-]+-meuusuario)\.vercel\.app$` |
+| `ADMIN_USERNAME` | `admin` | Usuário admin criado na primeira subida |
+| `ADMIN_EMAIL` | `admin@orbnoc.local` | E-mail do admin criado na primeira subida |
+| `ADMIN_PASSWORD` | — | Senha do admin. Em desenvolvimento, se vazia, usa `admin123`. **Em produção, se vazia, nenhum admin é criado** |
 | `MONITOR_INTERVAL_MS` | `10000` | Intervalo entre varreduras de monitoramento |
 | `LOGIN_RATE_LIMIT` | `5/minute` | Limite de tentativas de login por IP |
 | `REGISTER_RATE_LIMIT` | `3/minute` | Limite de registros por IP |
+
+## Frontend (`frontend`)
+
+| Variável | Padrão | Descrição |
+| --- | --- | --- |
+| `NEXT_PUBLIC_API_URL` | `http://localhost:3001` | URL pública do backend. **É embutida no JavaScript durante o build**: se você alterar o valor, é preciso fazer um novo build/deploy (na Vercel, um redeploy). |
 
 ---
 
 # 🔒 Segurança
 
-* **CORS** é restrito à(s) origem(ns) definidas em `FRONTEND_URL`/`EXTRA_CORS_ORIGINS` — nunca reflete qualquer origem.
-* **JWT_SECRET**: o backend recusa iniciar em produção (`ENVIRONMENT=production`) se detectar o segredo de desenvolvimento. Gere um valor próprio, por exemplo com `python3 -c "import secrets; print(secrets.token_urlsafe(48))"`.
+* **CORS** é restrito à(s) origem(ns) definidas em `FRONTEND_URL`/`EXTRA_CORS_ORIGINS` (e, opcionalmente, a uma regex em `CORS_ORIGIN_REGEX`) — nunca reflete qualquer origem. A mesma regra vale para o WebSocket (Socket.IO).
+* **JWT_SECRET**: o backend recusa iniciar em produção (`ENVIRONMENT=production`) se detectar o segredo de desenvolvimento. Gere um valor próprio, por exemplo com `python3 -c "import secrets; print(secrets.token_urlsafe(48))"`. Trocar o segredo desloga todos os usuários.
+* **Usuário admin**: em desenvolvimento, `admin/admin123` é criado automaticamente para facilitar o uso local. Em produção o backend **só cria o admin se `ADMIN_PASSWORD` estiver definida** — nunca sobe uma senha pública e conhecida. O seed só cria o usuário se ele ainda não existir; para trocar a senha de um admin já criado, apague o registro (`DELETE FROM users WHERE username = 'admin';`) e reinicie o backend com a nova `ADMIN_PASSWORD`.
 * **Rate limiting** em `/api/auth/login` e `/api/auth/register` (configurável via env vars acima).
-* **RBAC**: usuários com `role = 'admin'` têm acesso a `/api/admin/*` (listar usuários, ver logs de acesso, remover usuários). O usuário demo `admin/admin123` já nasce com essa role — troque a senha em produção.
+* **RBAC**: usuários com `role = 'admin'` têm acesso a `/api/admin/*` (listar usuários, ver logs de acesso, remover usuários).
+* **Segredos**: nunca versione `.env` nem compartilhe capturas de tela com `JWT_SECRET` ou `DATABASE_URL` visíveis. Se um segredo vazar, gere outro e atualize a variável no provedor.
 * **Vulnerabilidades conhecidas do frontend** (`npm audit`): a biblioteca `xlsx` (SheetJS) tem CVEs sem correção publicada no momento (prototype pollution / ReDoS). Se a exportação para Excel não for essencial, considere substituí-la por uma alternativa mantida (ex: `exceljs`) ou mover a geração para o backend.
 
 ---
@@ -346,9 +392,9 @@ cp .env.example .env.local
 ```bash
 cd backend-python
 pip install -r requirements-dev.txt
-pytest -v          # 49 testes: security, services (ping, traceroute, device), repositories,
-                    # rotas (incl. RBAC) e testes de integração contra Postgres real
-ruff check .        # lint
+pytest -v          # security, services (ping, traceroute, device), repositories,
+                   # rotas (incl. RBAC) e testes de integração contra Postgres real
+ruff check .       # lint
 ```
 
 Os testes em `tests/integration/` sobem um PostgreSQL real via **testcontainers** e rodam as migrations do Alembic de verdade — exigem Docker disponível na máquina (em ambientes sem Docker, são pulados automaticamente em vez de falhar). Os demais testes usam SQLite in-memory com o schema gerado a partir dos models SQLAlchemy.
@@ -365,15 +411,60 @@ O workflow `.github/workflows/ci.yml` roda automaticamente ambos em cada push/PR
 
 # ☁️ Deploy em Produção
 
-Checklist mínimo antes de subir o OrbNOC fora do ambiente local:
+A configuração de referência usa **Render** (backend), **Vercel** (frontend) e **Neon** (PostgreSQL), mas qualquer combinação equivalente funciona.
 
-1. **Defina `ENVIRONMENT=production`** e um `JWT_SECRET` forte e único (o backend recusa subir sem isso).
-2. **Configure `FRONTEND_URL`** com o domínio real do frontend (HTTPS) — não use `*` nem deixe o padrão de localhost.
-3. **Coloque um reverse proxy com TLS** na frente (Nginx, Caddy ou o load balancer do seu provedor) — nem o backend Python nem o Next.js standalone servem HTTPS diretamente.
-4. **PostgreSQL gerenciado ou com backup automatizado**: ative `DATABASE_SSL=true` se o provedor exigir, e configure backups/retenção. O schema também é criado automaticamente no primeiro boot (`create_tables`, em `database.py`) — mas o projeto já tem migrations Alembic (`backend-python/migrations/`) com o baseline do schema; isso não substitui backup dos dados.
-5. **Troque a senha do usuário demo** (`admin/admin123`) criado no seed inicial, ou remova o seed em produção.
-6. **Rotação de logs**: o backend loga em stdout; em produção, capture isso com o driver de log do seu orquestrador (Docker/K8s) ou um agregador (ex: Loki, CloudWatch).
-7. **Monitore o próprio monitor**: como o loop de monitoramento roda dentro do processo do backend, rodar múltiplas réplicas duplica as leituras e os alertas — mantenha uma única instância do backend responsável pelo loop, ou externalize-o para um worker dedicado antes de escalar horizontalmente.
+## 1. Banco de dados
+
+* **Neon (ou outro PostgreSQL gerenciado):** crie o banco e copie a connection string. Não é necessário remover `?sslmode=require&channel_binding=require` da URL — o backend trata esses parâmetros.
+* **PostgreSQL do Render:** o `render.yaml` já cria um banco e liga o `DATABASE_URL` ao backend automaticamente (use a *Internal Database URL*, na mesma região do backend).
+
+## 2. Backend no Render
+
+O repositório inclui um Blueprint (`render.yaml`) que cria o serviço web do backend (Docker, usando `backend-python/Dockerfile`) e um PostgreSQL gerenciado.
+
+1. Suba o projeto para o GitHub, com o `render.yaml` na raiz da branch de deploy.
+2. No Render: **New → Blueprint** e selecione o repositório e a branch.
+3. Preencha as variáveis solicitadas:
+   * `FRONTEND_URL`: URL pública do frontend (ex.: `https://orb-noc-hazel.vercel.app`, sem `/` no final).
+   * `ADMIN_PASSWORD`: senha do usuário `admin` (obrigatória para que o admin seja criado em produção).
+   * `CORS_ORIGIN_REGEX` (opcional): para liberar as URLs de preview da Vercel.
+4. Se for usar o Neon em vez do banco do Render, remova o bloco `databases` do `render.yaml` e defina `DATABASE_URL` manualmente no serviço.
+5. Após o deploy, teste `https://<seu-servico>.onrender.com/health`.
+
+> Se você criar o serviço **manualmente** (sem Blueprint), configure em *Settings*: *Dockerfile Path* `./backend-python/Dockerfile` e *Docker Build Context* `./backend-python`, e defina no *Environment*: `ENVIRONMENT=production`, `DATABASE_URL`, `JWT_SECRET`, `FRONTEND_URL` e `ADMIN_PASSWORD`.
+
+Observações:
+
+* O `JWT_SECRET` é gerado automaticamente pelo Blueprint.
+* O monitoramento roda dentro do processo do servidor; por isso o plano `starter` (sem hibernação) é recomendado. No plano gratuito o serviço hiberna sem tráfego e o monitoramento para junto.
+* O backend só consegue monitorar dispositivos alcançáveis pela internet. IPs de rede local (192.168.x.x, 10.x.x.x) não são acessíveis a partir do Render; para monitorar uma LAN, rode o backend dentro da rede ou use uma VPN.
+
+## 3. Frontend na Vercel
+
+1. Importe o repositório na Vercel e defina o **Root Directory** como `frontend`.
+2. Em *Environment Variables*, crie `NEXT_PUBLIC_API_URL` com a URL do backend (ex.: `https://orbnoc-jj74.onrender.com`, sem `/` no final).
+3. Faça o deploy. Sempre que alterar `NEXT_PUBLIC_API_URL`, faça um novo deploy (a variável é gravada no build).
+
+## 4. Checklist de produção
+
+1. **`ENVIRONMENT=production`** e um `JWT_SECRET` forte e único (o backend recusa subir sem isso).
+2. **`FRONTEND_URL`** com o domínio real do frontend (HTTPS) — não deixe o padrão de localhost.
+3. **TLS**: Render e Vercel já entregam HTTPS. Se hospedar por conta própria, coloque um reverse proxy com TLS (Nginx, Caddy ou o load balancer do provedor) na frente — nem o backend Python nem o Next.js standalone servem HTTPS diretamente.
+4. **Banco com backup**: o schema é criado automaticamente no primeiro boot (`create_tables`, em `database.py`), e o projeto tem migrations Alembic (`backend-python/migrations/`) com o baseline do schema; nada disso substitui o backup dos dados. Confira a política de backup e retenção do seu provedor.
+5. **`ADMIN_PASSWORD` forte** definida antes do primeiro deploy (veja [Segurança](#-segurança)).
+6. **Logs**: o backend loga em stdout; use o painel de logs do provedor ou um agregador (ex.: Loki, CloudWatch).
+7. **Uma única instância do backend**: o loop de monitoramento roda dentro do processo, então rodar múltiplas réplicas duplica as leituras e os alertas. Mantenha uma instância responsável pelo loop, ou externalize-o para um worker dedicado antes de escalar horizontalmente.
+
+## 5. Problemas comuns em produção
+
+| Sintoma | Causa provável | Solução |
+| --- | --- | --- |
+| Frontend chama `localhost:3001` (`ERR_CONNECTION_REFUSED`) | `NEXT_PUBLIC_API_URL` ausente no momento do build | Defina a variável e faça um novo deploy/build (limpando o cache de build, se necessário) |
+| `blocked by CORS policy` no console | A origem do frontend não está liberada no backend | Confira `FRONTEND_URL` (sem `/` no final) e adicione outras origens em `EXTRA_CORS_ORIGINS` ou `CORS_ORIGIN_REGEX`. Confirme também que o último deploy do backend ficou *Live* — se falhou, o Render mantém a versão antiga no ar. Um backend fora do ar ou hibernando também aparece como erro de CORS |
+| `Connection refused` ao conectar no PostgreSQL / `DATABASE_URL não está definida` | Variável `DATABASE_URL` ausente no serviço | Defina `DATABASE_URL` no *Environment* do backend |
+| `JWT_SECRET não definido` / backend recusa subir em produção | Segredo padrão de desenvolvimento em uso | Defina um `JWT_SECRET` próprio |
+| Login do admin não funciona em produção | `ADMIN_PASSWORD` não definida (admin não criado) ou admin antigo com outra senha | Defina `ADMIN_PASSWORD`, apague o registro do admin no banco e reinicie o backend |
+| `failed to calculate checksum ... "/requirements.txt": not found` no build | Contexto do Docker apontando para a raiz do repositório | Use *Dockerfile Path* `./backend-python/Dockerfile` e *Docker Build Context* `./backend-python` (ou o Blueprint) |
 
 ---
 
@@ -388,6 +479,7 @@ Checklist mínimo antes de subir o OrbNOC fora do ambiente local:
 * [x] Testes automatizados + CI (GitHub Actions)
 * [x] Rate limiting, RBAC e CORS restrito
 * [x] Histórico de métricas (série temporal por dispositivo)
+* [x] Deploy em produção (Render + Vercel + Neon)
 
 ### Próximas Funcionalidades
 
@@ -421,20 +513,3 @@ Distribuído sob a licença MIT.
 Network Monitoring • NOC • Observability • Infrastructure
 
 </div>
-
-## Deploy do backend no Render
-
-O repositório inclui um Blueprint (`render.yaml`) que cria o serviço web do backend (Docker) e um PostgreSQL gerenciado.
-
-1. Suba o projeto para o GitHub (com o `render.yaml` na raiz).
-2. No Render: **New → Blueprint** e selecione o repositório.
-3. Quando solicitado, preencha:
-   - `FRONTEND_URL`: URL pública do frontend (ex.: `https://orbnoc.vercel.app`, sem `/` no final) — usada no CORS e no Socket.IO.
-   - `ADMIN_PASSWORD`: senha do usuário `admin`, criado na primeira subida. Sem ela, em produção, nenhum admin é criado.
-4. Após o deploy, teste `https://<seu-servico>.onrender.com/health`.
-5. No frontend, defina `NEXT_PUBLIC_API_URL=https://<seu-servico>.onrender.com` e refaça o build (o Next.js grava essa variável no build).
-
-Observações:
-- O `JWT_SECRET` é gerado automaticamente pelo Render.
-- O monitoramento roda dentro do processo do servidor; por isso o plano `starter` (sem hibernação) é recomendado.
-- O backend só consegue monitorar dispositivos alcançáveis pela internet. IPs de rede local (192.168.x.x, 10.x.x.x) não são acessíveis a partir do Render.
