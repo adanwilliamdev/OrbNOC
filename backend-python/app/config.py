@@ -38,6 +38,11 @@ if JWT_SECRET == _DEFAULT_JWT_SECRET:
     )
 
 DATABASE_URL: str = os.getenv("DATABASE_URL", "")
+# Alguns provedores (Heroku, versões antigas do Render) entregam a URL como
+# `postgres://`, esquema que o SQLAlchemy não reconhece. Normalizamos aqui
+# uma única vez para `postgresql://`, que o restante do código já espera.
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 DATABASE_SSL: bool = os.getenv("DATABASE_SSL", "false").lower() == "true"
 
 FRONTEND_URL: str = os.getenv("FRONTEND_URL", "http://localhost:3000")
@@ -55,3 +60,12 @@ MONITOR_INTERVAL_SECONDS: float = MONITOR_INTERVAL_MS / 1000
 # ex: "5/minute".
 LOGIN_RATE_LIMIT: str = os.getenv("LOGIN_RATE_LIMIT", "5/minute")
 REGISTER_RATE_LIMIT: str = os.getenv("REGISTER_RATE_LIMIT", "3/minute")
+
+# Usuário admin criado automaticamente na primeira subida.
+# - Em desenvolvimento: se ADMIN_PASSWORD não for definida, usa o demo
+#   admin / admin123 (comportamento anterior, usado pelos testes).
+# - Em produção: só cria o admin se ADMIN_PASSWORD for definida — nunca
+#   subimos um usuário com senha pública e conhecida em um servidor exposto.
+ADMIN_USERNAME: str = os.getenv("ADMIN_USERNAME", "admin")
+ADMIN_EMAIL: str = os.getenv("ADMIN_EMAIL", "admin@orbnoc.local")
+ADMIN_PASSWORD: str = os.getenv("ADMIN_PASSWORD", "")

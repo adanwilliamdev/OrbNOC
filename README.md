@@ -421,3 +421,20 @@ Distribuído sob a licença MIT.
 Network Monitoring • NOC • Observability • Infrastructure
 
 </div>
+
+## Deploy do backend no Render
+
+O repositório inclui um Blueprint (`render.yaml`) que cria o serviço web do backend (Docker) e um PostgreSQL gerenciado.
+
+1. Suba o projeto para o GitHub (com o `render.yaml` na raiz).
+2. No Render: **New → Blueprint** e selecione o repositório.
+3. Quando solicitado, preencha:
+   - `FRONTEND_URL`: URL pública do frontend (ex.: `https://orbnoc.vercel.app`, sem `/` no final) — usada no CORS e no Socket.IO.
+   - `ADMIN_PASSWORD`: senha do usuário `admin`, criado na primeira subida. Sem ela, em produção, nenhum admin é criado.
+4. Após o deploy, teste `https://<seu-servico>.onrender.com/health`.
+5. No frontend, defina `NEXT_PUBLIC_API_URL=https://<seu-servico>.onrender.com` e refaça o build (o Next.js grava essa variável no build).
+
+Observações:
+- O `JWT_SECRET` é gerado automaticamente pelo Render.
+- O monitoramento roda dentro do processo do servidor; por isso o plano `starter` (sem hibernação) é recomendado.
+- O backend só consegue monitorar dispositivos alcançáveis pela internet. IPs de rede local (192.168.x.x, 10.x.x.x) não são acessíveis a partir do Render.

@@ -104,21 +104,35 @@ async def create_tables(conn_pool: asyncpg.Pool) -> None:
 
 
 async def seed_demo_admin(conn: asyncpg.Connection) -> None:
+    username = config.ADMIN_USERNAME
+    password = config.ADMIN_PASSWORD
+    if not password:
+        if config.IS_PRODUCTION:
+            logger.warning(
+                "⚠️  ADMIN_PASSWORD não definida em produção — nenhum usuário admin "
+                "foi criado automaticamente."
+            )
+            return
+        password = "admin123"  # apenas desenvolvimento/testes
+
     try:
-        existing = await conn.fetchrow("SELECT id FROM users WHERE username = $1", "admin")
+        existing = await conn.fetchrow("SELECT id FROM users WHERE username = $1", username)
         if existing:
             return
-        hashed = bcrypt.hashpw(b"admin123", bcrypt.gensalt(10)).decode()
+        hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt(10)).decode()
         await conn.execute(
             "INSERT INTO users (username, email, password, role) VALUES ($1, $2, $3, $4)",
-            "admin",
-            "admin@orbnoc.local",
+            username,
+            config.ADMIN_EMAIL,
             hashed,
             "admin",
         )
-        logger.info("✅ Usuário demo criado: admin / admin123")
+        if config.ADMIN_PASSWORD:
+            logger.info("✅ Usuário admin criado: %s", username)
+        else:
+            logger.info("✅ Usuário demo criado: %s / admin123", username)
     except Exception as exc:  # noqa: BLE001
-        logger.error("❌ Erro ao criar usuário demo: %s", exc)
+        logger.error("❌ Erro ao criar usuário admin: %s", exc)
 
 
 async def connect(retries: int = 10, delay_seconds: float = 3.0) -> asyncpg.Pool:

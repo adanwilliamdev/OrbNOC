@@ -1,0 +1,48 @@
+# Blueprint do Render para o backend do OrbNOC (FastAPI + Socket.IO + PostgreSQL).
+# Uso: Render Dashboard → New → Blueprint → selecione este repositório.
+# Documentação: https://render.com/docs/blueprint-spec
+
+databases:
+  - name: orbnoc-db
+    databaseName: orbnoc
+    user: orbnoc
+    # O plano "free" do Postgres expira após 30 dias; use um plano pago para
+    # manter os dados.
+    plan: basic-256mb
+    ipAllowList: [] # somente acesso interno (rede privada do Render)
+
+services:
+  - type: web
+    name: orbnoc-backend
+    runtime: docker
+    # Docker (e não runtime python) porque o monitoramento usa os binários
+    # `ping` e `traceroute`, instalados no Dockerfile.
+    dockerfilePath: ./backend-python/Dockerfile
+    dockerContext: ./backend-python
+    # Plano pago: o loop de monitoramento roda dentro do processo do servidor,
+    # e no plano free o serviço "dorme" após 15 min sem requisições HTTP.
+    plan: starter
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: orbnoc-db
+          property: connectionString
+      # Conexão interna do Render não exige SSL.
+      - key: DATABASE_SSL
+        value: "false"
+      - key: JWT_SECRET
+        generateValue: true
+      # URL pública do frontend (origem liberada no CORS), ex.:
+      # https://orbnoc.vercel.app — sem barra no final.
+      - key: FRONTEND_URL
+        sync: false
+      # Senha do usuário admin criado na primeira subida.
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: MONITOR_INTERVAL_MS
+        value: "10000"
+      # A porta é definida pelo próprio Render (variável PORT, padrão 10000).

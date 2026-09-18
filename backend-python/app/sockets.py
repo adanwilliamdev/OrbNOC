@@ -7,7 +7,7 @@ import logging
 import jwt
 import socketio
 
-from . import database, security
+from . import config, database, security
 from .services.monitor_service import register_user_sessions_getter
 from .services.telegram_service import send_telegram_alert
 
@@ -15,7 +15,7 @@ logger = logging.getLogger("orbnoc.sockets")
 
 sio = socketio.AsyncServer(
     async_mode="asgi",
-    cors_allowed_origins="*",
+    cors_allowed_origins=config.ALLOWED_ORIGINS,
     ping_interval=25,
     ping_timeout=60,
 )
