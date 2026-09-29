@@ -1,73 +1,80 @@
+import ipaddress
+
 import pytest
 
-from app.core.netguard import TargetError, parse_host, resolve_target
+from app.services.netguard import HostRejected, check_address, parse_host, resolve_and_check
 
 
-@pytest.mark.parametrize("host", ["8.8.8.8", "10.1.2.3", "192.168.0.1", "2606:4700:4700::1111"])
-async def test_alvos_validos(host):
-    assert (await resolve_target(host)).address == host
-
-
-@pytest.mark.parametrize(
-    "host",
-    ["169.254.169.254", "0.0.0.0", "224.0.0.1", "fe80::1", "fd00:ec2::254", "::ffff:169.254.169.254"],
-)
-async def test_sempre_bloqueados(host):
-    with pytest.raises(TargetError):
-        await resolve_target(host)
+@pytest.mark.parametrize("value", ["8.8.8.8", "example.com", "my-host_1.lan", "[2001:db8::1]"])
+def test_parse_host_accepts(value):
+    assert parse_host(value)
 
 
 @pytest.mark.parametrize(
-    "host",
+    "value",
     [
         "",
+        "  ",
+        "-oProxyCommand=x",
         "a b",
-        "x;rm -rf /",
-        "-oProxyCommand=id",
-        "$(id)",
-        "a/b",
-        "http://x.com",
-        "1234",
-        "127.1",
-        "a" * 300,
-        "`id`",
-        "foo|bar",
+        "host;rm -rf /",
+        "$(id).com",
+        "a..b",
+        "x" * 300,
+        "http://evil.com",
+        "host\nname",
     ],
 )
-def test_sintaxe_invalida(host):
-    with pytest.raises(TargetError):
-        parse_host(host)
+def test_parse_host_rejects(value):
+    with pytest.raises(HostRejected):
+        parse_host(value)
 
 
-def test_normaliza():
-    assert parse_host("  ROUTER-01.Lan. ") == "router-01.lan"
+def test_parse_host_normalizes():
+    assert parse_host("  ExAmple.COM. ") == "example.com"
     assert parse_host("[::1]") == "::1"
 
 
-async def test_loopback_configuravel(settings, monkeypatch):
-    monkeypatch.setattr(settings, "allow_loopback_targets", False)
-    for h in ("127.0.0.1", "::1", "::ffff:127.0.0.1"):
-        with pytest.raises(TargetError):
-            await resolve_target(h)
-    monkeypatch.setattr(settings, "allow_loopback_targets", True)
-    assert (await resolve_target("127.0.0.1")).address == "127.0.0.1"
-    assert (await resolve_target("::1")).address == "::1"
+@pytest.mark.parametrize(
+    "addr",
+    [
+        "127.0.0.1",
+        "127.5.5.5",
+        "::1",
+        "169.254.169.254",
+        "169.254.1.1",
+        "fe80::1",
+        "0.0.0.0",
+        "224.0.0.1",
+        "fd00:ec2::254",
+        "100.100.100.200",
+        "::ffff:127.0.0.1",
+        "::ffff:169.254.169.254",
+    ],
+)
+def test_always_blocked(addr):
+    for allow_private in (True, False):
+        with pytest.raises(HostRejected):
+            check_address(ipaddress.ip_address(addr), allow_private)
 
 
-async def test_rede_privada_configuravel(settings, monkeypatch):
-    monkeypatch.setattr(settings, "allow_private_targets", False)
-    with pytest.raises(TargetError):
-        await resolve_target("192.168.1.1")
-    assert (await resolve_target("8.8.8.8")).address == "8.8.8.8"
+@pytest.mark.parametrize("addr", ["10.0.0.5", "192.168.1.1", "172.16.4.4", "100.64.0.9"])
+def test_private_allowed_only_when_enabled(addr):
+    check_address(ipaddress.ip_address(addr), allow_private=True)
+    with pytest.raises(HostRejected):
+        check_address(ipaddress.ip_address(addr), allow_private=False)
 
 
-async def test_hostname_que_resolve_para_ip_proibido(monkeypatch):
-    """Anti DNS-rebinding: valida o IP resolvido, não só o nome."""
-    import socket
+def test_public_always_allowed():
+    check_address(ipaddress.ip_address("8.8.8.8"), allow_private=False)
 
-    async def fake_getaddrinfo(self, host, *a, **k):
-        return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("169.254.169.254", 0))]
 
-    monkeypatch.setattr("asyncio.BaseEventLoop.getaddrinfo", fake_getaddrinfo)
-    with pytest.raises(TargetError, match="bloqueado"):
-        await resolve_target("evil.example.com")
+async def test_resolve_ip_literal():
+    assert await resolve_and_check("10.1.2.3", True) == ["10.1.2.3"]
+    with pytest.raises(HostRejected):
+        await resolve_and_check("127.0.0.1", True)
+
+
+async def test_resolve_localhost_blocked():
+    with pytest.raises(HostRejected):
+        await resolve_and_check("localhost", True)

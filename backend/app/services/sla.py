@@ -1,112 +1,103 @@
-"""SLA por janela de tempo (24h / 7d / 30d), combinando amostras cruas e agregados por hora."""
+"""Agregação por hora e SLA por janela de tempo (24 h, 7 d, 30 d)."""
 
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import Float, and_, func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import Metric, MetricHourly, SystemState
+from app.db.models import Device, MetricHourly
 
-ROLLUP_KEY = "rollup_until"
 WINDOWS = {"24h": timedelta(hours=24), "7d": timedelta(days=7), "30d": timedelta(days=30)}
 
-
-@dataclass
-class SlaStats:
-    samples: int = 0
-    ok_samples: int = 0
-    latency_sum: float = 0.0
-    latency_count: int = 0
-
-    @property
-    def uptime_pct(self) -> float | None:
-        return round(100 * self.ok_samples / self.samples, 3) if self.samples else None
-
-    @property
-    def avg_latency(self) -> float | None:
-        return round(self.latency_sum / self.latency_count, 2) if self.latency_count else None
-
-    def as_dict(self) -> dict:
-        return {"uptime_pct": self.uptime_pct, "avg_latency_ms": self.avg_latency, "samples": self.samples}
-
-
-def floor_hour(dt: datetime) -> datetime:
-    return dt.astimezone(UTC).replace(minute=0, second=0, microsecond=0)
-
-
-def ceil_hour(dt: datetime) -> datetime:
-    f = floor_hour(dt)
-    return f if f == dt.astimezone(UTC) else f + timedelta(hours=1)
+ROLLUP_SQL = text(
+    """
+    INSERT INTO metrics_hourly
+        (device_id, hour, samples, ok_samples, avg_latency, min_latency, max_latency)
+    SELECT device_id,
+           date_trunc('hour', recorded_at) AS hour,
+           count(*),
+           count(*) FILTER (WHERE ok),
+           avg(latency) FILTER (WHERE ok),
+           min(latency) FILTER (WHERE ok),
+           max(latency) FILTER (WHERE ok)
+    FROM metrics
+    WHERE recorded_at >= :since
+    GROUP BY device_id, date_trunc('hour', recorded_at)
+    ON CONFLICT (device_id, hour) DO UPDATE SET
+        samples = EXCLUDED.samples,
+        ok_samples = EXCLUDED.ok_samples,
+        avg_latency = EXCLUDED.avg_latency,
+        min_latency = EXCLUDED.min_latency,
+        max_latency = EXCLUDED.max_latency
+    """
+)
 
 
-async def get_rollup_until(session: AsyncSession) -> datetime | None:
-    value = await session.scalar(select(SystemState.value).where(SystemState.key == ROLLUP_KEY))
-    return datetime.fromisoformat(value) if value else None
+def hour_floor(moment: datetime) -> datetime:
+    return moment.astimezone(UTC).replace(minute=0, second=0, microsecond=0)
 
 
-async def _add_raw(
-    session: AsyncSession, acc: dict[int, SlaStats], ids: list[int], start: datetime, end: datetime
-) -> None:
-    rows = await session.execute(
-        select(
-            Metric.device_id,
-            func.count(),
-            func.count().filter(Metric.ok),
-            func.coalesce(func.sum(Metric.latency_ms), 0.0).cast(Float),
-            func.count(Metric.latency_ms),
-        )
-        .where(and_(Metric.device_id.in_(ids), Metric.recorded_at >= start, Metric.recorded_at < end))
-        .group_by(Metric.device_id)
-    )
-    for device_id, n, ok, lat_sum, lat_n in rows:
-        s = acc[device_id]
-        s.samples += n
-        s.ok_samples += ok
-        s.latency_sum += lat_sum
-        s.latency_count += lat_n
+async def rollup_hourly(session: AsyncSession, now: datetime | None = None, hours: int = 2) -> None:
+    """Recalcula a hora atual e as anteriores a partir das métricas cruas."""
+    now = now or datetime.now(UTC)
+    await session.execute(ROLLUP_SQL, {"since": hour_floor(now) - timedelta(hours=hours - 1)})
 
 
-async def _add_hourly(
-    session: AsyncSession, acc: dict[int, SlaStats], ids: list[int], start: datetime, end: datetime
-) -> None:
+@dataclass(slots=True)
+class SlaWindow:
+    window: str
+    uptime_pct: float | None
+    avg_latency: float | None
+    sample_count: int
+
+
+async def sla_by_device(
+    session: AsyncSession, device_ids: list[int], window: str, now: datetime | None = None
+) -> dict[int, SlaWindow]:
+    now = now or datetime.now(UTC)
+    since = hour_floor(now - WINDOWS[window])
     rows = await session.execute(
         select(
             MetricHourly.device_id,
             func.sum(MetricHourly.samples),
             func.sum(MetricHourly.ok_samples),
-            func.sum(MetricHourly.latency_sum),
-            func.sum(MetricHourly.latency_count),
+            func.sum(MetricHourly.avg_latency * MetricHourly.ok_samples),
         )
-        .where(and_(MetricHourly.device_id.in_(ids), MetricHourly.hour >= start, MetricHourly.hour < end))
+        .where(MetricHourly.device_id.in_(device_ids), MetricHourly.hour >= since)
         .group_by(MetricHourly.device_id)
     )
-    for device_id, n, ok, lat_sum, lat_n in rows:
-        s = acc[device_id]
-        s.samples += int(n)
-        s.ok_samples += int(ok)
-        s.latency_sum += float(lat_sum)
-        s.latency_count += int(lat_n)
+    out: dict[int, SlaWindow] = {}
+    for device_id, samples, ok, weighted in rows:
+        samples, ok = int(samples or 0), int(ok or 0)
+        out[device_id] = SlaWindow(
+            window,
+            round(ok / samples * 100, 3) if samples else None,
+            round(float(weighted) / ok, 2) if ok and weighted is not None else None,
+            samples,
+        )
+    for device_id in device_ids:
+        out.setdefault(device_id, SlaWindow(window, None, None, 0))
+    return out
 
 
-async def compute_sla(
-    session: AsyncSession, device_ids: list[int], since: datetime, now: datetime | None = None
-) -> dict[int, SlaStats]:
-    """Uptime e latência média no intervalo [since, now).
-
-    Horas já agregadas (< rollup_until) vêm de metrics_hourly; o restante, das amostras cruas.
-    """
-    now = now or datetime.now(UTC)
-    acc = {i: SlaStats() for i in device_ids}
-    if not device_ids:
-        return acc
-    rolled = await get_rollup_until(session)
-    first_full = ceil_hour(since)
-    if rolled is None or rolled <= since or first_full >= rolled:
-        await _add_raw(session, acc, device_ids, since, now)
-        return acc
-    await _add_hourly(session, acc, device_ids, first_full, rolled)
-    if since < first_full:
-        await _add_raw(session, acc, device_ids, since, first_full)
-    await _add_raw(session, acc, device_ids, rolled, now)
-    return acc
+async def sla_report(session: AsyncSession, user_id: int, window: str) -> list[dict]:
+    devices = (
+        await session.scalars(select(Device).where(Device.user_id == user_id).order_by(Device.id))
+    ).all()
+    sla = await sla_by_device(session, [d.id for d in devices], window)
+    return [
+        {
+            "device_id": d.id,
+            "name": d.name,
+            "ip": d.ip,
+            "location": d.location,
+            "status": d.status,
+            "window": window,
+            "uptime_pct": sla[d.id].uptime_pct,
+            "avg_latency": sla[d.id].avg_latency,
+            "sample_count": sla[d.id].sample_count,
+            "sla_threshold_ms": d.sla_threshold_ms,
+        }
+        for d in devices
+    ]

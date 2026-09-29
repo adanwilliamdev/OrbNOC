@@ -1,0 +1,25 @@
+# Uma única origem: /api, /ws e /health vão para o backend; o resto, para o Next.js.
+# Sem CORS e sem URL da API embutida no build do frontend.
+#
+# Local:    SITE_ADDRESS=:80  (padrão; HTTP em http://localhost:8080 pelo compose)
+# Produção: SITE_ADDRESS=orbnoc.seudominio.com  (o Caddy obtém e renova o HTTPS sozinho)
+{$SITE_ADDRESS::80} {
+	encode zstd gzip
+
+	header {
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy strict-origin-when-cross-origin
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		-Server
+	}
+
+	@backend path /api/* /ws /health /health/*
+	handle @backend {
+		reverse_proxy backend:8000
+	}
+
+	handle {
+		reverse_proxy frontend:3000
+	}
+}

@@ -1,114 +1,93 @@
-"""Configuração da aplicação (variáveis de ambiente / .env)."""
+"""Configuração via variáveis de ambiente (pydantic-settings)."""
 
 from functools import lru_cache
-from typing import Literal
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
-from pydantic import field_validator, model_validator
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-# Segredos que nunca podem ser usados em produção (valores de exemplo de versões anteriores).
-_INSECURE_SECRETS = {
-    "",
-    "secret",
-    "change_this_in_production",
-    "troque_por_um_segredo_forte_e_unico",
-    "orbnoc_secret_key_2024_change_this_in_production",
-}
-_DEV_SECRET = "dev-only-insecure-secret-change-me-before-production"  # noqa: S105
+DEV_JWT_SECRET = "dev-only-insecure-secret-change-me-0123456789"  # noqa: S105
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    environment: Literal["development", "production", "test"] = "development"
-
-    # Infra
+    environment: str = "development"
     database_url: str = "postgresql://postgres:postgres@localhost:5432/orbnoc"
     database_ssl: bool = False
     redis_url: str = "redis://localhost:6379/0"
 
-    # Segurança
-    jwt_secret: str = _DEV_SECRET
-    encryption_key: str | None = None  # se vazio, derivada do JWT_SECRET
-    session_minutes: int = 720
+    jwt_secret: str = ""
+    encryption_key: str = ""  # chave Fernet; se vazia, é derivada de JWT_SECRET
+    session_ttl_hours: int = 24
     cookie_name: str = "orbnoc_session"
-    cookie_samesite: Literal["lax", "strict", "none"] = "lax"
     cookie_secure: bool | None = None  # padrão: True em produção
-    allow_registration: bool = False
+
+    # Origem pública (Caddy). Requisições com outro Origin são rejeitadas.
+    public_url: str = "http://localhost"
+    extra_origins: str = ""
+
+    registration_enabled: bool = False
     admin_username: str = "admin"
-    admin_email: str = "admin@orbnoc.local"
-    admin_password: str | None = None
-    login_max_attempts: int = 5
+    admin_email: str = "admin@example.com"
+    admin_password: str = ""
+
+    allow_private_networks: bool = True
+
+    worker_tick_seconds: float = Field(default=2.0, gt=0)
+    monitor_concurrency: int = Field(default=20, ge=1)
+    default_check_interval_seconds: int = 10
+    default_failure_threshold: int = 3
+    probe_timeout_seconds: float = 2.0
+
+    metrics_retention_days: int = 14
+    hourly_retention_days: int = 400
+    events_retention_days: int = 90
+    access_log_retention_days: int = 180
+
+    health_worker_max_age_seconds: int = 30
+    login_max_attempts: int = 8
     login_window_seconds: int = 900
-    diagnostic_rate_limit_per_minute: int = 20
-
-    # Rede / CORS (só necessário se o frontend NÃO estiver na mesma origem da API)
-    frontend_url: str = "http://localhost:3000"
-    extra_cors_origins: str = ""
-    enable_docs: bool | None = None  # padrão: desligado em produção
-
-    # Monitoramento
-    monitor_interval_ms: int = 10_000
-    monitor_concurrency: int = 20
-    monitor_timeout_seconds: float = 3.0
-    failure_threshold: int = 3  # falhas seguidas para marcar OFFLINE
-    sla_breach_consecutive: int = 3  # violações seguidas de latência para alertar
-    icmp_mode: Literal["auto", "icmp", "tcp"] = "auto"
-
-    # Política de alvos (proteção contra SSRF / varredura interna)
-    allow_loopback_targets: bool = False
-    allow_private_targets: bool = True
-
-    # Retenção
-    raw_metrics_retention_days: int = 7
-    hourly_metrics_retention_days: int = 400
-    events_retention_days: int = 365
+    enable_docs: bool = False
 
     @property
     def is_production(self) -> bool:
-        return self.environment == "production"
+        return self.environment.lower() == "production"
 
     @property
-    def secure_cookies(self) -> bool:
-        if self.cookie_secure is not None:
-            return self.cookie_secure
-        return self.is_production
+    def secure_cookie(self) -> bool:
+        return self.is_production if self.cookie_secure is None else self.cookie_secure
 
     @property
-    def docs_enabled(self) -> bool:
-        return self.enable_docs if self.enable_docs is not None else not self.is_production
-
-    @property
-    def allowed_origins(self) -> list[str]:
-        raw = [self.frontend_url, *self.extra_cors_origins.split(",")]
-        return sorted({o.strip().rstrip("/") for o in raw if o.strip()})
-
-    @property
-    def monitor_interval_seconds(self) -> float:
-        return max(1.0, self.monitor_interval_ms / 1000)
-
-    @field_validator("admin_password", "encryption_key", "cookie_secure", "enable_docs", mode="before")
-    @classmethod
-    def _empty_is_unset(cls, v):
-        """Variável presente mas vazia (ex.: `${VAR:-}` no compose) equivale a não definida."""
-        return None if isinstance(v, str) and not v.strip() else v
+    def allowed_origins(self) -> set[str]:
+        origins = {self.public_url.rstrip("/")}
+        origins.update(o.strip().rstrip("/") for o in self.extra_origins.split(",") if o.strip())
+        return origins
 
     @model_validator(mode="after")
-    def _validate_production(self) -> "Settings":
-        if self.cookie_samesite == "none" and not self.secure_cookies:
-            raise ValueError("COOKIE_SAMESITE=none exige cookies seguros (COOKIE_SECURE=true).")
-        if self.is_production:
-            if (
-                self.jwt_secret in _INSECURE_SECRETS
-                or self.jwt_secret == _DEV_SECRET
-                or len(self.jwt_secret) < 32
-            ):
-                raise ValueError(
-                    "Em produção, defina JWT_SECRET com pelo menos 32 caracteres (valor único e aleatório)."
-                )
-            if self.admin_password is not None and len(self.admin_password) < 10:
-                raise ValueError("ADMIN_PASSWORD deve ter pelo menos 10 caracteres em produção.")
+    def _check_secrets(self) -> "Settings":
+        if not self.jwt_secret:
+            if self.is_production:
+                raise ValueError("JWT_SECRET é obrigatório em produção")
+            self.jwt_secret = DEV_JWT_SECRET
+        if self.is_production and len(self.jwt_secret) < 32:
+            raise ValueError("JWT_SECRET precisa ter pelo menos 32 caracteres em produção")
+        if self.is_production and self.jwt_secret == DEV_JWT_SECRET:
+            raise ValueError("JWT_SECRET de desenvolvimento não pode ser usado em produção")
         return self
+
+
+def normalize_database_url(url: str, force_ssl: bool = False) -> tuple[str, dict]:
+    """Converte para o driver asyncpg e traduz sslmode/channel_binding (Neon, Supabase, Render)."""
+    parts = urlsplit(url)
+    query = dict(parse_qsl(parts.query))
+    sslmode = query.pop("sslmode", None)
+    query.pop("channel_binding", None)
+    connect_args: dict = {"server_settings": {"timezone": "UTC"}}
+    if force_ssl or sslmode in {"require", "verify-ca", "verify-full"}:
+        connect_args["ssl"] = "require"
+    clean = parts._replace(scheme="postgresql+asyncpg", query=urlencode(query))
+    return urlunsplit(clean), connect_args
 
 
 @lru_cache

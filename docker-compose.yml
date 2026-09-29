@@ -1,0 +1,101 @@
+# NÃO TESTADO: este arquivo foi escrito sem Docker disponível. Rode `docker compose up --build`
+# e reporte qualquer erro.
+name: orbnoc
+
+x-backend-env: &backend-env
+  ENVIRONMENT: ${ENVIRONMENT:-development}
+  DATABASE_URL: postgresql://orbnoc:${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD}@postgres:5432/orbnoc
+  REDIS_URL: redis://redis:6379/0
+  JWT_SECRET: ${JWT_SECRET:?defina JWT_SECRET}
+  ENCRYPTION_KEY: ${ENCRYPTION_KEY:-}
+  PUBLIC_URL: ${PUBLIC_URL:-http://localhost:8080}
+  ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+  ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@example.com}
+  ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+  REGISTRATION_ENABLED: ${REGISTRATION_ENABLED:-false}
+  ALLOW_PRIVATE_NETWORKS: ${ALLOW_PRIVATE_NETWORKS:-true}
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: orbnoc
+      POSTGRES_USER: orbnoc
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U orbnoc -d orbnoc"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    # Só pub/sub (worker → API) e rate limit do login: nada crítico, então sem persistência.
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  backend:
+    build: ./backend
+    environment: *backend-env
+    # Permite ICMP sem privilégio (a API roda como usuário comum) para o ping manual e o diagnóstico.
+    sysctls:
+      net.ipv4.ping_group_range: "0 2147483647"
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health/live', timeout=4).status == 200 else 1)"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    restart: unless-stopped
+
+  worker:
+    build: ./backend
+    command: ["python", "-m", "app.worker"]
+    environment: *backend-env
+    # Root de propósito: o ICMP raw (CAP_NET_RAW, que o Docker concede por padrão) exige.
+    # Sem ICMP, o monitor cai automaticamente para conexão TCP.
+    user: "0"
+    cap_drop: [ALL]
+    cap_add: [NET_RAW]
+    security_opt: ["no-new-privileges:true"]
+    depends_on:
+      backend: { condition: service_healthy }
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2-alpine
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:-:80}
+    ports:
+      - "${HTTP_PORT:-8080}:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - backend
+      - frontend
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  caddy_data:
+  caddy_config:

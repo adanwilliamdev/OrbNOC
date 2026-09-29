@@ -1,67 +1,59 @@
-"""Senhas (Argon2), JWT e criptografia de segredos armazenados (token do Telegram)."""
+"""Hash de senha (Argon2), JWT de sessão e criptografia de segredos (Fernet)."""
 
 import base64
 import hashlib
-from datetime import UTC, datetime, timedelta
+import time
+from typing import Any
 
 import jwt
+from argon2 import PasswordHasher
+from argon2.exceptions import InvalidHashError, VerificationError
 from cryptography.fernet import Fernet, InvalidToken
-from pwdlib import PasswordHash
 
-from app.core.config import get_settings
+from app.core.config import Settings
 
-_hasher = PasswordHash.recommended()
-# Hash descartável para igualar o tempo de resposta quando o usuário não existe.
-_DUMMY_HASH = _hasher.hash("orbnoc-dummy-password")
-_ALGORITHM = "HS256"
+_hasher = PasswordHasher()
+# Hash de mentira usado para gastar o mesmo tempo quando o usuário não existe.
+DUMMY_HASH = _hasher.hash("orbnoc-dummy-password")
 
 
 def hash_password(password: str) -> str:
     return _hasher.hash(password)
 
 
-def verify_password(password: str, password_hash: str | None) -> bool:
-    """Compara em tempo aproximadamente constante, mesmo sem hash real."""
+def verify_password(hashed: str, password: str) -> bool:
     try:
-        return _hasher.verify(password, password_hash or _DUMMY_HASH) and password_hash is not None
-    except Exception:
+        return _hasher.verify(hashed, password)
+    except (VerificationError, InvalidHashError):
         return False
 
 
-def create_access_token(user_id: int) -> str:
-    settings = get_settings()
-    now = datetime.now(UTC)
-    payload = {"sub": str(user_id), "iat": now, "exp": now + timedelta(minutes=settings.session_minutes)}
-    return jwt.encode(payload, settings.jwt_secret, algorithm=_ALGORITHM)
+def create_session_token(user_id: int, settings: Settings) -> str:
+    now = int(time.time())
+    claims = {"sub": str(user_id), "iat": now, "exp": now + settings.session_ttl_hours * 3600}
+    return jwt.encode(claims, settings.jwt_secret, algorithm="HS256")
 
 
-def decode_access_token(token: str) -> int | None:
-    """Retorna o id do usuário ou None se o token for inválido/expirado."""
+def decode_session_token(token: str, settings: Settings) -> dict[str, Any] | None:
     try:
-        data = jwt.decode(
-            token,
-            get_settings().jwt_secret,
-            algorithms=[_ALGORITHM],
-            options={"require": ["exp", "sub"]},
-        )
-        return int(data["sub"])
-    except (jwt.PyJWTError, ValueError, KeyError):
+        return jwt.decode(token, settings.jwt_secret, algorithms=["HS256"])
+    except jwt.PyJWTError:
         return None
 
 
-def _fernet() -> Fernet:
-    settings = get_settings()
-    material = settings.encryption_key or f"orbnoc-enc:{settings.jwt_secret}"
-    key = base64.urlsafe_b64encode(hashlib.sha256(material.encode()).digest())
-    return Fernet(key)
+def _fernet(settings: Settings) -> Fernet:
+    if settings.encryption_key:
+        return Fernet(settings.encryption_key.encode())
+    digest = hashlib.sha256(f"orbnoc-fernet:{settings.jwt_secret}".encode()).digest()
+    return Fernet(base64.urlsafe_b64encode(digest))
 
 
-def encrypt_secret(value: str) -> str:
-    return _fernet().encrypt(value.encode()).decode()
+def encrypt_secret(value: str, settings: Settings) -> str:
+    return _fernet(settings).encrypt(value.encode()).decode()
 
 
-def decrypt_secret(value: str) -> str | None:
+def decrypt_secret(value: str, settings: Settings) -> str | None:
     try:
-        return _fernet().decrypt(value.encode()).decode()
+        return _fernet(settings).decrypt(value.encode()).decode()
     except InvalidToken:
         return None

@@ -1,124 +1,154 @@
 import os
+import subprocess
+import sys
 
-# Precisa vir ANTES de qualquer import de app.*: as configurações são lidas uma única vez.
-os.environ.setdefault("ENVIRONMENT", "test")
-os.environ.setdefault("DATABASE_URL", "postgresql://postgres:postgres@127.0.0.1:5432/orbnoc_test")
-os.environ["ENVIRONMENT"] = "test"
-os.environ["ALLOW_LOOPBACK_TARGETS"] = "true"
-os.environ["ALLOW_REGISTRATION"] = "false"
-os.environ["ADMIN_PASSWORD"] = ""
-os.environ["MONITOR_INTERVAL_MS"] = "10000"
+TEST_DB = os.environ.get(
+    "TEST_DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/orbnoc_test"
+)
+TEST_REDIS = os.environ.get("TEST_REDIS_URL", "redis://localhost:6379/15")
+os.environ.update(
+    {
+        "ENVIRONMENT": "test",
+        "DATABASE_URL": TEST_DB,
+        "REDIS_URL": TEST_REDIS,
+        "JWT_SECRET": "test-secret-test-secret-test-secret-0123456789",
+        "ADMIN_USERNAME": "admin",
+        "ADMIN_EMAIL": "admin@example.com",
+        "ADMIN_PASSWORD": "Admin12345",
+        "ALLOW_PRIVATE_NETWORKS": "true",
+    }
+)
 
-import fakeredis  # noqa: E402
+import httpx  # noqa: E402
 import pytest  # noqa: E402
 import pytest_asyncio  # noqa: E402
-from httpx import ASGITransport, AsyncClient  # noqa: E402
+import redis.asyncio as aioredis  # noqa: E402
 from sqlalchemy import text  # noqa: E402
 
-from app.core import ratelimit  # noqa: E402
 from app.core.config import get_settings  # noqa: E402
-from app.core.redis import set_redis  # noqa: E402
 from app.core.security import hash_password  # noqa: E402
-from app.db import models  # noqa: E402
-from app.db.base import Base  # noqa: E402
-from app.db.session import get_engine, get_sessionmaker  # noqa: E402
-from app.main import app  # noqa: E402
+from app.db.models import User  # noqa: E402
+from app.db.session import create_engine, create_sessionmaker  # noqa: E402
+from app.main import create_app  # noqa: E402
+from app.services.probes import Prober, ProbeResult  # noqa: E402
 
-PASSWORD = "Senha1234"
-
-# Argon2 com parâmetros mínimos SÓ nos testes (produção usa o padrão recomendado do pwdlib).
-from pwdlib import PasswordHash  # noqa: E402
-from pwdlib.hashers.argon2 import Argon2Hasher  # noqa: E402
-
-from app.core import security  # noqa: E402
-
-security._hasher = PasswordHash((Argon2Hasher(time_cost=1, memory_cost=8, parallelism=1),))
-security._DUMMY_HASH = security._hasher.hash("dummy")
+BACKEND_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+TABLES = "users, devices, metrics, metrics_hourly, events, notification_channels, access_logs"
 
 
-@pytest_asyncio.fixture(scope="session", autouse=True)
-async def _schema():
-    engine = get_engine()
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
-        await conn.run_sync(Base.metadata.create_all)
-    yield
-    await engine.dispose()
+@pytest.fixture(scope="session", autouse=True)
+def migrated_database():
+    """Aplica as migrations do zero (valida o Alembic de verdade)."""
+    env = {**os.environ}
+    for args in (["downgrade", "base"], ["upgrade", "head"]):
+        subprocess.run(
+            [sys.executable, "-m", "alembic", *args],
+            cwd=BACKEND_DIR,
+            env=env,
+            check=True,
+            capture_output=True,
+        )
 
 
-@pytest_asyncio.fixture(autouse=True)
-async def _clean(_schema):
-    async with get_engine().begin() as conn:
-        tables = ", ".join(t.name for t in Base.metadata.sorted_tables)
-        await conn.execute(text(f"TRUNCATE {tables} RESTART IDENTITY CASCADE"))
-    ratelimit._local.clear()
-    redis = fakeredis.FakeAsyncRedis(decode_responses=True)
-    set_redis(redis)
-    yield redis
-    await redis.aclose()
-    set_redis(None)
+class FakeProber(Prober):
+    """Sonda controlada pelos testes: `results[endereço]` define a resposta."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.icmp_mode = "privileged"
+        self.results: dict[str, ProbeResult] = {}
+        self.calls: list[str] = []
+
+    async def probe(self, address, check_type, port):
+        self.calls.append(address)
+        return self.results.get(address, ProbeResult(True, 12.5, "icmp"))
 
 
-@pytest.fixture
-def redis(_clean):
-    return _clean
-
-
-@pytest.fixture
+@pytest.fixture(scope="session")
 def settings():
+    get_settings.cache_clear()
     return get_settings()
 
 
+@pytest_asyncio.fixture(scope="session")
+async def engine(settings):
+    engine = create_engine(settings)
+    yield engine
+    await engine.dispose()
+
+
+@pytest_asyncio.fixture(scope="session")
+async def sessionmaker(engine):
+    return create_sessionmaker(engine)
+
+
+@pytest_asyncio.fixture(scope="session")
+async def redis(settings):
+    client = aioredis.from_url(settings.redis_url, decode_responses=True)
+    yield client
+    await client.aclose()
+
+
+@pytest_asyncio.fixture(autouse=True)
+async def clean_state(engine, redis):
+    async with engine.begin() as conn:
+        await conn.execute(text(f"TRUNCATE {TABLES} RESTART IDENTITY CASCADE"))
+    await redis.flushdb()
+
+
+@pytest.fixture
+def prober():
+    return FakeProber()
+
+
+@pytest.fixture
+def app(settings, engine, sessionmaker, redis, prober):
+    application = create_app(settings)
+    application.state.engine = engine
+    application.state.sessionmaker = sessionmaker
+    application.state.redis = redis
+    application.state.prober = prober
+    return application
+
+
 @pytest_asyncio.fixture
-async def db():
-    async with get_sessionmaker()() as session:
-        yield session
-
-
-async def make_user(db, username="alice", role="user", active=True) -> models.User:
-    user = models.User(
-        username=username,
-        email=f"{username}@example.com",
-        password_hash=hash_password(PASSWORD),
-        role=role,
-        is_active=active,
-    )
-    db.add(user)
-    await db.commit()
-    return user
-
-
-def new_client() -> AsyncClient:
-    return AsyncClient(transport=ASGITransport(app=app), base_url="http://test")
-
-
-async def login(client: AsyncClient, username: str = "alice", password: str = PASSWORD):
-    return await client.post("/api/auth/login", json={"username": username, "password": password})
-
-
-@pytest_asyncio.fixture
-async def client():
-    async with new_client() as c:
+async def client(app):
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as c:
         yield c
 
 
-@pytest_asyncio.fixture
-async def alice(db, client):
-    user = await make_user(db, "alice")
-    assert (await login(client, "alice")).status_code == 200
-    return user
+async def create_user(sessionmaker, username="alice", password="Senha1234", role="user"):
+    async with sessionmaker() as session:
+        user = User(
+            username=username,
+            email=f"{username}@example.com",
+            password_hash=hash_password(password),
+            role=role,
+        )
+        session.add(user)
+        await session.commit()
+        return user.id
+
+
+async def login(client, username="alice", password="Senha1234"):
+    resp = await client.post("/api/auth/login", json={"username": username, "password": password})
+    assert resp.status_code == 200, resp.text
+    return resp
 
 
 @pytest_asyncio.fixture
-async def bob_client(db):
-    await make_user(db, "bob")
-    async with new_client() as c:
-        assert (await login(c, "bob")).status_code == 200
+async def alice(client, sessionmaker):
+    """Cliente autenticado como usuário comum."""
+    await create_user(sessionmaker, "alice")
+    await login(client, "alice")
+    return client
+
+
+@pytest_asyncio.fixture
+async def bob_client(app, sessionmaker):
+    await create_user(sessionmaker, "bob")
+    transport = httpx.ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://test") as c:
+        await login(c, "bob")
         yield c
-
-
-async def add_device(db, owner_id, name="Router", ip="127.0.0.1", **kw) -> models.Device:
-    device = models.Device(owner_id=owner_id, name=name, ip=ip, **kw)
-    db.add(device)
-    await db.commit()
-    return device

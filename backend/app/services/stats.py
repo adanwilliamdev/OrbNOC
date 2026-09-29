@@ -1,34 +1,37 @@
-"""Estatísticas sobre a janela das últimas N amostras de um dispositivo."""
+"""Estatísticas de janela deslizante (últimas N amostras) e resumo de ping."""
 
 from dataclasses import dataclass
 
-WINDOW_SIZE = 10
 
-
-@dataclass(frozen=True)
+@dataclass(slots=True)
 class WindowStats:
-    avg: float | None
-    min: float | None
-    max: float | None
+    avg_latency: float | None
+    min_latency: float | None
+    max_latency: float | None
     jitter: float | None
-    packet_loss: float | None
+    packet_loss: float
+
+
+def jitter_ms(latencies: list[float]) -> float | None:
+    """Média da diferença absoluta entre amostras consecutivas."""
+    if len(latencies) < 2:
+        return 0.0 if latencies else None
+    diffs = [abs(b - a) for a, b in zip(latencies, latencies[1:], strict=False)]
+    return round(sum(diffs) / len(diffs), 2)
 
 
 def window_stats(samples: list[float | None]) -> WindowStats:
-    """`samples`: latências em ms, mais antigas primeiro; None = verificação que falhou."""
+    """`samples` em ordem cronológica; None = falha de checagem."""
     if not samples:
-        return WindowStats(None, None, None, None, None)
-    ok = [s for s in samples if s is not None]
-    loss = round(100 * (len(samples) - len(ok)) / len(samples), 1)
-    if not ok:
+        return WindowStats(None, None, None, None, 0.0)
+    valid = [s for s in samples if s is not None]
+    loss = round((len(samples) - len(valid)) / len(samples) * 100, 1)
+    if not valid:
         return WindowStats(None, None, None, None, loss)
-    jitter = 0.0
-    if len(ok) > 1:
-        jitter = sum(abs(b - a) for a, b in zip(ok, ok[1:], strict=False)) / (len(ok) - 1)
     return WindowStats(
-        avg=round(sum(ok) / len(ok), 2),
-        min=round(min(ok), 2),
-        max=round(max(ok), 2),
-        jitter=round(jitter, 2),
+        avg_latency=round(sum(valid) / len(valid), 2),
+        min_latency=min(valid),
+        max_latency=max(valid),
+        jitter=jitter_ms(valid),
         packet_loss=loss,
     )

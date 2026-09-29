@@ -1,236 +1,229 @@
-import asyncio
-import json
 from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import func, select
 
 from app.core.security import encrypt_secret
-from app.db.models import Device, Event, Metric, NotificationChannel
-from app.services import realtime
-from app.services.checks import CheckResult
-from app.worker import Snap, run_cycle
+from app.db.models import Device, Event, Metric, MetricHourly, NotificationChannel
+from app.services import notifier
+from app.services.probes import ProbeResult
+from app.services.sla import rollup_hourly, sla_by_device
+from app.worker.loop import is_due, run_maintenance, run_round
 
-from .conftest import add_device, make_user
+from .conftest import create_user
 
-T0 = datetime(2026, 1, 1, 12, 0, 0, tzinfo=UTC)
+FAIL = ProbeResult(False, None, "icmp", None, "sem resposta")
+T0 = datetime(2026, 3, 1, 12, 30, tzinfo=UTC)
 
 
-class FakeNet:
-    """Simula a rede: o teste decide, por IP, o resultado de cada ciclo."""
+async def seed(sessionmaker, settings, telegram=False, **device_kw):
+    uid = await create_user(sessionmaker)
+    async with sessionmaker() as s:
+        d = Device(user_id=uid, name="Core", ip="10.0.0.1", interval_seconds=5, **device_kw)
+        s.add(d)
+        if telegram:
+            s.add(
+                NotificationChannel(
+                    user_id=uid,
+                    kind="telegram",
+                    enabled=True,
+                    secret_encrypted=encrypt_secret("1:tok", settings),
+                    target="99",
+                )
+            )
+        await s.commit()
+        return uid, d.id
 
+
+class Recorder:
     def __init__(self):
-        self.results: dict[str, CheckResult] = {}
-        self.sent: list[tuple[str, str, str]] = []
+        self.texts = []
 
-    async def check(self, snap: Snap) -> CheckResult:
-        return self.results.get(snap.ip, CheckResult(True, 5.0))
-
-    async def send(self, token, chat, text):
-        self.sent.append((token, chat, text))
+    async def __call__(self, target, text, client=None):
+        self.texts.append(text)
         return True, None
 
-    async def cycle(self, n=1, start=T0):
-        out = None
-        for _ in range(n):
-            out = await run_cycle(
-                checker=self.check,
-                send=self.send,
-                now=start + timedelta(seconds=10 * self.__dict__.setdefault("_i", 0)),
+
+async def rounds(sessionmaker, redis, settings, prober, n, start=T0):
+    for i in range(n):
+        await run_round(
+            sessionmaker, redis, settings, prober, now=start + timedelta(seconds=10 * i)
+        )
+
+
+async def test_round_records_metric_and_state(sessionmaker, redis, settings, prober):
+    _, did = await seed(sessionmaker, settings)
+    stats = await run_round(sessionmaker, redis, settings, prober, now=T0)
+    assert stats.checked == 1
+    async with sessionmaker() as s:
+        d = await s.get(Device, did)
+        assert d.status == "online" and d.latency == 12.5 and d.last_check == T0
+        assert await s.scalar(select(func.count()).select_from(Metric)) == 1
+        assert (
+            await s.scalar(select(func.count()).select_from(Event)) == 0
+        )  # unknown→online: sem alerta
+
+
+async def test_offline_only_after_three_failures_and_notifies_once(
+    sessionmaker, redis, settings, prober, monkeypatch
+):
+    rec = Recorder()
+    monkeypatch.setattr(notifier, "send_telegram", rec)
+    _, did = await seed(sessionmaker, settings, telegram=True, status="online")
+    prober.results["10.0.0.1"] = FAIL
+    await rounds(sessionmaker, redis, settings, prober, 2)
+    async with sessionmaker() as s:
+        assert (await s.get(Device, did)).status == "online"  # 2 falhas: ainda online
+    assert rec.texts == []
+    await rounds(sessionmaker, redis, settings, prober, 6, start=T0 + timedelta(minutes=5))
+    async with sessionmaker() as s:
+        d = await s.get(Device, did)
+        events = (await s.scalars(select(Event))).all()
+    assert d.status == "offline"
+    assert [e.kind for e in events] == ["offline"]
+    assert len(rec.texts) == 1 and "HOST OFFLINE" in rec.texts[0]
+    # recuperação
+    prober.results["10.0.0.1"] = ProbeResult(True, 8.0, "icmp")
+    await run_round(sessionmaker, redis, settings, prober, now=T0 + timedelta(minutes=30))
+    assert len(rec.texts) == 2 and "RECUPERAÇÃO" in rec.texts[1]
+
+
+async def test_sla_breach_alerts_once(sessionmaker, redis, settings, prober, monkeypatch):
+    rec = Recorder()
+    monkeypatch.setattr(notifier, "send_telegram", rec)
+    await seed(sessionmaker, settings, telegram=True, status="online", sla_threshold_ms=50)
+    prober.results["10.0.0.1"] = ProbeResult(True, 200.0, "icmp")
+    await rounds(sessionmaker, redis, settings, prober, 4)
+    assert len(rec.texts) == 1 and "DESEMPENHO" in rec.texts[0]
+
+
+async def test_no_telegram_no_send_but_event_kept(
+    sessionmaker, redis, settings, prober, monkeypatch
+):
+    rec = Recorder()
+    monkeypatch.setattr(notifier, "send_telegram", rec)
+    await seed(sessionmaker, settings, status="online", failure_threshold=1)
+    prober.results["10.0.0.1"] = FAIL
+    await run_round(sessionmaker, redis, settings, prober, now=T0)
+    assert rec.texts == []
+    async with sessionmaker() as s:
+        assert await s.scalar(select(func.count()).select_from(Event)) == 1
+
+
+async def test_only_due_devices_are_checked(sessionmaker, redis, settings, prober):
+    await seed(sessionmaker, settings)
+    await run_round(sessionmaker, redis, settings, prober, now=T0)
+    await run_round(sessionmaker, redis, settings, prober, now=T0 + timedelta(seconds=1))
+    assert len(prober.calls) == 1
+    await run_round(sessionmaker, redis, settings, prober, now=T0 + timedelta(seconds=6))
+    assert len(prober.calls) == 2
+
+
+def test_is_due():
+    d = Device(interval_seconds=10, last_check=None)
+    assert is_due(d, T0, 2.0)
+    d.last_check = T0
+    assert not is_due(d, T0 + timedelta(seconds=8), 2.0)
+    assert is_due(d, T0 + timedelta(seconds=9), 2.0)
+
+
+async def test_blocked_host_at_check_time_counts_as_failure(sessionmaker, redis, settings, prober):
+    uid = await create_user(sessionmaker)
+    async with sessionmaker() as s:
+        s.add(
+            Device(
+                user_id=uid, name="evil", ip="169.254.169.254", status="online", failure_threshold=1
             )
-            self._i += 1
-        return out
-
-
-DOWN = CheckResult(False, error="sem resposta ao ping")
-
-
-async def test_ciclo_atualiza_estado_e_metricas(db, alice):
-    d = await add_device(db, alice.id, ip="10.0.0.1")
-    net = FakeNet()
-    net.results["10.0.0.1"] = CheckResult(True, 12.5)
-    summary = await net.cycle()
-    assert summary["devices"] == 1 and summary["online"] == 1 and summary["events"] == 0
-    await db.refresh(d)
-    assert d.status == "online" and d.latency == 12.5 and d.avg_latency == 12.5 and d.packet_loss == 0.0
-    assert await db.scalar(select(func.count()).select_from(Metric)) == 1
-
-
-async def test_queda_so_apos_tres_falhas_com_evento_e_telegram_uma_vez(db, alice):
-    d = await add_device(db, alice.id, "Firewall", "10.0.0.1")
-    db.add(
-        NotificationChannel(
-            owner_id=alice.id,
-            kind="telegram",
-            enabled=True,
-            chat_id="999",
-            secret_encrypted=encrypt_secret("TOKEN123"),
         )
-    )
-    await db.commit()
-    net = FakeNet()
-    await net.cycle()  # online
-    net.results["10.0.0.1"] = DOWN
-    await net.cycle(2)
-    await db.refresh(d)
-    assert d.status == "online" and net.sent == []  # 2 falhas: ainda não alerta
-    await net.cycle(4)  # 3ª falha derruba; as seguintes não repetem
-    await db.refresh(d)
-    events = list(await db.scalars(select(Event)))
-    assert d.status == "offline" and d.status_changed_at is not None
-    assert (
-        [e.kind for e in events] == ["down"]
-        and "Firewall" in events[0].message
-        and "10.0.0.1" in events[0].message
-    )
-    assert len(net.sent) == 1 and net.sent[0][:2] == ("TOKEN123", "999") and "OFFLINE" in net.sent[0][2]
+        await s.commit()
+    await run_round(sessionmaker, redis, settings, prober, now=T0)
+    assert prober.calls == []  # nem chegou a sondar
+    async with sessionmaker() as s:
+        d = await s.scalar(select(Device))
+        assert d.status == "offline" and "bloqueado" in d.last_error
 
 
-async def test_recuperacao(db, alice):
-    d = await add_device(db, alice.id, ip="10.0.0.1", status="offline", consecutive_failures=9)
-    net = FakeNet()
-    await net.cycle()
-    await db.refresh(d)
-    assert d.status == "online" and d.consecutive_failures == 0
-    assert [e.kind for e in await db.scalars(select(Event))] == ["recovered"]
-
-
-async def test_sla_um_alerta_por_episodio(db, alice):
-    await add_device(db, alice.id, ip="10.0.0.1", sla_threshold_ms=100)
-    net = FakeNet()
-    net.results["10.0.0.1"] = CheckResult(True, 250.0)
-    await net.cycle(8)
-    events = list(await db.scalars(select(Event)))
-    assert (
-        [e.kind for e in events] == ["sla_breach"]
-        and "250" in events[0].message
-        and events[0].severity == "warning"
-    )
-
-
-async def test_notifica_apenas_canal_ativo_do_dono(db, alice):
-    bob = await make_user(db, "bob")
-    await add_device(db, alice.id, "A", "10.0.0.1")
-    await add_device(db, bob.id, "B", "10.0.0.2")
-    db.add(
-        NotificationChannel(
-            owner_id=alice.id,
-            kind="telegram",
-            enabled=False,
-            chat_id="1",
-            secret_encrypted=encrypt_secret("tok-a"),
-        )
-    )
-    db.add(
-        NotificationChannel(
-            owner_id=bob.id,
-            kind="telegram",
-            enabled=True,
-            chat_id="2",
-            secret_encrypted=encrypt_secret("tok-b"),
-        )
-    )
-    await db.commit()
-    net = FakeNet()
-    net.results.update({"10.0.0.1": DOWN, "10.0.0.2": DOWN})
-    await net.cycle(3)
-    assert [(t, c) for t, c, _ in net.sent] == [("tok-b", "2")]  # Alice desativou; nada vaza entre donos
-    assert {e.owner_id for e in await db.scalars(select(Event))} == {alice.id, bob.id}
-
-
-async def test_falha_do_telegram_nao_derruba_o_ciclo(db, alice):
-    await add_device(db, alice.id, ip="10.0.0.1")
-    db.add(
-        NotificationChannel(
-            owner_id=alice.id,
-            kind="telegram",
-            enabled=True,
-            chat_id="1",
-            secret_encrypted=encrypt_secret("tok"),
-        )
-    )
-    await db.commit()
-
-    async def broken(*_):
-        raise RuntimeError("boom")
-
-    net = FakeNet()
-    net.results["10.0.0.1"] = DOWN
-    for i in range(3):
-        await run_cycle(checker=net.check, send=broken, now=T0 + timedelta(seconds=10 * i))
-    assert [e.kind for e in await db.scalars(select(Event))] == ["down"]  # evento gravado mesmo assim
-
-
-async def test_excecao_no_checker_vira_falha_nao_crash(db, alice):
-    await add_device(db, alice.id, ip="10.0.0.1")
-
-    async def explode(_):
-        raise RuntimeError("bug")
-
-    for i in range(3):
-        await run_cycle(checker=explode, now=T0 + timedelta(seconds=i))
-    assert (await db.scalar(select(Device.status))) == "offline"
-
-
-async def test_dispositivos_desativados_sao_ignorados(db, alice):
-    d = await add_device(db, alice.id, ip="10.0.0.1", enabled=False)
-    assert (await FakeNet().cycle())["devices"] == 0
-    await db.refresh(d)
-    assert d.status == "unknown" and d.last_check_at is None
-
-
-async def test_dispositivo_removido_durante_o_ciclo(db, alice):
-    d = await add_device(db, alice.id, ip="10.0.0.1")
-
-    async def check_and_delete(snap):
-        async with db.bind.connect() as conn:  # remove enquanto o "ping" está em andamento
-            await conn.execute(Device.__table__.delete().where(Device.id == d.id))
-            await conn.commit()
-        return CheckResult(True, 1.0)
-
-    summary = await run_cycle(checker=check_and_delete, now=T0)
-    assert summary["devices"] == 1 and await db.scalar(select(func.count()).select_from(Metric)) == 0
-
-
-async def test_janela_calcula_jitter_e_perda(db, alice):
-    d = await add_device(db, alice.id, ip="10.0.0.1")
-    net = FakeNet()
-    for lat in (10.0, 30.0, None, 20.0):
-        net.results["10.0.0.1"] = CheckResult(True, lat) if lat is not None else DOWN
-        await net.cycle()
-    await db.refresh(d)
-    assert d.packet_loss == 25.0 and d.min_latency == 10.0 and d.max_latency == 30.0 and d.jitter == 15.0
-
-
-async def test_ciclo_publica_no_redis_para_o_dono(db, alice, redis):
-    await add_device(db, alice.id, "Core", "10.0.0.1")
+async def test_publishes_devices_update_to_redis(sessionmaker, redis, settings, prober):
+    uid, _ = await seed(sessionmaker, settings)
     pubsub = redis.pubsub()
-    await pubsub.subscribe(realtime.CHANNEL)
-    await pubsub.get_message(timeout=1)  # confirmação de assinatura
-    net = FakeNet()
-    net.results["10.0.0.1"] = DOWN
-    await net.cycle(3)
-    msgs = []
-    while (m := await pubsub.get_message(ignore_subscribe_messages=True, timeout=0.3)) is not None:
-        msgs.append(json.loads(m["data"]))
-    kinds = [m["type"] for m in msgs]
-    assert kinds.count("devices") == 3 and kinds.count("event") == 1
-    assert all(m["owner_id"] == alice.id for m in msgs)
-    assert msgs[-1]["data"] is not None
+    await pubsub.subscribe(f"orbnoc:user:{uid}")
+    await pubsub.get_message(timeout=1)  # confirmação da assinatura
+    await run_round(sessionmaker, redis, settings, prober, now=T0)
+    msg = None
+    for _ in range(10):
+        msg = await pubsub.get_message(ignore_subscribe_messages=True, timeout=1)
+        if msg:
+            break
+    await pubsub.aclose()
+    assert msg and '"devices_update"' in msg["data"] and '"latency": 12.5' in msg["data"]
 
 
-async def test_ciclos_paralelos_sao_limitados(db, alice, settings, monkeypatch):
-    monkeypatch.setattr(settings, "monitor_concurrency", 3)
-    for i in range(10):
-        await add_device(db, alice.id, f"d{i}", f"10.0.1.{i}")
-    running = peak = 0
+async def test_hourly_rollup_and_sla_windows(sessionmaker, settings):
+    uid, did = await seed(sessionmaker, settings)
+    async with sessionmaker() as s:
+        for i in range(10):  # 10 amostras na hora 12h: 8 ok, 2 falhas
+            s.add(
+                Metric(
+                    device_id=did,
+                    recorded_at=T0 + timedelta(minutes=i),
+                    ok=i >= 2,
+                    latency=10.0 + i if i >= 2 else None,
+                )
+            )
+        for i in range(4):  # 4 amostras 3 dias antes, todas ok
+            s.add(
+                Metric(
+                    device_id=did,
+                    recorded_at=T0 - timedelta(days=3) + timedelta(minutes=i),
+                    ok=True,
+                    latency=50.0,
+                )
+            )
+        await s.commit()
+        await rollup_hourly(s, T0, hours=100)
+        await rollup_hourly(s, T0 - timedelta(days=3), hours=2)
+        await s.commit()
+        now = T0 + timedelta(hours=1)
+        w24 = (await sla_by_device(s, [did], "24h", now))[did]
+        w7 = (await sla_by_device(s, [did], "7d", now))[did]
+    assert (w24.sample_count, w24.uptime_pct) == (10, 80.0)
+    assert w24.avg_latency == 15.5  # média de 12..19
+    assert (w7.sample_count, round(w7.uptime_pct, 3)) == (14, round(12 / 14 * 100, 3))
 
-    async def slow(_):
-        nonlocal running, peak
-        running += 1
-        peak = max(peak, running)
-        await asyncio.sleep(0.02)
-        running -= 1
-        return CheckResult(True, 1.0)
 
-    await run_cycle(checker=slow, now=T0)
-    assert peak <= 3
+async def test_rollup_is_idempotent(sessionmaker, settings):
+    _, did = await seed(sessionmaker, settings)
+    async with sessionmaker() as s:
+        s.add(Metric(device_id=did, recorded_at=T0, ok=True, latency=5.0))
+        await s.commit()
+        for _ in range(3):
+            await rollup_hourly(s, T0)
+            await s.commit()
+        row = await s.scalar(select(MetricHourly))
+    assert row.samples == 1
+
+
+async def test_retention_removes_old_rows(sessionmaker, settings):
+    uid, did = await seed(sessionmaker, settings)
+    now = datetime.now(UTC)
+    async with sessionmaker() as s:
+        s.add_all(
+            [
+                Metric(device_id=did, recorded_at=now - timedelta(days=30), ok=True, latency=1.0),
+                Metric(device_id=did, recorded_at=now - timedelta(days=1), ok=True, latency=1.0),
+                Event(
+                    user_id=uid,
+                    kind="offline",
+                    severity="error",
+                    message="velho",
+                    created_at=now - timedelta(days=200),
+                ),
+                Event(
+                    user_id=uid, kind="offline", severity="error", message="novo", created_at=now
+                ),
+            ]
+        )
+        await s.commit()
+    await run_maintenance(sessionmaker, settings, now)
+    async with sessionmaker() as s:
+        assert await s.scalar(select(func.count()).select_from(Metric)) == 1
+        assert [e.message for e in (await s.scalars(select(Event))).all()] == ["novo"]
