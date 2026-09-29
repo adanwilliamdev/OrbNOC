@@ -53,7 +53,7 @@ class Device(Base):
 
     check_type: Mapped[str] = mapped_column(String(10), default="icmp", server_default="icmp")
     port: Mapped[int | None] = mapped_column(Integer)
-    interval_seconds: Mapped[int] = mapped_column(Integer, default=10, server_default="10")
+    interval_seconds: Mapped[int] = mapped_column(Integer, default=30, server_default="30")
     failure_threshold: Mapped[int] = mapped_column(Integer, default=3, server_default="3")
     sla_threshold_ms: Mapped[int | None] = mapped_column(Integer)
 

@@ -36,7 +36,6 @@ class Settings(BaseSettings):
 
     worker_tick_seconds: float = Field(default=2.0, gt=0)
     monitor_concurrency: int = Field(default=20, ge=1)
-    default_check_interval_seconds: int = 10
     default_failure_threshold: int = 3
     probe_timeout_seconds: float = 2.0
 

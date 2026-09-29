@@ -227,3 +227,23 @@ async def test_retention_removes_old_rows(sessionmaker, settings):
     async with sessionmaker() as s:
         assert await s.scalar(select(func.count()).select_from(Metric)) == 1
         assert [e.message for e in (await s.scalars(select(Event))).all()] == ["novo"]
+
+
+async def test_inactive_users_devices_are_not_checked(sessionmaker, redis, settings, prober):
+    from app.db.models import User
+
+    uid, _ = await seed(sessionmaker, settings)
+    async with sessionmaker() as s:
+        (await s.get(User, uid)).is_active = False
+        await s.commit()
+    stats = await run_round(sessionmaker, redis, settings, prober, now=T0)
+    assert stats.checked == 0 and prober.calls == []
+
+
+async def test_new_device_default_interval_is_30s(sessionmaker):
+    uid = await create_user(sessionmaker)
+    async with sessionmaker() as s:
+        d = Device(user_id=uid, name="x", ip="10.0.0.5")
+        s.add(d)
+        await s.commit()
+        assert d.interval_seconds == 30

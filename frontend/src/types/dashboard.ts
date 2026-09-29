@@ -140,6 +140,12 @@ export interface User {
   is_active: boolean;
 }
 
+/** Usuário na visão do admin (tela /users). */
+export interface AdminUser extends User {
+  created_at: string;
+  last_login: string | null;
+}
+
 export interface AuthResponse {
   success: boolean;
   user: User;

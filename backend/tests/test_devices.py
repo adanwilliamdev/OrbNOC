@@ -118,3 +118,9 @@ async def test_check_port_validates_input(alice):
         await alice.post(f"/api/devices/{d['id']}/check-port", json={"port": 70000})
     ).status_code == 422
     assert (await alice.post(f"/api/devices/{d['id']}/check-port", json={})).status_code == 422
+
+
+async def test_api_default_interval_and_custom(alice):
+    assert (await add(alice)).json()["interval_seconds"] == 30
+    r = await add(alice, ip="10.0.0.2", interval_seconds=60)
+    assert r.json()["interval_seconds"] == 60

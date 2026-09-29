@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { BarChart3, Bell, BellOff, CheckCheck, Download, FileText, Map, MessageCircle, MonitorPlay, Printer, RefreshCw, ServerCog, Siren } from 'lucide-react';
+import { BarChart3, Bell, BellOff, CheckCheck, Download, FileText, Map, MessageCircle, MonitorPlay, Printer, RefreshCw, ServerCog, Siren, Users } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -83,6 +83,14 @@ export default function DashboardHeader({
               </Link>
             </Button>
           ))}
+
+          {user?.role === 'admin' && (
+            <Button asChild variant="outline">
+              <Link href="/users">
+                <Users className="text-pink-300" /> Usuários
+              </Link>
+            </Button>
+          )}
 
           <div className="mx-1 hidden h-6 w-px bg-slate-600/70 sm:block" />
 

@@ -13,6 +13,7 @@ export interface NewDevice {
   location?: string;
   check_type?: 'icmp' | 'tcp';
   port?: number;
+  interval_seconds?: number;
 }
 
 /** Lista de dispositivos. O WebSocket escreve neste cache; o polling de 30 s é só reserva. */

@@ -170,3 +170,79 @@ async def test_regular_user_cannot_use_admin_routes(alice):
         "/api/users", json={"username": "x1x", "email": "x@example.com", "password": "Senha1234"}
     )
     assert r.status_code == 403
+
+
+# ---- gestão de usuários pelo admin -----------------------------------------------------------
+async def _admin(client, sessionmaker):
+    await create_user(sessionmaker, "root", "Admin12345", role="admin")
+    await login(client, "root", "Admin12345")
+
+
+async def test_admin_list_has_dates_and_never_hashes(client, sessionmaker):
+    await _admin(client, sessionmaker)
+    rows = (await client.get("/api/users")).json()
+    assert rows[0]["username"] == "root" and rows[0]["created_at"] and "last_login" in rows[0]
+    assert "password" not in (await client.get("/api/users")).text
+
+
+async def test_created_user_can_log_in_and_sees_only_own_data(app, client, sessionmaker):
+    import httpx
+
+    await _admin(client, sessionmaker)
+    r = await client.post(
+        "/api/users", json={"username": "carol", "email": "c@example.com", "password": "Senha1234"}
+    )
+    assert r.status_code == 201 and r.json()["role"] == "user"
+    await client.post("/api/devices", json={"name": "do-admin", "ip": "10.0.0.1"})
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app), base_url="http://test"
+    ) as carol:
+        await login(carol, "carol", "Senha1234")
+        assert (await carol.get("/api/devices")).json() == []
+        assert (await carol.get("/api/users")).status_code == 403
+
+
+async def test_admin_resets_password(client, app, sessionmaker):
+    import httpx
+
+    await _admin(client, sessionmaker)
+    uid = await create_user(sessionmaker, "dave")
+    r = await client.patch(f"/api/users/{uid}", json={"password": "NovaSenha99"})
+    assert r.status_code == 200
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app), base_url="http://test"
+    ) as dave:
+        old = await dave.post("/api/auth/login", json={"username": "dave", "password": "Senha1234"})
+        assert old.status_code == 401
+        await login(dave, "dave", "NovaSenha99")
+    weak = await client.patch(f"/api/users/{uid}", json={"password": "curta"})
+    assert weak.status_code == 422
+
+
+async def test_admin_cannot_deactivate_or_delete_self(client, sessionmaker):
+    await create_user(sessionmaker, "other", "Admin12345", role="admin")
+    rid = await create_user(sessionmaker, "root", "Admin12345", role="admin")
+    await login(client, "root", "Admin12345")
+    assert (await client.patch(f"/api/users/{rid}", json={"is_active": False})).status_code == 409
+    assert (await client.patch(f"/api/users/{rid}", json={"role": "user"})).status_code == 409
+    assert (await client.delete(f"/api/users/{rid}")).status_code == 409
+
+
+async def test_delete_user_cascades_and_last_admin_protected(client, sessionmaker):
+    from sqlalchemy import func
+
+    from app.db.models import Device
+
+    await _admin(client, sessionmaker)
+    uid = await create_user(sessionmaker, "erin")
+    async with sessionmaker() as s:
+        s.add(Device(user_id=uid, name="d", ip="10.0.0.9"))
+        await s.commit()
+    assert (await client.delete(f"/api/users/{uid}")).json() == {"success": True}
+    async with sessionmaker() as s:
+        assert await s.scalar(select(func.count()).select_from(Device)) == 0
+    assert (await client.delete("/api/users/999")).status_code == 404
+
+
+async def test_regular_user_cannot_delete_users(alice):
+    assert (await alice.delete("/api/users/1")).status_code == 403

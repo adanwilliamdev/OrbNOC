@@ -22,7 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.api.health import HEARTBEAT_KEY, LAST_ROUND_KEY
 from app.core.config import Settings, get_settings
-from app.db.models import AccessLog, Device, Event, Metric, MetricHourly
+from app.db.models import AccessLog, Device, Event, Metric, MetricHourly, User
 from app.db.session import create_engine, create_sessionmaker
 from app.services import notifier, realtime
 from app.services.events import record_event
@@ -86,7 +86,14 @@ async def run_round(
     async with sessionmaker() as session:
         devices = [
             d
-            for d in (await session.scalars(select(Device).order_by(Device.id))).all()
+            for d in (
+                await session.scalars(
+                    select(Device)
+                    .join(User, User.id == Device.user_id)
+                    .where(User.is_active)
+                    .order_by(Device.id)
+                )
+            ).all()
             if is_due(d, now, settings.worker_tick_seconds)
         ]
         if not devices:

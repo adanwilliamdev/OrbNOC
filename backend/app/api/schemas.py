@@ -32,6 +32,13 @@ class UserOut(BaseModel):
     is_active: bool = True
 
 
+class UserAdminOut(UserOut):
+    """Visão do admin: inclui datas de criação e do último login."""
+
+    created_at: datetime
+    last_login: datetime | None = None
+
+
 class LoginIn(BaseModel):
     username: str = Field(min_length=1, max_length=255)
     password: str = Field(min_length=1, max_length=256)
@@ -77,7 +84,7 @@ class DeviceBase(BaseModel):
     location: str | None = Field(default=None, max_length=255)
     check_type: Literal["icmp", "tcp"] = "icmp"
     port: int | None = Field(default=None, ge=1, le=65535)
-    interval_seconds: int = Field(default=10, ge=5, le=3600)
+    interval_seconds: int = Field(default=30, ge=5, le=3600)
     failure_threshold: int = Field(default=3, ge=1, le=10)
     sla_threshold_ms: int | None = Field(default=None, ge=1, le=60000)
 

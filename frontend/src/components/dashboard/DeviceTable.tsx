@@ -156,11 +156,12 @@ export default function DeviceTable({
                   {expanded && (
                     <TableRow id={detailsId} className="bg-slate-800/30">
                       <TableCell colSpan={5}>
-                        <div className="grid grid-cols-2 gap-4 text-xs md:grid-cols-5">
+                        <div className="grid grid-cols-2 gap-4 text-xs md:grid-cols-6">
                           <Detail label="Localização" value={device.location || '—'} />
                           <Detail label="Último check" value={device.last_check ? new Date(device.last_check).toLocaleString() : '—'} />
                           <Detail label="Média / Jitter" value={`${formatMs(device.avg_latency)} / ${formatMs(device.jitter)}`} />
                           <Detail label="Perda de pacotes" value={device.packet_loss != null ? `${device.packet_loss}%` : '—'} />
+                          <Detail label="Checagem" value={`a cada ${device.interval_seconds}s`} />
                           <div>
                             <p className="text-slate-400">Alerta SLA</p>
                             {device.sla_threshold_ms ? (
