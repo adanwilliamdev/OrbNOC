@@ -5,9 +5,7 @@
 Cada usuário pode cadastrar seus próprios dispositivos e acompanhar:
 
 - 🟢 Status dos dispositivos
-- 📡 Latência
-- 📊 Jitter
-- 📉 Perda de pacotes
+- 📡 Latência, jitter e perda de pacotes
 - 🚨 Alertas de indisponibilidade
 - ⏱️ Monitoramento de SLA
 - 🔔 Notificações via Telegram
@@ -16,88 +14,111 @@ Cada usuário pode cadastrar seus próprios dispositivos e acompanhar:
 - 📑 Relatórios CSV e XLSX
 - 🖥️ Wallboard operacional
 
-O monitoramento é executado por um **worker independente**, responsável pelas checagens periódicas dos dispositivos.
+O monitoramento é executado por um **worker Python independente**, responsável pelas verificações periódicas dos dispositivos.
+
+---
+
+## 🎥 Demonstração
+
+[▶️ Assistir demonstração](https://github.com/user-attachments/assets/2b40a048-2ea3-4723-b909-7f1d90a4134d)
 
 ---
 
 ## 🚀 Stack
 
-| Camada | Tecnologia |
+<p>
+  <img src="https://img.shields.io/badge/Python%203.12-3776AB?style=for-the-badge&logo=python&logoColor=white" />
+  <img src="https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white" />
+  <img src="https://img.shields.io/badge/Next.js%2016-000000?style=for-the-badge&logo=next.js&logoColor=white" />
+  <img src="https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white" />
+</p>
+
+<p>
+  <img src="https://img.shields.io/badge/PostgreSQL-4169E1?style=for-the-badge&logo=postgresql&logoColor=white" />
+  <img src="https://img.shields.io/badge/SQLAlchemy%202-BA2D2D?style=for-the-badge&logo=sqlalchemy&logoColor=white" />
+  <img src="https://img.shields.io/badge/Alembic-1E1E1E?style=for-the-badge&logo=alembic&logoColor=white" />
+  <img src="https://img.shields.io/badge/Redis-DC382D?style=for-the-badge&logo=redis&logoColor=white" />
+</p>
+
+<p>
+  <img src="https://img.shields.io/badge/Tailwind%20CSS%204-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white" />
+  <img src="https://img.shields.io/badge/TanStack%20Query-FF4154?style=for-the-badge&logo=reactquery&logoColor=white" />
+  <img src="https://img.shields.io/badge/Caddy-1F88C9?style=for-the-badge&logo=caddy&logoColor=white" />
+  <img src="https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white" />
+</p>
+
+| Área | Tecnologias |
 |---|---|
 | **API** | FastAPI · Python 3.12 · uv · Ruff · Pytest |
-| **Banco de dados** | PostgreSQL · SQLAlchemy 2 Async · Alembic |
-| **Monitoramento** | Worker Python independente |
+| **Frontend** | Next.js 16 · TypeScript · Tailwind CSS 4 · TanStack Query · Radix/shadcn-style |
+| **Banco** | PostgreSQL · SQLAlchemy 2 Async · Alembic |
+| **Monitoramento** | Worker Python independente · ICMP com fallback TCP |
 | **Mensageria** | Redis Pub/Sub |
-| **Tempo real** | WebSocket nativo do FastAPI |
-| **Checagens** | ICMP com fallback automático para TCP |
+| **Tempo real** | WebSocket |
 | **Autenticação** | Argon2 · JWT · Cookies `httpOnly` |
 | **Autorização** | `admin` · `user` |
-| **Frontend** | Next.js 16 · TypeScript · Tailwind CSS 4 · TanStack Query · Radix/shadcn-style |
-| **Proxy reverso** | Caddy |
-| **Banco de métricas** | PostgreSQL com agregação horária e retenção |
+| **Proxy** | Caddy |
+| **Métricas** | PostgreSQL · agregação horária · retenção |
 
-> O PostgreSQL armazena as métricas sem utilização do TimescaleDB.
+> As métricas são armazenadas diretamente no PostgreSQL, sem TimescaleDB.
 
 ---
 
 ## 🏗️ Arquitetura
 
 ```text
-                        ┌──────────────────────┐
-                        │      Navegador       │
-                        └──────────┬───────────┘
+                        ┌──────────────────┐
+                        │    Navegador     │
+                        └────────┬─────────┘
+                                 │
+                                 ▼
+                        ┌──────────────────┐
+                        │      Caddy       │
+                        │  Reverse Proxy   │
+                        └────────┬─────────┘
+                                 │
+                    ┌────────────┴────────────┐
+                    ▼                         ▼
+             ┌──────────────┐          ┌──────────────┐
+             │   Next.js    │          │   FastAPI    │
+             │   Frontend   │          │     API      │
+             └──────────────┘          └──────┬───────┘
+                                              │
+                         ┌────────────────────┼──────────────────┐
+                         ▼                    ▼                  ▼
+                  ┌────────────┐      ┌──────────────┐   ┌──────────────┐
+                  │   Redis    │      │ PostgreSQL   │   │  WebSocket   │
+                  │  Pub/Sub   │      │              │   │     /ws      │
+                  └─────▲──────┘      └──────▲───────┘   └──────────────┘
+                        │                    │
+                        └──────────┬─────────┘
                                    │
-                                   ▼
-                        ┌──────────────────────┐
-                        │        Caddy         │
-                        │      Reverse Proxy   │
-                        └──────────┬───────────┘
-                                   │
-                    ┌──────────────┴──────────────┐
-                    │                             │
-                    ▼                             ▼
-          ┌─────────────────┐          ┌─────────────────┐
-          │    Next.js      │          │    FastAPI      │
-          │    Frontend     │          │      API        │
-          └─────────────────┘          └────────┬────────┘
-                                                │
-                           ┌────────────────────┼────────────────────┐
-                           │                    │                    │
-                           ▼                    ▼                    ▼
-                    ┌────────────┐      ┌──────────────┐    ┌──────────────┐
-                    │   Redis    │      │ PostgreSQL   │    │  WebSocket   │
-                    │  Pub/Sub   │      │              │    │    /ws       │
-                    └─────▲──────┘      └──────▲───────┘    └──────────────┘
-                          │                    │
-                          │                    │
-                    ┌─────┴────────────────────┴──────┐
-                    │          Worker Python           │
-                    │       ICMP / TCP Checks          │
-                    └──────────────────────────────────┘
+                           ┌───────┴────────┐
+                           │ Worker Python  │
+                           │   ICMP / TCP   │
+                           └────────────────┘
 ```
 
-### Fluxo principal
+### Fluxo
 
 1. O usuário acessa o frontend através do Caddy.
 2. O Next.js consome a API FastAPI.
-3. O worker executa as checagens dos dispositivos.
+3. O worker executa as verificações dos dispositivos.
 4. As métricas são persistidas no PostgreSQL.
 5. Eventos são publicados através do Redis.
-6. A API distribui atualizações em tempo real via WebSocket.
+6. A API distribui atualizações via WebSocket.
 7. Mudanças de estado e violações de SLA podem gerar notificações via Telegram.
 
 ---
 
-## ⚙️ Como funciona
+## ⚙️ Monitoramento
 
-### Estados dos dispositivos
-
-Um dispositivo pode assumir três estados:
+### Estados
 
 ```text
-unknown → online → offline
-             ↑        │
-             └────────┘
+unknown ──► online ──► offline
+              ▲           │
+              └───────────┘
 ```
 
 Estados disponíveis:
@@ -106,15 +127,15 @@ Estados disponíveis:
 - `online`
 - `offline`
 
-Um dispositivo somente passa para `offline` após **3 falhas consecutivas**.
+Um dispositivo somente é considerado **offline após falhas consecutivas**, configuráveis por dispositivo.
 
-O número de falhas é configurável por dispositivo, evitando alertas causados por uma única perda momentânea.
+O intervalo padrão é de **30 segundos**, com configuração entre **5 e 3600 segundos**.
 
----
+Com `30s × 3 falhas`, o dispositivo normalmente será considerado offline após aproximadamente **90 segundos**.
 
-### 🔄 Worker de monitoramento
+### Worker
 
-O monitoramento é executado por um processo independente:
+O monitoramento roda em um processo independente:
 
 ```bash
 python -m app.worker
@@ -122,27 +143,27 @@ python -m app.worker
 
 Características:
 
-- Um único worker.
-- Sem eleição de líder.
-- Concorrência limitada.
-- Uma nova rodada não começa enquanto a anterior estiver em execução.
-- Cada rodada registra as métricas.
-- O estado do dispositivo é atualizado conforme o resultado.
-- Eventos são gerados somente quando necessário.
-- Notificações são enviadas apenas quando ocorre uma mudança relevante.
+- Um único worker
+- Sem eleição de líder
+- Concorrência limitada
+- Uma nova rodada não inicia enquanto a anterior estiver em execução
+- Cada rodada registra métricas
+- Estado atualizado conforme o resultado
+- Eventos gerados somente quando necessários
+- Notificações enviadas apenas em mudanças relevantes
 
-Eventos monitorados:
+Eventos:
 
-- Dispositivo ficou offline.
-- Dispositivo voltou online.
-- SLA foi excedido.
-- SLA voltou ao normal.
+- Dispositivo ficou offline
+- Dispositivo voltou online
+- SLA excedido
+- SLA voltou ao normal
 
 ---
 
-## 📊 Monitoramento de SLA
+## 📊 SLA e métricas
 
-O SLA é calculado através de agregações por hora, evitando depender apenas da relação instantânea entre dispositivos online e total de dispositivos.
+O SLA utiliza **agregações horárias**, evitando depender apenas da relação instantânea entre dispositivos online e total de dispositivos.
 
 Janelas disponíveis:
 
@@ -156,30 +177,30 @@ O histórico de uptime e os limites de SLA são persistidos no servidor.
 
 ## 🔔 Alertas e Telegram
 
-Os alertas são persistidos no backend e podem ser reconhecidos pelo usuário.
+Os alertas são persistidos no backend e podem ser reconhecidos individualmente ou em massa.
 
-O sistema permite:
+Recursos:
 
-- Reconhecer alertas individualmente.
-- Reconhecer todos os alertas.
-- Configurar limites de SLA.
-- Configurar integração com Telegram.
-- Testar notificações.
-- Testar dispositivos.
+- Reconhecimento individual
+- Reconhecimento de todos
+- Configuração de SLA
+- Integração com Telegram
+- Teste de notificações
+- Teste de dispositivos
 
-### Segurança do Telegram
+### Segurança
 
 O token do Telegram:
 
-- É armazenado criptografado usando **Fernet**.
-- Nunca é retornado pela API.
-- A API informa somente se existe um token configurado.
+- É armazenado criptografado com **Fernet**
+- Nunca é retornado pela API
+- A API informa somente se existe um token configurado
 
 ---
 
 ## 🔎 Diagnóstico de rede
 
-O OrbNOC disponibiliza ferramentas de diagnóstico:
+Ferramentas disponíveis:
 
 - Ping
 - Traceroute
@@ -187,60 +208,43 @@ O OrbNOC disponibiliza ferramentas de diagnóstico:
 - Teste de porta
 - Diagnóstico completo
 
-Os comandos são executados sem shell, utilizando argumentos estruturados.
+Os comandos são executados **sem shell**, utilizando argumentos estruturados.
 
 Os hosts são previamente validados para impedir acesso a destinos indevidos.
 
-### Restrições de rede
+### Restrições
 
-São bloqueados:
+Bloqueados:
 
 - Loopback
 - Endereços link-local
 - Endereços de metadata de provedores de nuvem
 
-Redes privadas permanecem permitidas através da configuração:
+Redes privadas podem ser permitidas para monitoramento de infraestrutura local:
 
 ```env
 ALLOW_PRIVATE_NETWORKS=true
 ```
 
-Isso permite utilizar o OrbNOC para monitoramento de infraestrutura local.
-
 ---
 
-## 🌐 ICMP e fallback TCP
+## 🌐 ICMP com fallback TCP
 
 O worker tenta utilizar ICMP para as verificações.
 
-Em ambientes que bloqueiam ICMP, o sistema detecta automaticamente a limitação e utiliza conexões TCP.
+Quando ICMP é bloqueado, utiliza automaticamente TCP.
 
-Portas utilizadas no fallback:
-
-```text
-443
-80
-22
-53
-8080
-8443
-```
-
-Um `RST` também é considerado evidência de que o host está respondendo.
-
-O endpoint:
+Portas utilizadas:
 
 ```text
-GET /health
+443 · 80 · 22 · 53 · 8080 · 8443
 ```
 
-informa o modo atual através do campo:
+Um **RST** também é considerado evidência de que o host está respondendo.
 
-```text
-icmp_mode
-```
+O endpoint `/health` informa o modo atual através de `icmp_mode`.
 
-Em ambientes Docker, o worker utiliza:
+Em Docker, o worker utiliza:
 
 ```text
 CAP_NET_RAW
@@ -248,16 +252,38 @@ CAP_NET_RAW
 
 ---
 
+## ❤️ Health Checks
+
+### `/health`
+
+Executa verificações reais de:
+
+- PostgreSQL
+- Redis
+- Heartbeat do worker
+
+Caso um componente essencial esteja indisponível:
+
+```text
+503 Service Unavailable
+```
+
+### `/health/live`
+
+Verificação básica de disponibilidade da aplicação.
+
+---
+
 ## 📑 Relatórios
 
-O backend disponibiliza relatórios operacionais nos formatos:
+Formatos disponíveis:
 
 - CSV
 - XLSX
 
 Os arquivos são gerados no servidor e possuem proteção contra **injeção de fórmulas**.
 
-O relatório em PDF utiliza a própria tela de impressão do navegador:
+O relatório PDF utiliza a própria impressão do navegador:
 
 ```text
 /reports/print
@@ -265,45 +291,15 @@ O relatório em PDF utiliza a própria tela de impressão do navegador:
 
 ---
 
-## ❤️ Health Checks
+## 🐳 Docker
 
-O endpoint:
-
-```text
-GET /health
-```
-
-realiza verificações reais de:
-
-- PostgreSQL
-- Redis
-- Heartbeat do worker
-
-Caso algum componente essencial esteja indisponível, o endpoint retorna:
-
-```text
-503 Service Unavailable
-```
-
-Também existe o endpoint:
-
-```text
-GET /health/live
-```
-
-para verificação básica de disponibilidade da aplicação.
-
----
-
-# 🐳 Executando com Docker
-
-## 1. Configurar ambiente
+### 1. Configurar ambiente
 
 ```bash
 cp .env.example .env
 ```
 
-Edite o arquivo `.env` e configure pelo menos:
+Configure pelo menos:
 
 ```env
 JWT_SECRET=
@@ -311,21 +307,19 @@ POSTGRES_PASSWORD=
 ADMIN_PASSWORD=
 ```
 
-Para gerar um segredo JWT:
+Gerar um segredo JWT:
 
 ```bash
 openssl rand -hex 32
 ```
 
----
-
-## 2. Iniciar o ambiente
+### 2. Iniciar
 
 ```bash
 docker compose up --build
 ```
 
-Depois, acesse:
+A aplicação estará disponível em:
 
 ```text
 http://localhost:8080
@@ -333,29 +327,28 @@ http://localhost:8080
 
 Entre utilizando:
 
-```text
+```env
 ADMIN_USERNAME
 ADMIN_PASSWORD
 ```
 
-> Não existe login demo. Cada usuário possui sua própria conta e acessa somente seus dispositivos, alertas e configurações do Telegram.
+> Não existe login demo. Cada usuário possui sua própria conta e acesso isolado aos dispositivos, alertas e configurações do Telegram.
 
 ---
 
-# 👥 Gerenciamento de usuários
+## 👥 Usuários
 
-Usuários com perfil `admin` podem acessar **Usuários** pelo cabeçalho da aplicação.
+Administradores podem acessar **Usuários** pelo cabeçalho da aplicação.
 
-É possível:
+Operações:
 
-- Criar usuários.
-- Redefinir senhas.
-- Desativar usuários.
-- Reativar usuários.
-- Alterar perfil.
-- Remover usuários.
+- Criar usuários
+- Redefinir senhas
+- Desativar/reativar usuários
+- Alterar perfil
+- Remover usuários
 
-Perfis disponíveis:
+Perfis:
 
 ```text
 admin
@@ -364,14 +357,12 @@ user
 
 Quando um usuário é desativado:
 
-- O login é bloqueado.
-- Seus dispositivos deixam de ser monitorados.
+- O login é bloqueado
+- Seus dispositivos deixam de ser monitorados
 
----
+### Registro público
 
-## 📝 Registro público
-
-O cadastro público vem desativado por padrão.
+Desativado por padrão.
 
 Para habilitar:
 
@@ -381,9 +372,9 @@ REGISTRATION_ENABLED=true
 
 ---
 
-# 🔐 Redefinir senha do administrador
+## 🔐 Redefinição do administrador
 
-O administrador definido no `.env` é criado somente na primeira inicialização, quando o banco ainda está vazio.
+O administrador definido no `.env` é criado somente na primeira inicialização, quando o banco está vazio.
 
 Alterar posteriormente:
 
@@ -391,9 +382,9 @@ Alterar posteriormente:
 ADMIN_PASSWORD=
 ```
 
-não altera a senha já armazenada no banco.
+não modifica a senha existente.
 
-Para redefinir a senha:
+Para redefinir:
 
 ```bash
 docker compose exec backend \
@@ -403,44 +394,13 @@ docker compose exec backend \
   -p 'NovaSenha123'
 ```
 
-Também é possível omitir a senha:
+Sem `-p`, o sistema solicita a nova senha.
 
-```bash
-docker compose exec backend \
-  python -m app.create_admin --reset -u admin
-```
-
-Nesse caso, o sistema solicitará a nova senha.
-
-Sem `-u`, o valor de `ADMIN_USERNAME` será utilizado.
+Sem `-u`, utiliza `ADMIN_USERNAME`.
 
 ---
 
-# ⏱️ Intervalo de monitoramento
-
-O intervalo padrão é:
-
-```text
-30 segundos
-```
-
-Por dispositivo, é possível configurar valores entre:
-
-```text
-5 segundos → 3600 segundos
-```
-
-Com a configuração padrão:
-
-```text
-30s × 3 falhas = ~90s
-```
-
-Portanto, um dispositivo normalmente será considerado offline após aproximadamente **90 segundos** de falhas consecutivas.
-
----
-
-# 🚀 Produção
+## 🚀 Produção
 
 Configure:
 
@@ -452,27 +412,25 @@ ENVIRONMENT=production
 
 Em produção:
 
-- `JWT_SECRET` forte é obrigatório.
-- Cookies utilizam a flag `Secure`.
-- HTTPS é necessário.
-- O Caddy gerencia automaticamente o certificado TLS.
+- `JWT_SECRET` forte é obrigatório
+- Cookies utilizam `Secure`
+- HTTPS é necessário
+- Caddy gerencia automaticamente o certificado TLS
 
 ---
 
-# 💻 Desenvolvimento
+## 💻 Desenvolvimento
 
-## Requisitos
+### Requisitos
 
 - Python 3.12+
-- [uv](https://docs.astral.sh/uv/)
+- uv
 - Node.js 20.9+
 - PostgreSQL
 - Redis
-- `traceroute`
+- traceroute
 
----
-
-## Backend
+### Backend
 
 ```bash
 cd backend
@@ -489,17 +447,14 @@ uv run uvicorn app.main:get_app \
   --port 8000
 ```
 
-Em outro terminal:
+Worker:
 
 ```bash
 cd backend
-
 uv run python -m app.worker
 ```
 
----
-
-## Frontend
+### Frontend
 
 ```bash
 cd frontend
@@ -511,25 +466,23 @@ cp .env.example .env.local
 npm run dev
 ```
 
-No ambiente de desenvolvimento sem Caddy, adicione ao `.env` do backend:
+Sem Caddy, adicione ao `.env` do backend:
 
 ```env
 EXTRA_ORIGINS=http://localhost:3000
 ```
 
-Isso permite que o mecanismo de CSRF aceite a origem do frontend local.
-
 ---
 
-# 🗃️ Migrations
+## 🗃️ Migrations
 
-Após alterar os modelos em:
+Após alterar:
 
 ```text
 backend/app/db/models.py
 ```
 
-gere uma nova migration:
+gere a migration:
 
 ```bash
 uv run alembic revision \
@@ -537,7 +490,7 @@ uv run alembic revision \
   -m "descrição"
 ```
 
-Depois aplique:
+Aplique:
 
 ```bash
 uv run alembic upgrade head
@@ -545,9 +498,9 @@ uv run alembic upgrade head
 
 ---
 
-# 🧪 Testes
+## 🧪 Testes
 
-## Backend
+### Backend
 
 ```bash
 cd backend
@@ -556,9 +509,9 @@ uv run ruff check .
 uv run pytest
 ```
 
-Os testes utilizam PostgreSQL e Redis reais.
+Os testes utilizam **PostgreSQL e Redis reais**.
 
-Configurações:
+Configuração:
 
 ```env
 TEST_DATABASE_URL=
@@ -571,13 +524,9 @@ Por padrão, o banco de testes utiliza:
 orbnoc_test
 ```
 
-no PostgreSQL local.
+As migrations são aplicadas do zero a cada execução.
 
-As migrations são aplicadas do zero a cada execução dos testes.
-
----
-
-## Frontend
+### Frontend
 
 ```bash
 cd frontend
@@ -589,11 +538,10 @@ npm run build
 
 ---
 
-# 📁 Estrutura do projeto
+## 📁 Estrutura
 
 ```text
 orbnoc/
-│
 ├── backend/
 │   ├── app/
 │   │   ├── api/
@@ -601,7 +549,6 @@ orbnoc/
 │   │   ├── db/
 │   │   ├── services/
 │   │   └── worker/
-│   │
 │   ├── alembic/
 │   ├── tests/
 │   ├── pyproject.toml
@@ -615,96 +562,80 @@ orbnoc/
 ├── docker-compose.yml
 ├── Caddyfile
 ├── .env.example
-│
-├── .github/
-│   └── workflows/
-│       └── ci.yml
-│
-├── README.md
+├── .github/workflows/ci.yml
 ├── SECURITY.md
-└── LICENSE
+├── LICENSE
+└── README.md
 ```
 
 ---
 
-# 🔌 API
+## 🔌 API
 
-## Autenticação
-
-| Método | Endpoint | Descrição |
-|---|---|---|
-| `POST` | `/api/auth/login` | Login |
-| `POST` | `/api/auth/logout` | Logout |
-| `GET` | `/api/auth/me` | Usuário autenticado |
-| `GET` | `/api/auth/config` | Configuração de autenticação |
-| `POST` | `/api/auth/register` | Registro, quando habilitado |
-
----
-
-## Usuários
-
-> Disponível para administradores.
+### Autenticação
 
 | Método | Endpoint | Descrição |
 |---|---|---|
-| `GET` | `/api/users` | Listar usuários |
-| `POST` | `/api/users` | Criar usuário |
-| `PATCH` | `/api/users/{id}` | Atualizar usuário |
-| `DELETE` | `/api/users/{id}` | Remover usuário |
+| POST | `/api/auth/login` | Login |
+| POST | `/api/auth/logout` | Logout |
+| GET | `/api/auth/me` | Usuário autenticado |
+| GET | `/api/auth/config` | Configuração |
+| POST | `/api/auth/register` | Registro, quando habilitado |
 
----
-
-## Dispositivos
-
-| Método | Endpoint | Descrição |
-|---|---|---|
-| `GET` | `/api/devices` | Listar dispositivos |
-| `POST` | `/api/devices` | Criar dispositivo |
-| `PATCH` | `/api/devices/{id}` | Atualizar dispositivo |
-| `DELETE` | `/api/devices/{id}` | Remover dispositivo |
-| `GET` | `/api/devices/{id}/ping` | Ping |
-| `POST` | `/api/devices/{id}/check-port` | Testar porta |
-| `GET` | `/api/devices/{id}/history` | Histórico |
-| `GET` | `/api/devices/{id}/sla` | SLA |
-
----
-
-## Alertas
+### Usuários
 
 | Método | Endpoint | Descrição |
 |---|---|---|
-| `GET` | `/api/alerts` | Listar alertas |
-| `POST` | `/api/alerts/{id}/ack` | Reconhecer alerta |
-| `POST` | `/api/alerts/ack-all` | Reconhecer todos |
-| `GET` | `/api/alerts/telegram` | Configuração Telegram |
-| `POST` | `/api/alerts/telegram` | Configurar Telegram |
-| `DELETE` | `/api/alerts/telegram` | Remover Telegram |
-| `POST` | `/api/alerts/sla/configure` | Configurar SLA |
-| `POST` | `/api/alerts/test-telegram` | Testar Telegram |
-| `POST` | `/api/alerts/test-host` | Testar host |
+| GET | `/api/users` | Listar |
+| POST | `/api/users` | Criar |
+| PATCH | `/api/users/{id}` | Atualizar |
+| DELETE | `/api/users/{id}` | Remover |
 
----
+### Dispositivos
 
-## Diagnóstico
+| Método | Endpoint | Descrição |
+|---|---|---|
+| GET | `/api/devices` | Listar |
+| POST | `/api/devices` | Criar |
+| PATCH | `/api/devices/{id}` | Atualizar |
+| DELETE | `/api/devices/{id}` | Remover |
+| GET | `/api/devices/{id}/ping` | Ping |
+| POST | `/api/devices/{id}/check-port` | Testar porta |
+| GET | `/api/devices/{id}/history` | Histórico |
+| GET | `/api/devices/{id}/sla` | SLA |
+
+### Alertas
 
 | Método | Endpoint |
 |---|---|
-| `POST` | `/api/diagnostic/ping` |
-| `POST` | `/api/diagnostic/traceroute` |
-| `POST` | `/api/diagnostic/port-check` |
-| `POST` | `/api/diagnostic/dns-lookup` |
-| `POST` | `/api/diagnostic/full-diagnostic` |
+| GET | `/api/alerts` |
+| POST | `/api/alerts/{id}/ack` |
+| POST | `/api/alerts/ack-all` |
+| GET | `/api/alerts/telegram` |
+| POST | `/api/alerts/telegram` |
+| DELETE | `/api/alerts/telegram` |
+| POST | `/api/alerts/sla/configure` |
+| POST | `/api/alerts/test-telegram` |
+| POST | `/api/alerts/test-host` |
 
----
+### Diagnóstico
 
-## Relatórios
+```text
+POST /api/diagnostic/ping
+POST /api/diagnostic/traceroute
+POST /api/diagnostic/port-check
+POST /api/diagnostic/dns-lookup
+POST /api/diagnostic/full-diagnostic
+```
+
+### Relatórios
 
 | Método | Endpoint | Descrição |
 |---|---|---|
-| `GET` | `/api/sla` | Indicadores de SLA |
-| `GET` | `/api/uptime-series` | Série histórica de uptime |
-| `GET` | `/api/reports/summary` | Resumo operacional |
-| `GET` | `/api/reports/export` | Exportação CSV/XLSX |
+| GET | `/api/sla` | Indicadores de SLA |
+| GET | `/api/uptime-series` | Uptime histórico |
+| GET | `/api/reports/summary` | Resumo operacional |
+| GET | `/api/reports/export` | CSV/XLSX |
 
 Exemplo:
 
@@ -712,17 +643,15 @@ Exemplo:
 /api/reports/export?format=csv&window=24h
 ```
 
-Janelas disponíveis:
+Janelas:
 
 ```text
-24h
-7d
-30d
+24h · 7d · 30d
 ```
 
 ---
 
-## Tempo real
+## ⚡ Tempo real
 
 WebSocket:
 
@@ -732,7 +661,7 @@ WS /ws
 
 A autenticação utiliza o cookie de sessão.
 
-Mensagens principais:
+Principais mensagens:
 
 ```text
 devices_update
@@ -741,20 +670,9 @@ event
 
 ---
 
-## Health
+## 📐 Convenções da API
 
-```text
-GET /health
-GET /health/live
-```
-
----
-
-# 📐 Convenções da API
-
-Os campos seguem `snake_case`.
-
-Exemplos:
+Os campos utilizam `snake_case`.
 
 ```json
 {
@@ -765,7 +683,7 @@ Exemplos:
 }
 ```
 
-Erros seguem o formato:
+Erros:
 
 ```json
 {
@@ -777,13 +695,13 @@ Erros seguem o formato:
 
 ## 📚 Documentação da API
 
-A documentação interativa pode ser habilitada através de:
+A documentação interativa pode ser habilitada com:
 
 ```env
 ENABLE_DOCS=true
 ```
 
-Depois, acesse:
+Depois:
 
 ```text
 /api/docs
@@ -791,53 +709,46 @@ Depois, acesse:
 
 ---
 
-# 🔒 Segurança
+## 🔒 Segurança
 
-O OrbNOC possui mecanismos de proteção para diferentes áreas da aplicação:
+O OrbNOC implementa:
 
-- Senhas protegidas com Argon2.
-- JWT armazenado em cookie `httpOnly`.
-- Cookies `Secure` em produção.
-- Proteção CSRF baseada em origens conhecidas.
-- Rate limit para login utilizando Redis.
-- Tokens do Telegram criptografados.
-- Validação de hosts para diagnóstico.
-- Bloqueio de loopback e endereços de metadata.
-- Execução de comandos sem shell.
-- Proteção contra injeção de fórmulas em relatórios.
-- Controle de acesso por perfil.
-- Isolamento dos dispositivos por usuário.
-
----
-
-# 📌 Principais características
-
-```text
-┌───────────────────────────────────────────────────────┐
-│                       OrbNOC                          │
-├───────────────────────────────────────────────────────┤
-│                                                       │
-│  📡 Monitoramento ICMP / TCP                          │
-│  📊 Latência · Jitter · Packet Loss                   │
-│  🚨 Alertas e SLA                                     │
-│  🔔 Telegram                                          │
-│  🔎 Diagnóstico de rede                              │
-│  📈 Histórico e uptime                               │
-│  🗺️ Mapa                                             │
-│  📑 CSV / XLSX                                       │
-│  🖥️ Wallboard                                        │
-│  ⚡ WebSocket em tempo real                           │
-│  👥 Controle de usuários                             │
-│  🔐 Autenticação e autorização                        │
-│  ❤️ Health checks                                    │
-│                                                       │
-└───────────────────────────────────────────────────────┘
-```
+- 🔐 Senhas protegidas com Argon2
+- 🍪 JWT em cookie `httpOnly`
+- 🛡️ Cookies `Secure` em produção
+- 🔄 Proteção CSRF baseada em origens conhecidas
+- 🚦 Rate limit de login utilizando Redis
+- 🔑 Tokens do Telegram criptografados
+- 🌐 Validação de hosts para diagnóstico
+- 🚫 Bloqueio de loopback e metadata
+- 🧩 Execução de comandos sem shell
+- 📊 Proteção contra injeção de fórmulas
+- 👥 Controle de acesso por perfil
+- 🔒 Isolamento dos dispositivos por usuário
 
 ---
 
-# 📄 Licença
+## ✨ Principais recursos
 
-Este projeto está licenciado sob a licença **MIT**.
+| Recurso | Descrição |
+|---|---|
+| 📡 Monitoramento | ICMP / TCP |
+| 📊 Métricas | Latência · Jitter · Packet Loss |
+| 🚨 Alertas | Indisponibilidade e SLA |
+| 🔔 Telegram | Notificações e testes |
+| 🔎 Diagnóstico | Ping · Traceroute · DNS · Portas |
+| 📈 Histórico | Uptime e métricas |
+| 🗺️ Mapa | Visualização dos dispositivos |
+| 📑 Relatórios | CSV / XLSX |
+| 🖥️ Wallboard | Visão operacional |
+| ⚡ Tempo real | WebSocket |
+| 👥 Usuários | Admin / User |
+| ❤️ Health | PostgreSQL · Redis · Worker |
 
-Consulte o arquivo [`LICENSE`](./LICENSE) para mais informações.
+---
+
+## 📄 Licença
+
+Este projeto está licenciado sob a **MIT License**.
+
+Consulte o arquivo [`LICENSE`](LICENSE) para mais informações.
