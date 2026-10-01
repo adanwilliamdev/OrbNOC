@@ -3,27 +3,53 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Tokens do shadcn/ui — tema escuro único, mesma paleta do OrbNOC original. */
+/*
+ * OrbNOC — sistema de cores.
+ *
+ * Regra de uso (vale para qualquer tela nova):
+ *   · amarelo (--primary)  = interação e sinal: marca, foco, seleção, linhas de séries temporais.
+ *   · verde / laranja / vermelho (--ok / --warn / --bad) = ESTADO do equipamento. Nunca decoração.
+ *   · o resto é cinza neutro em 4 degraus de elevação: background < card < muted < popover.
+ *
+ * Para trocar a paleta inteira basta editar este bloco :root.
+ */
 :root {
-  --background: hsl(224 52% 5%);
-  --foreground: hsl(210 40% 98%);
-  --card: hsl(223 42% 12%);
-  --card-foreground: hsl(210 40% 98%);
-  --popover: hsl(223 42% 12%);
-  --popover-foreground: hsl(210 40% 98%);
-  --primary: hsl(217 100% 64%);
-  --primary-foreground: hsl(222 47% 11%);
-  --secondary: hsl(222 35% 18%);
-  --secondary-foreground: hsl(210 40% 98%);
-  --muted: hsl(222 35% 16%);
-  --muted-foreground: hsl(215 20% 72%);
-  --accent: hsl(222 35% 18%);
-  --accent-foreground: hsl(210 40% 98%);
-  --destructive: hsl(0 84% 60%);
-  --border: hsl(223 25% 24%);
-  --input: hsl(223 25% 24%);
-  --ring: hsl(217 100% 64%);
-  --radius: 0.625rem;
+  color-scheme: dark;
+
+  /* Elevação (do mais fundo ao mais alto) */
+  --background: #1a1b1d;
+  --card: #232427;
+  --muted: #2a2b2f; /* campos, cabeçalho de tabela, fundo de controles segmentados */
+  --secondary: #2d2e32;
+  --accent: #323338; /* hover de linhas e itens de menu */
+  --popover: #2b2c30; /* menus, diálogos */
+
+  /* Texto */
+  --foreground: #f2f2f0;
+  --card-foreground: #f2f2f0;
+  --popover-foreground: #f2f2f0;
+  --secondary-foreground: #f2f2f0;
+  --accent-foreground: #f2f2f0;
+  --muted-foreground: #b3b3ae;
+  --subtle: #8d8d88;
+
+  /* Linhas */
+  --border: #36383c;
+  --input: #3d3f44;
+  --border-strong: #4b4d53;
+
+  /* Marca */
+  --primary: #ffd21f;
+  --primary-foreground: #1b1708;
+  --ring: #ffd21f;
+
+  /* Estado */
+  --ok: #4be08e;
+  --warn: #ffa94d;
+  --bad: #ff6b6b;
+  --destructive: var(--bad);
+
+  --radius: 0.75rem;
 }
 
 @theme inline {
@@ -39,87 +65,185 @@
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
+  --color-subtle: var(--subtle);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-border: var(--border);
   --color-input: var(--input);
+  --color-strong: var(--border-strong);
   --color-ring: var(--ring);
+  --color-ok: var(--ok);
+  --color-warn: var(--warn);
+  --color-bad: var(--bad);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
   --font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', 'JetBrains Mono', Menlo, Consolas, monospace;
+  --shadow-pop: 0 16px 40px -12px rgb(0 0 0 / 0.6), 0 2px 8px -2px rgb(0 0 0 / 0.4);
 }
 
 @theme {
-  --animate-pulse-slow: pulse-slow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-  --animate-fade-in: fade-in 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  --animate-pulse-slow: pulse-slow 2.4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  --animate-fade-in: fade-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-halo: halo 2s ease-out infinite;
+}
 
-  @keyframes pulse-slow {
-    0%,
-    100% {
-      opacity: 1;
-    }
-    50% {
-      opacity: 0.7;
-    }
+@keyframes pulse-slow {
+  0%,
+  100% {
+    opacity: 1;
   }
-  @keyframes fade-in {
-    from {
-      opacity: 0;
-      transform: translateY(-8px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
+  50% {
+    opacity: 0.72;
   }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+/* Anel que se expande a partir do ponto de estado: chama atenção sem piscar a tela. */
+@keyframes halo {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--halo, var(--bad)) 55%, transparent);
+  }
+  70%,
+  100% {
+    box-shadow: 0 0 0 7px transparent;
+  }
+}
+/* Entrada do painel: um único momento orquestrado, escalonado por --i. */
+@keyframes reveal {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.reveal {
+  animation: reveal 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(var(--i, 0) * 70ms);
 }
 
 @layer base {
   * {
     border-color: var(--border);
   }
+  html {
+    background: var(--background);
+  }
   body {
-    background:
-      radial-gradient(circle at top right, rgba(59, 130, 246, 0.12), transparent 35%),
-      radial-gradient(circle at bottom left, rgba(16, 185, 129, 0.08), transparent 35%), hsl(224, 52%, 5%);
-    background-attachment: fixed;
+    background: var(--background);
     color: var(--foreground);
+    letter-spacing: -0.006em;
+    font-feature-settings: 'cv05';
+  }
+  h1,
+  h2,
+  h3 {
+    letter-spacing: -0.02em;
   }
   button:not(:disabled),
   [role='button']:not(:disabled) {
     cursor: pointer;
   }
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
 }
 
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+/* Barras de rolagem discretas */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: #0f172a;
-  border-radius: 3px;
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #3b82f6;
+  background: var(--border-strong);
   border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #60a5fa;
+  background: var(--subtle);
+  background-clip: content-box;
 }
 ::selection {
-  background: #3b82f680;
-  color: white;
+  background: color-mix(in oklab, var(--primary) 38%, transparent);
+  color: var(--foreground);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  * {
+  *,
+  ::before,
+  ::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* Mapa de rede (React Flow): segue os tokens em vez do tema escuro padrão da biblioteca. */
+.react-flow {
+  --xy-background-color: transparent;
+  --xy-node-color: var(--foreground);
+  --xy-edge-label-color: var(--muted-foreground);
+  --xy-controls-button-background-color: var(--card);
+  --xy-controls-button-background-color-hover: var(--accent);
+  --xy-controls-button-color: var(--muted-foreground);
+  --xy-controls-button-color-hover: var(--foreground);
+  --xy-controls-button-border-color: var(--border);
+  --xy-minimap-background-color: var(--card);
+  --xy-minimap-mask-background-color: rgb(0 0 0 / 0.55);
+  --xy-attribution-background-color: transparent;
+}
+.react-flow .react-flow__controls {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) - 2px);
+  box-shadow: none;
+}
+.react-flow .react-flow__controls-button {
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  fill: currentColor;
+  color: var(--muted-foreground);
+}
+.react-flow .react-flow__controls-button:hover {
+  background: var(--accent);
+  color: var(--foreground);
+}
+.react-flow .react-flow__minimap {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) - 2px);
+}
+.react-flow .react-flow__attribution {
+  display: none;
 }
 
 /* Tela de impressão ("salvar como PDF" do navegador): fundo branco, sem cromo. */
@@ -127,6 +251,7 @@
   @page {
     margin: 12mm;
   }
+  html,
   body {
     background: #fff !important;
     color: #0f172a !important;

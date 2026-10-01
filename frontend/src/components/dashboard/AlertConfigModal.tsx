@@ -39,7 +39,7 @@ function Form({ device, saving, onClose, onSave }: { device: Device; saving: boo
         </DialogDescription>
       </DialogHeader>
       <div className="space-y-2">
-        <Label htmlFor="sla-threshold" className="tracking-wider uppercase">
+        <Label htmlFor="sla-threshold">
           Limite de Latência (ms)
         </Label>
         <Input id="sla-threshold" type="number" min={1} max={60000} value={value} onChange={(e) => setValue(e.target.value)} aria-invalid={!valid} />

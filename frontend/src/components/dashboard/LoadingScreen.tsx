@@ -1,9 +1,13 @@
+import BrandMark from '@/components/layout/BrandMark';
+
 export default function LoadingScreen() {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-[#070b17] via-[#0b1220] to-[#070b17]">
-      <div className="h-12 w-12 animate-spin rounded-full border-2 border-blue-500/20 border-t-blue-500" />
-      <h2 className="mt-4 text-lg font-semibold text-slate-200">OrbNOC</h2>
-      <p className="mt-2 text-xs text-slate-500">Inicializando...</p>
+    <div className="flex min-h-screen flex-col items-center justify-center gap-5 bg-background">
+      <BrandMark size="lg" />
+      <div className="h-0.5 w-24 overflow-hidden rounded-full bg-muted" role="status" aria-label="Carregando">
+        <div className="h-full w-1/2 animate-pulse rounded-full bg-primary" />
+      </div>
+      <p className="text-xs text-subtle">Inicializando...</p>
     </div>
   );
 }

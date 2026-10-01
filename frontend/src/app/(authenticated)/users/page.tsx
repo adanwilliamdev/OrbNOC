@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, type FormEvent } from 'react';
-import { KeyRound, Plus, ShieldCheck, ShieldOff, Trash2, UserCheck, UserX } from 'lucide-react';
+import { KeyRound, Plus, Users, ShieldCheck, ShieldOff, Trash2, UserCheck, UserX } from 'lucide-react';
 import { toast } from 'sonner';
 import PageShell from '@/components/layout/PageShell';
 import { Badge } from '@/components/ui/badge';
@@ -33,8 +33,8 @@ export default function UsersPage() {
 
   if (!isAdmin) {
     return (
-      <PageShell title="Usuários" subtitle="Acesso restrito" icon="👥">
-        <p role="alert" className="rounded-xl border border-rose-500/20 bg-rose-500/10 p-6 text-center text-rose-400">
+      <PageShell title="Usuários" subtitle="Acesso restrito" icon={<Users />}>
+        <p role="alert" className="rounded-xl border border-bad/25 bg-bad/10 p-6 text-center text-bad">
           Somente administradores podem gerenciar usuários.
         </p>
       </PageShell>
@@ -53,7 +53,7 @@ export default function UsersPage() {
     <PageShell
       title="Usuários"
       subtitle="Cada usuário tem seu próprio login e enxerga apenas os próprios dispositivos"
-      icon="👥"
+      icon={<Users />}
       maxWidth="max-w-6xl"
       actions={
         <Button onClick={() => setCreating(true)}>
@@ -61,8 +61,8 @@ export default function UsersPage() {
         </Button>
       }
     >
-      {error && <p role="alert" className="mb-4 text-sm text-rose-400">{errorMessage(error)}</p>}
-      <div className="overflow-hidden rounded-xl border border-slate-600/70 bg-slate-800/20">
+      {error && <p role="alert" className="mb-4 text-sm text-bad">{errorMessage(error)}</p>}
+      <div className="overflow-hidden rounded-xl border border-border bg-card">
         <Table>
           <TableHeader>
             <TableRow>
@@ -77,7 +77,7 @@ export default function UsersPage() {
           <TableBody>
             {isLoading && (
               <TableRow>
-                <TableCell colSpan={6} className="py-10 text-center text-slate-500">
+                <TableCell colSpan={6} className="py-10 text-center text-subtle">
                   Carregando...
                 </TableCell>
               </TableRow>
@@ -86,31 +86,31 @@ export default function UsersPage() {
               const self = u.id === me?.id;
               return (
                 <TableRow key={u.id}>
-                  <TableCell className="font-medium text-slate-200">
-                    {u.username} {self && <span className="text-xs text-slate-500">(você)</span>}
+                  <TableCell className="font-medium text-foreground">
+                    {u.username} {self && <span className="text-xs text-subtle">(você)</span>}
                   </TableCell>
-                  <TableCell className="text-slate-400">{u.email}</TableCell>
+                  <TableCell className="text-muted-foreground">{u.email}</TableCell>
                   <TableCell>
-                    <Badge variant={u.role === 'admin' ? 'warning' : 'secondary'}>{u.role === 'admin' ? 'Admin' : 'Usuário'}</Badge>
+                    <Badge variant={u.role === 'admin' ? 'default' : 'secondary'}>{u.role === 'admin' ? 'Admin' : 'Usuário'}</Badge>
                   </TableCell>
                   <TableCell>
-                    <Badge variant={u.is_active ? 'success' : 'destructive'}>{u.is_active ? 'Ativo' : 'Desativado'}</Badge>
+                    <Badge variant={u.is_active ? 'success' : 'destructive'} dot>{u.is_active ? 'Ativo' : 'Desativado'}</Badge>
                   </TableCell>
-                  <TableCell className="text-xs text-slate-400">{u.last_login ? new Date(u.last_login).toLocaleString() : 'Nunca'}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground">{u.last_login ? new Date(u.last_login).toLocaleString() : 'Nunca'}</TableCell>
                   <TableCell>
                     <div className="flex flex-wrap gap-2">
-                      <Button size="sm" variant="secondary" onClick={() => setResetting(u)} aria-label={`Redefinir senha de ${u.username}`}>
+                      <Button size="sm" variant="outline" onClick={() => setResetting(u)} aria-label={`Redefinir senha de ${u.username}`}>
                         <KeyRound className="size-3" /> Senha
                       </Button>
                       {!self && (
                         <>
-                          <Button size="sm" variant="secondary" onClick={() => change(u, { is_active: !u.is_active }, u.is_active ? `${u.username} desativado` : `${u.username} reativado`)}>
+                          <Button size="sm" variant="outline" onClick={() => change(u, { is_active: !u.is_active }, u.is_active ? `${u.username} desativado` : `${u.username} reativado`)}>
                             {u.is_active ? <UserX className="size-3" /> : <UserCheck className="size-3" />} {u.is_active ? 'Desativar' : 'Reativar'}
                           </Button>
-                          <Button size="sm" variant="secondary" onClick={() => change(u, { role: u.role === 'admin' ? 'user' : 'admin' }, `Perfil de ${u.username} atualizado`)}>
+                          <Button size="sm" variant="outline" onClick={() => change(u, { role: u.role === 'admin' ? 'user' : 'admin' }, `Perfil de ${u.username} atualizado`)}>
                             {u.role === 'admin' ? <ShieldOff className="size-3" /> : <ShieldCheck className="size-3" />} {u.role === 'admin' ? 'Tornar usuário' : 'Tornar admin'}
                           </Button>
-                          <Button size="sm" variant="secondary" className="hover:bg-rose-600 hover:text-white" onClick={() => handleDelete(u)} aria-label={`Remover ${u.username}`}>
+                          <Button size="sm" variant="ghost" className="hover:bg-bad/15 hover:text-bad" onClick={() => handleDelete(u)} aria-label={`Remover ${u.username}`}>
                             <Trash2 className="size-3" /> Remover
                           </Button>
                         </>
@@ -123,7 +123,7 @@ export default function UsersPage() {
           </TableBody>
         </Table>
       </div>
-      <p className="mt-3 text-xs text-slate-500">Usuário desativado não consegue entrar e os dispositivos dele deixam de ser monitorados até ser reativado.</p>
+      <p className="mt-3 text-xs text-subtle">Usuário desativado não consegue entrar e os dispositivos dele deixam de ser monitorados até ser reativado.</p>
 
       <CreateUserDialog open={creating} onClose={() => setCreating(false)} />
       <ResetPasswordDialog user={resetting} onClose={() => setResetting(null)} />
@@ -196,7 +196,7 @@ function CreateForm({ onClose }: { onClose: () => void }) {
           </Select>
         </div>
         {error && (
-          <p role="alert" className="text-xs text-rose-400">
+          <p role="alert" className="text-xs text-bad">
             {error}
           </p>
         )}
@@ -253,7 +253,7 @@ function ResetForm({ user, onClose }: { user: AdminUser; onClose: () => void }) 
         <Label htmlFor="reset-password">Nova senha</Label>
         <Input id="reset-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" placeholder="8+ caracteres, letras e números" required />
         {error && (
-          <p role="alert" className="text-xs text-rose-400">
+          <p role="alert" className="text-xs text-bad">
             {error}
           </p>
         )}

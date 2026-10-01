@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { NewDevice } from '@/hooks/use-devices';
 
@@ -31,12 +32,24 @@ export default function AddDeviceForm({ onSubmit, submitting = false, errorMessa
   };
 
   return (
-    <form onSubmit={handle} className="rounded-lg border border-blue-500/30 bg-slate-800/30 p-4">
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-5">
-        <Input name="name" placeholder="Nome do equipamento" aria-label="Nome do equipamento" required disabled={submitting} />
-        <Input name="ip" placeholder="IP ou hostname" aria-label="IP ou hostname" required disabled={submitting} />
-        <Input name="location" placeholder="Localização" aria-label="Localização" disabled={submitting} />
-        <Input name="interval_seconds" type="number" min={5} max={3600} defaultValue={30} aria-label="Intervalo de checagem em segundos" title="Intervalo de checagem (segundos)" disabled={submitting} />
+    <form onSubmit={handle} className="animate-fade-in rounded-xl border border-primary/30 bg-card p-4">
+      <div className="grid grid-cols-1 items-end gap-3 md:grid-cols-6">
+        <div className="space-y-1.5 md:col-span-2">
+          <Label htmlFor="dev-name">Nome do equipamento</Label>
+          <Input id="dev-name" name="name" placeholder="Switch do 2º andar" required disabled={submitting} />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="dev-ip">IP ou hostname</Label>
+          <Input id="dev-ip" name="ip" placeholder="10.0.0.10" required disabled={submitting} />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="dev-location">Localização</Label>
+          <Input id="dev-location" name="location" placeholder="Opcional" disabled={submitting} />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="dev-interval">Intervalo (s)</Label>
+          <Input id="dev-interval" name="interval_seconds" type="number" min={5} max={3600} defaultValue={30} title="Intervalo de checagem (segundos)" disabled={submitting} />
+        </div>
         <div className="flex gap-2">
           <Select value={checkType} onValueChange={(v) => setCheckType(v as 'icmp' | 'tcp')} disabled={submitting}>
             <SelectTrigger aria-label="Tipo de checagem" className="w-24 shrink-0">
@@ -55,7 +68,7 @@ export default function AddDeviceForm({ onSubmit, submitting = false, errorMessa
         </div>
       </div>
       {errorMessage && (
-        <p role="alert" className="mt-2 text-xs text-red-400">
+        <p role="alert" className="mt-3 text-xs text-bad">
           {errorMessage}
         </p>
       )}

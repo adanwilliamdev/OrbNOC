@@ -2,22 +2,32 @@ import * as React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 
-const badgeVariants = cva('inline-flex items-center justify-center rounded-md border px-2 py-0.5 text-xs font-medium whitespace-nowrap', {
+const badgeVariants = cva('inline-flex items-center justify-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium whitespace-nowrap', {
   variants: {
     variant: {
       default: 'border-transparent bg-primary text-primary-foreground',
-      secondary: 'border-transparent bg-secondary text-secondary-foreground',
-      success: 'border-emerald-500/30 bg-emerald-500/15 text-emerald-300',
-      warning: 'border-amber-500/30 bg-amber-500/15 text-amber-300',
-      destructive: 'border-rose-500/30 bg-rose-500/15 text-rose-300',
-      outline: 'border-slate-600 text-slate-300',
+      secondary: 'border-transparent bg-muted text-muted-foreground',
+      success: 'border-ok/25 bg-ok/10 text-ok',
+      warning: 'border-warn/25 bg-warn/10 text-warn',
+      destructive: 'border-bad/25 bg-bad/10 text-bad',
+      outline: 'border-border text-muted-foreground',
     },
   },
   defaultVariants: { variant: 'default' },
 });
 
-function Badge({ className, variant, ...props }: React.ComponentProps<'span'> & VariantProps<typeof badgeVariants>) {
-  return <span data-slot="badge" className={cn(badgeVariants({ variant }), className)} {...props} />;
+interface BadgeProps extends React.ComponentProps<'span'>, VariantProps<typeof badgeVariants> {
+  /** Ponto colorido antes do texto (usa a cor do texto). */
+  dot?: boolean;
+}
+
+function Badge({ className, variant, dot = false, children, ...props }: BadgeProps) {
+  return (
+    <span data-slot="badge" className={cn(badgeVariants({ variant }), className)} {...props}>
+      {dot && <span aria-hidden="true" className="size-1.5 rounded-full bg-current" />}
+      {children}
+    </span>
+  );
 }
 
 export { Badge, badgeVariants };

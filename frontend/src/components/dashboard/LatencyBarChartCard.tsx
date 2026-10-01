@@ -1,9 +1,11 @@
 'use client';
 
 import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { formatMs, getLatencyChartColor } from '@/lib/latency';
+import { chart, tooltipLabelStyle, tooltipStyle } from '@/lib/theme';
 import type { BarChartDatum } from '@/types/dashboard';
 
 interface LatencyBarChartCardProps {
@@ -13,80 +15,80 @@ interface LatencyBarChartCardProps {
   onTestAll: () => void;
 }
 
+const LEGEND = [
+  { color: 'bg-ok', label: 'Até 50ms' },
+  { color: 'bg-warn', label: '50 a 100ms' },
+  { color: 'bg-bad', label: 'Acima de 100ms' },
+];
+
 export default function LatencyBarChartCard({ barChartData, hasOnlineDevices, testing = false, onTestAll }: LatencyBarChartCardProps) {
   const hasData = barChartData.length > 0;
   const latencies = barChartData.map((d) => d.latency);
+  const stats = hasData
+    ? [
+        { label: 'Média', value: formatMs(latencies.reduce((a, b) => a + b, 0) / latencies.length) },
+        { label: 'Mínima', value: formatMs(Math.min(...latencies)) },
+        { label: 'Máxima', value: formatMs(Math.max(...latencies)) },
+      ]
+    : [];
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>
-          <span className="h-5 w-1 rounded-full bg-primary" />
-          Latência em Tempo Real
-        </CardTitle>
-        <Button size="sm" variant="ghost" onClick={onTestAll} disabled={testing} className="h-7 bg-blue-600/20 text-blue-300 hover:bg-primary hover:text-white">
-          {testing ? 'Testando...' : 'Testar Todos'}
+        <div>
+          <CardTitle>Latência em tempo real</CardTitle>
+          <CardDescription>{hasData ? `${barChartData.length} dispositivos respondendo` : 'Aguardando medições'}</CardDescription>
+        </div>
+        <Button size="sm" variant="outline" onClick={onTestAll} disabled={testing}>
+          <Zap /> {testing ? 'Testando...' : 'Testar todos'}
         </Button>
       </CardHeader>
-      <div className="p-4 pt-3">
+      <div className="px-5 pb-5">
         {hasData && (
-          <div className="mb-3 flex items-center gap-4 text-xs">
-            <div className="flex items-center gap-1">
-              <span className="text-slate-400">Média:</span>
-              <span className="font-mono text-yellow-300">{formatMs(latencies.reduce((a, b) => a + b, 0) / latencies.length)}</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <span className="text-slate-400">Máxima:</span>
-              <span className="font-mono text-rose-400">{formatMs(Math.max(...latencies))}</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <span className="text-slate-400">Mínima:</span>
-              <span className="font-mono text-emerald-300">{formatMs(Math.min(...latencies))}</span>
-            </div>
-            <div className="ml-auto text-slate-400">📊 {barChartData.length} dispositivos</div>
-          </div>
+          <dl className="mb-3 flex flex-wrap items-center gap-x-6 gap-y-1 text-xs">
+            {stats.map((s) => (
+              <div key={s.label} className="flex items-baseline gap-1.5">
+                <dt className="text-subtle">{s.label}</dt>
+                <dd className="font-mono text-sm text-foreground tabular-nums">{s.value}</dd>
+              </div>
+            ))}
+          </dl>
         )}
 
         {hasData ? (
-          <div className="w-full">
+          <>
             <div className="h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart layout="vertical" data={barChartData} margin={{ top: 10, right: 20, left: 10, bottom: 10 }} barCategoryGap={8}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" horizontal={false} />
-                <XAxis
-                  type="number"
-                  stroke="#64748b"
-                  fontSize={10}
-                  tickLine={false}
-                  axisLine={{ stroke: '#1e293b' }}
-                  domain={[0, 'dataMax + 10']}
-                  tickFormatter={(value) => `${value}ms`}
-                />
-                <YAxis type="category" dataKey="name" fontSize={11} tickLine={false} axisLine={{ stroke: '#1e293b' }} width={90} tick={{ fill: '#94a3b8' }} />
-                <Tooltip
-                  contentStyle={{ backgroundColor: '#0f172a', borderRadius: '8px', border: '1px solid #1e293b', color: '#e2e8f0', fontSize: '12px' }}
-                  labelStyle={{ color: '#94a3b8', fontSize: '10px' }}
-                  formatter={(value) => [formatMs(Number(value)), 'Latência']}
-                  labelFormatter={(label, payload) => `Dispositivo: ${payload?.[0]?.payload?.fullName ?? label ?? 'Desconhecido'}`}
-                />
-                <Bar dataKey="latency" radius={[0, 6, 6, 0]} barSize={20} animationDuration={500}>
-                  {barChartData.map((entry) => (
-                    <Cell key={entry.id} fill={getLatencyChartColor(entry.latency)} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart layout="vertical" data={barChartData} margin={{ top: 6, right: 16, left: 4, bottom: 6 }} barCategoryGap={8}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} horizontal={false} />
+                  <XAxis type="number" stroke={chart.axis} fontSize={10} tickLine={false} axisLine={false} domain={[0, 'dataMax + 10']} tickFormatter={(value) => `${value}ms`} />
+                  <YAxis type="category" dataKey="name" fontSize={12} tickLine={false} axisLine={false} width={96} tick={{ fill: chart.label }} />
+                  <Tooltip
+                    cursor={{ fill: 'var(--accent)', opacity: 0.4 }}
+                    contentStyle={tooltipStyle}
+                    labelStyle={tooltipLabelStyle}
+                    formatter={(value) => [formatMs(Number(value)), 'Latência']}
+                    labelFormatter={(label, payload) => payload?.[0]?.payload?.fullName ?? label ?? 'Desconhecido'}
+                  />
+                  <Bar dataKey="latency" radius={[0, 6, 6, 0]} barSize={18} animationDuration={500}>
+                    {barChartData.map((entry) => (
+                      <Cell key={entry.id} fill={getLatencyChartColor(entry.latency)} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
             </div>
-            <div className="mt-1 flex justify-center gap-4 text-[10px] text-slate-400">
-              <span>🟢 &lt; 50ms</span>
-              <span>🟡 50-100ms</span>
-              <span>🔴 &gt; 100ms</span>
-            </div>
-          </div>
+            <ul className="mt-2 flex flex-wrap justify-center gap-x-5 gap-y-1 text-xs text-subtle">
+              {LEGEND.map((l) => (
+                <li key={l.label} className="flex items-center gap-1.5">
+                  <span className={`size-2 rounded-full ${l.color}`} />
+                  {l.label}
+                </li>
+              ))}
+            </ul>
+          </>
         ) : (
-          <div className="flex h-80 items-center justify-center text-sm text-slate-500">
-            {hasOnlineDevices ? 'Aguardando dados de latência...' : 'Nenhum dispositivo online'}
-          </div>
+          <div className="flex h-72 items-center justify-center text-sm text-subtle">{hasOnlineDevices ? 'Aguardando dados de latência...' : 'Nenhum dispositivo online'}</div>
         )}
       </div>
     </Card>

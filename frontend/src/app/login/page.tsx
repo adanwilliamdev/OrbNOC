@@ -4,6 +4,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Loader2 } from 'lucide-react';
+import BrandMark from '@/components/layout/BrandMark';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -65,89 +66,72 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#070b17] via-[#0b1220] to-[#070b17]">
-      <div className="flex min-h-screen items-center justify-center p-4">
-        <div className="w-full max-w-md">
-          <div className="mb-8 text-center">
-            <div className="mb-5 inline-flex h-16 w-16 items-center justify-center">
-              <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-gradient-to-br from-[#4F8CFF] to-blue-500 shadow-lg shadow-blue-500/30">
-                <svg className="h-7 w-7 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-                  <path d="M4 6 L12 12 L20 6" strokeLinecap="round" />
-                  <path d="M4 12 L12 18 L20 12" strokeLinecap="round" />
-                </svg>
-              </div>
+    <div className="flex min-h-screen items-center justify-center bg-background p-4">
+      <div className="w-full max-w-sm">
+        <div className="mb-8 flex flex-col items-center text-center">
+          <BrandMark size="lg" />
+          <h1 className="mt-5 text-2xl font-semibold text-foreground">OrbNOC</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{isRegistering ? 'Crie sua conta para começar' : 'Entre para acompanhar a sua rede'}</p>
+        </div>
+
+        <div className="rounded-xl border border-border bg-card p-6 shadow-pop">
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="username">Usuário{isRegistering ? '' : ' ou email'}</Label>
+              <Input id="username" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="Digite seu usuário" autoComplete="username" required className="h-10" />
             </div>
-            <h1 className="bg-gradient-to-r from-blue-300 to-indigo-400 bg-clip-text text-2xl font-bold text-transparent">OrbNOC</h1>
-            <p className="mt-1 text-sm text-slate-400">{isRegistering ? 'Crie sua conta para começar' : 'Network Operations Center'}</p>
-          </div>
 
-          <div className="rounded-xl border border-slate-600/70 bg-card p-6 shadow-2xl backdrop-blur-sm">
-            <form onSubmit={handleSubmit} className="space-y-4">
+            {isRegistering && (
               <div className="space-y-1.5">
-                <Label htmlFor="username" className="tracking-wider uppercase">
-                  Usuário{isRegistering ? '' : ' ou email'}
-                </Label>
-                <Input id="username" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="Digite seu usuário" autoComplete="username" required className="h-10 bg-slate-800" />
-              </div>
-
-              {isRegistering && (
-                <div className="space-y-1.5">
-                  <Label htmlFor="email" className="tracking-wider uppercase">
-                    Email
-                  </Label>
-                  <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="seu@email.com" autoComplete="email" required className="h-10 bg-slate-800" />
-                </div>
-              )}
-
-              <div className="space-y-1.5">
-                <Label htmlFor="password" className="tracking-wider uppercase">
-                  Senha
-                </Label>
-                <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" autoComplete={isRegistering ? 'new-password' : 'current-password'} required className="h-10 bg-slate-800" />
-              </div>
-
-              {isRegistering && (
-                <div className="space-y-1.5">
-                  <Label htmlFor="confirm" className="tracking-wider uppercase">
-                    Confirmar Senha
-                  </Label>
-                  <Input id="confirm" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="••••••••" autoComplete="new-password" required className="h-10 bg-slate-800" />
-                </div>
-              )}
-
-              {error && (
-                <div role="alert" className="rounded-lg border border-rose-500/20 bg-rose-500/10 p-3">
-                  <p className="text-center text-sm text-rose-400">{error}</p>
-                </div>
-              )}
-
-              <Button type="submit" disabled={auth.isPending} className="mt-2 h-10 w-full bg-gradient-to-r from-[#4F8CFF] to-blue-500 hover:from-blue-500 hover:to-blue-400">
-                {auth.isPending ? (
-                  <>
-                    <Loader2 className="animate-spin" /> {isRegistering ? 'Registrando...' : 'Entrando...'}
-                  </>
-                ) : isRegistering ? (
-                  'Criar Conta'
-                ) : (
-                  'Entrar'
-                )}
-              </Button>
-            </form>
-
-            {/* O registro só aparece quando o servidor permite (REGISTRATION_ENABLED). */}
-            {registrationEnabled && (
-              <div className="mt-5 text-center">
-                <button type="button" onClick={toggleMode} className="text-sm text-slate-400 transition-colors hover:text-blue-300">
-                  {isRegistering ? '← Voltar para o login' : 'Criar nova conta →'}
-                </button>
+                <Label htmlFor="email">Email</Label>
+                <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="seu@email.com" autoComplete="email" required className="h-10" />
               </div>
             )}
-          </div>
 
-          <p className="mt-6 text-center text-xs text-slate-500">
-            OrbNOC Network Operations Center © {YEAR} • Desenvolvido por <span className="text-blue-300">Adan W O Santos</span>
-          </p>
+            <div className="space-y-1.5">
+              <Label htmlFor="password">Senha</Label>
+              <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" autoComplete={isRegistering ? 'new-password' : 'current-password'} required className="h-10" />
+            </div>
+
+            {isRegistering && (
+              <div className="space-y-1.5">
+                <Label htmlFor="confirm">Confirmar senha</Label>
+                <Input id="confirm" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="••••••••" autoComplete="new-password" required className="h-10" />
+              </div>
+            )}
+
+            {error && (
+              <div role="alert" className="rounded-lg border border-bad/25 bg-bad/10 p-3">
+                <p className="text-center text-sm text-bad">{error}</p>
+              </div>
+            )}
+
+            <Button type="submit" disabled={auth.isPending} size="lg" className="mt-2 w-full">
+              {auth.isPending ? (
+                <>
+                  <Loader2 className="animate-spin" /> {isRegistering ? 'Registrando...' : 'Entrando...'}
+                </>
+              ) : isRegistering ? (
+                'Criar conta'
+              ) : (
+                'Entrar'
+              )}
+            </Button>
+          </form>
+
+          {/* O registro só aparece quando o servidor permite (REGISTRATION_ENABLED). */}
+          {registrationEnabled && (
+            <div className="mt-5 text-center">
+              <button type="button" onClick={toggleMode} className="text-sm text-muted-foreground transition-colors hover:text-primary">
+                {isRegistering ? 'Já tenho conta. Voltar ao login' : 'Criar nova conta'}
+              </button>
+            </div>
+          )}
         </div>
+
+        <p className="mt-6 text-center text-xs text-subtle">
+          OrbNOC © {YEAR}. Desenvolvido por Adan W O Santos
+        </p>
       </div>
     </div>
   );

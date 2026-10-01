@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { Plus } from 'lucide-react';
 import { toast } from 'sonner';
+import AppBar from '@/components/layout/AppBar';
 import AddDeviceForm from '@/components/dashboard/AddDeviceForm';
 import AdvancedFiltersPanel from '@/components/dashboard/AdvancedFiltersPanel';
 import AlertConfigModal from '@/components/dashboard/AlertConfigModal';
@@ -25,7 +26,8 @@ import { useAddDevice, useConfigureSla, useDevices, usePingDevice, useRemoveDevi
 import { errorMessage } from '@/lib/api';
 import { downloadFile, filterAndSort, toBarChartData } from '@/lib/devices';
 import { formatMs } from '@/lib/latency';
-import { useLogout, useSession } from '@/lib/session';
+import { chart } from '@/lib/theme';
+import { cn, stagger } from '@/lib/utils';
 import { isSoundEnabled, setSoundEnabled } from '@/lib/sound';
 import { useStream } from '@/providers/stream-provider';
 import type { AdvancedFilters, Device, LatencyTrend, SortDirection, SortField, StatusFilter, StatusDatum } from '@/types/dashboard';
@@ -35,8 +37,6 @@ const NO_TREND: LatencyTrend = { value: 0, percentage: 0, direction: 'stable' };
 export default function DashboardPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { user } = useSession();
-  const logout = useLogout();
   const { connected, lastUpdate } = useStream();
   const { devices, stats, isFetching, refetch } = useDevices();
   const { alerts, unread } = useAlerts(50);
@@ -85,9 +85,9 @@ export default function DashboardPage() {
   const barChartData = useMemo(() => toBarChartData(visible), [visible]);
   const statusData: StatusDatum[] = useMemo(
     () => [
-      { name: 'Online', value: stats.online, color: '#10b981' },
-      { name: 'Offline', value: stats.offline, color: '#ef4444' },
-      ...(stats.unknown > 0 ? [{ name: 'Aguardando', value: stats.unknown, color: '#64748b' }] : []),
+      { name: 'Online', value: stats.online, color: chart.ok },
+      { name: 'Offline', value: stats.offline, color: chart.bad },
+      ...(stats.unknown > 0 ? [{ name: 'Aguardando', value: stats.unknown, color: chart.idle }] : []),
     ],
     [stats],
   );
@@ -181,15 +181,15 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="min-h-screen p-4 sm:p-6">
-      <div className="mx-auto max-w-7xl space-y-6">
+    <div className="min-h-screen">
+      <AppBar />
+      <div className="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6 sm:py-8">
         <DashboardHeader
-          connected={connected}
-          user={user}
           refreshing={isFetching}
           unreadAlerts={unread}
           soundEnabled={sound}
           telegramConfig={telegram.config}
+          meta={<StatusIndicators connected={connected} lastUpdateTime={lastUpdate} deviceCount={stats.total} />}
           onRefresh={handleRefresh}
           onAckAll={() => ackAll.mutate()}
           onToggleSound={() => {
@@ -202,29 +202,29 @@ export default function DashboardPage() {
             setTelegramError(null);
             setTelegramOpen(true);
           }}
-          onLogout={() => void logout()}
         />
 
-        <StatusIndicators connected={connected} lastUpdateTime={lastUpdate} deviceCount={stats.total} />
+        <KpiPanel devices={devices} totalDevices={stats.total} online={stats.online} offline={stats.offline} availability={stats.availability} avgLatency={stats.avgLatency} latencyTrend={trend} history={history} />
 
-        <KpiPanel totalDevices={stats.total} online={stats.online} offline={stats.offline} availability={stats.availability} avgLatency={stats.avgLatency} latencyTrend={trend} history={history} />
-
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-          <div className="lg:col-span-2">
+        <div className="reveal grid grid-cols-1 gap-6 lg:grid-cols-3" style={stagger(5)}>
+          <div className="space-y-6 lg:col-span-2">
             <LatencyBarChartCard barChartData={barChartData} hasOnlineDevices={stats.online > 0} testing={testingAll} onTestAll={() => void handleTestAll()} />
+            <UptimeHistoryCard history={history} />
           </div>
           <div className="space-y-6">
             <StatusPieCard statusData={statusData} />
-            <UptimeHistoryCard history={history} />
             <AlertHistoryCard alerts={alerts} unread={unread} onAckAll={() => ackAll.mutate()} />
           </div>
         </div>
 
-        <section aria-label="Dispositivos" className="space-y-4">
+        <section aria-label="Dispositivos" className="reveal space-y-4" style={stagger(6)}>
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-lg font-semibold text-slate-200">Dispositivos</h2>
+            <h2 className="flex items-center gap-2.5 text-lg font-semibold text-foreground">
+              Dispositivos
+              <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground tabular-nums">{visible.length}</span>
+            </h2>
             <Button onClick={() => setShowForm((v) => !v)} variant={showForm ? 'secondary' : 'default'}>
-              <Plus /> {showForm ? 'Fechar' : 'Adicionar'}
+              <Plus className={cn('transition-transform duration-200', showForm && 'rotate-45')} /> {showForm ? 'Fechar' : 'Adicionar'}
             </Button>
           </div>
           {showForm && <AddDeviceForm onSubmit={handleAdd} submitting={addDevice.isPending} errorMessage={addDevice.error ? errorMessage(addDevice.error) : null} />}

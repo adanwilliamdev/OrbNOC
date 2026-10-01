@@ -12,7 +12,7 @@ interface AdvancedFiltersPanelProps {
 
 export default function AdvancedFiltersPanel({ filters, onFiltersChange }: AdvancedFiltersPanelProps) {
   return (
-    <div className="rounded-lg border border-slate-600/70 bg-slate-800/30 p-4">
+    <div className="animate-fade-in rounded-xl border border-border bg-card p-4">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <div className="space-y-1">
           <Label htmlFor="min-latency">Latência Mínima (ms)</Label>

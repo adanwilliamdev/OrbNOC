@@ -19,7 +19,7 @@ function PrintReport() {
   const { data, isLoading } = useReportSummary(window_);
 
   return (
-    <div className="mx-auto max-w-5xl bg-white p-6 text-slate-900 print:max-w-none print:p-0 [&_*]:!text-slate-900 [&_table]:!bg-white [&_thead]:!bg-slate-100 [&_div]:!bg-white [&_div]:!border-slate-300 [&_td]:!border-slate-300 [&_tr]:!border-slate-300">
+    <div className="mx-auto max-w-5xl bg-white p-6 text-neutral-900 print:max-w-none print:p-0 [&_*]:!text-neutral-900 [&_table]:!bg-white [&_thead]:!bg-neutral-100 [&_div]:!bg-white [&_div]:!border-neutral-300 [&_td]:!border-neutral-300 [&_tr]:!border-neutral-300">
       <div className="mb-4 flex items-center justify-between gap-2 print:hidden">
         <Button asChild variant="outline" className="!bg-white">
           <Link href="/reports">

@@ -44,7 +44,7 @@ function Form({ config, saving, error, onClose, onSave }: Omit<TelegramConfigMod
       </DialogHeader>
       <div className="space-y-4">
         <div className="space-y-1">
-          <Label htmlFor="bot-token" className="tracking-wider uppercase">
+          <Label htmlFor="bot-token">
             Bot Token
           </Label>
           <Input
@@ -56,16 +56,16 @@ function Form({ config, saving, error, onClose, onSave }: Omit<TelegramConfigMod
             onChange={(e) => setBotToken(e.target.value)}
             placeholder={tokenSaved ? 'Token salvo — deixe em branco para manter' : '1234567890:ABCdefGHIjklMNOpqrsTUVwxyz'}
           />
-          {tokenSaved && <p className="text-[10px] text-slate-500">O token é guardado criptografado e nunca é exibido de novo.</p>}
+          {tokenSaved && <p className="text-xs text-subtle">O token é guardado criptografado e nunca é exibido de novo.</p>}
         </div>
         <div className="space-y-1">
-          <Label htmlFor="chat-id" className="tracking-wider uppercase">
+          <Label htmlFor="chat-id">
             Chat ID
           </Label>
           <Input id="chat-id" className="font-mono" value={chatId} onChange={(e) => setChatId(e.target.value)} placeholder="-1001234567890" />
         </div>
         {error && (
-          <p role="alert" className="text-xs text-rose-400">
+          <p role="alert" className="text-xs text-bad">
             {error}
           </p>
         )}

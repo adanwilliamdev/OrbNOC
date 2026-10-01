@@ -1,27 +1,28 @@
 // Cores por faixa de latência (usadas na tabela, nas barras e nos gráficos).
 // 0 ms é uma medição válida (loopback/LAN): só `null`/`undefined` significam "sem dado".
+import { chart } from '@/lib/theme';
 
 export const hasLatency = (latency?: number | null): latency is number => latency != null;
 
 export const getLatencyColor = (latency?: number | null): string => {
-  if (!hasLatency(latency)) return 'text-slate-500';
-  if (latency <= 50) return 'text-emerald-300';
-  if (latency <= 100) return 'text-yellow-300';
-  return 'text-rose-400';
+  if (!hasLatency(latency)) return 'text-subtle';
+  if (latency <= 50) return 'text-ok';
+  if (latency <= 100) return 'text-warn';
+  return 'text-bad';
 };
 
 export const getLatencyBarColor = (latency?: number | null): string => {
-  if (!hasLatency(latency)) return 'bg-slate-600';
-  if (latency <= 50) return 'bg-emerald-400';
-  if (latency <= 100) return 'bg-amber-500';
-  return 'bg-rose-500';
+  if (!hasLatency(latency)) return 'bg-subtle';
+  if (latency <= 50) return 'bg-ok';
+  if (latency <= 100) return 'bg-warn';
+  return 'bg-bad';
 };
 
 export const getLatencyChartColor = (latency?: number | null): string => {
-  if (!hasLatency(latency)) return '#64748b';
-  if (latency <= 50) return '#34d399';
-  if (latency <= 100) return '#f59e0b';
-  return '#ef4444';
+  if (!hasLatency(latency)) return chart.idle;
+  if (latency <= 50) return chart.ok;
+  if (latency <= 100) return chart.warn;
+  return chart.bad;
 };
 
 export const formatMs = (latency?: number | null): string => {

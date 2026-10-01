@@ -18,7 +18,7 @@ export default function AuthenticatedLayout({ children }: { children: ReactNode 
   if (isLoading || user === null) return <LoadingScreen />;
   if (error || !user) {
     return (
-      <div className="flex min-h-screen items-center justify-center p-6 text-center text-sm text-rose-400" role="alert">
+      <div className="flex min-h-screen items-center justify-center p-6 text-center text-sm text-bad" role="alert">
         Não foi possível falar com o servidor. Recarregue a página em instantes.
       </div>
     );

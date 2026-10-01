@@ -1,6 +1,7 @@
 'use client';
 
-import { ArrowRight, Clock } from 'lucide-react';
+import { Clock, Server } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface StatusIndicatorsProps {
   connected: boolean;
@@ -10,18 +11,18 @@ interface StatusIndicatorsProps {
 
 export default function StatusIndicators({ connected, lastUpdateTime, deviceCount }: StatusIndicatorsProps) {
   return (
-    <div className="flex flex-wrap items-center gap-4 text-xs">
+    <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-xs text-muted-foreground">
       <div className="flex items-center gap-2" role="status">
-        <div className={`h-1.5 w-1.5 rounded-full ${connected ? 'animate-pulse bg-emerald-500' : 'bg-rose-500'}`} />
-        <span className="text-slate-500">{connected ? 'Tempo real conectado' : 'Reconectando...'}</span>
+        <span className={cn('size-2 rounded-full', connected ? 'animate-halo bg-ok [--halo:var(--ok)]' : 'bg-bad')} />
+        {connected ? 'Tempo real conectado' : 'Reconectando...'}
       </div>
-      <div className="flex items-center gap-2 text-slate-400">
-        <Clock className="size-3 text-slate-500" />
-        Última atualização: {lastUpdateTime ? lastUpdateTime.toLocaleTimeString() : '—'}
+      <div className="flex items-center gap-1.5">
+        <Clock className="size-3.5 text-subtle" />
+        Atualizado às {lastUpdateTime ? lastUpdateTime.toLocaleTimeString() : '—'}
       </div>
-      <div className="flex items-center gap-2 text-slate-400">
-        <ArrowRight className="size-3 text-slate-500" />
-        Dispositivos: {deviceCount}
+      <div className="flex items-center gap-1.5">
+        <Server className="size-3.5 text-subtle" />
+        {deviceCount} {deviceCount === 1 ? 'dispositivo' : 'dispositivos'}
       </div>
     </div>
   );

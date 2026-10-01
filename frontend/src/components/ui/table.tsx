@@ -11,7 +11,7 @@ function Table({ className, ...props }: React.ComponentProps<'table'>) {
 }
 
 function TableHeader({ className, ...props }: React.ComponentProps<'thead'>) {
-  return <thead data-slot="table-header" className={cn('bg-slate-800/50 [&_tr]:border-b', className)} {...props} />;
+  return <thead data-slot="table-header" className={cn('[&_tr]:border-b [&_tr]:border-border', className)} {...props} />;
 }
 
 function TableBody({ className, ...props }: React.ComponentProps<'tbody'>) {
@@ -19,11 +19,11 @@ function TableBody({ className, ...props }: React.ComponentProps<'tbody'>) {
 }
 
 function TableRow({ className, ...props }: React.ComponentProps<'tr'>) {
-  return <tr data-slot="table-row" className={cn('border-b border-slate-700/60 transition-colors', className)} {...props} />;
+  return <tr data-slot="table-row" className={cn('border-b border-border/60 transition-colors', className)} {...props} />;
 }
 
 function TableHead({ className, ...props }: React.ComponentProps<'th'>) {
-  return <th data-slot="table-head" className={cn('h-10 px-4 text-left align-middle text-xs font-medium tracking-wider whitespace-nowrap text-slate-400 uppercase', className)} {...props} />;
+  return <th data-slot="table-head" className={cn('h-11 px-4 text-left align-middle text-xs font-medium whitespace-nowrap text-subtle', className)} {...props} />;
 }
 
 function TableCell({ className, ...props }: React.ComponentProps<'td'>) {
