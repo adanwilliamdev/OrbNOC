@@ -1,5 +1,9 @@
 # 🛰️ OrbNOC
 
+<p align="center">
+  <img src="./frontend/public/OrbNOC_capa.png" alt="OrbNOC" width="100%">
+</p>
+
 **OrbNOC** é uma plataforma de monitoramento de equipamentos de rede com acompanhamento em tempo real, alertas, diagnóstico e relatórios operacionais.
 
 Cada usuário pode cadastrar seus próprios dispositivos e acompanhar:
