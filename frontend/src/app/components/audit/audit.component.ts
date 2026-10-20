@@ -9,47 +9,50 @@ import { ToolsService } from '../../services/tools.service';
   template: `
     <div class="content">
       <div class="page-header">
-        <div class="title-area">
-          <h1>Logs de Auditoria</h1>
-          <p class="subtitle">Rastreamento de ações do sistema</p>
+        <div>
+          <h1>Auditoria</h1>
+          <p class="subtitle">Registro das ações feitas por usuários e pelo sistema.</p>
         </div>
-        <button class="btn-outline" (click)="carregar()">&#8635; Atualizar</button>
+        <button type="button" class="btn-outline" (click)="carregar()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><path d="M20.5 15a9 9 0 1 1-2.1-9.4L23 10"/></svg>
+          Atualizar
+        </button>
       </div>
 
       <div class="panel table-panel">
-        <table>
-          <thead>
-            <tr>
-              <th>Timestamp</th>
-              <th>Usuário</th>
-              <th>Ação</th>
-              <th>Detalhe</th>
-              <th>Nível</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let log of logs">
-              <td class="mono">{{ log.timestamp | date:'dd/MM/yyyy HH:mm' }}</td>
-              <td><strong>{{ log.user }}</strong></td>
-              <td>{{ log.action }}</td>
-              <td class="text-muted">{{ log.detail }}</td>
-              <td>
-                <span class="badge"
-                      [class.info]="log.level === 'INFO'"
-                      [class.warn]="log.level === 'WARN'"
-                      [class.error]="log.level === 'ERROR'">
-                  {{ log.level }}
-                </span>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr><th>Data e hora</th><th>Usuário</th><th>Ação</th><th>Detalhe</th><th>Nível</th></tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let log of logs">
+                <td class="mono num">{{ log.timestamp | date:'dd/MM/yyyy HH:mm' }}</td>
+                <td class="cell-title">{{ log.user }}</td>
+                <td>{{ log.action }}</td>
+                <td class="text-muted">{{ log.detail }}</td>
+                <td>
+                  <span class="badge" [ngClass]="(log.level || '') | lowercase">{{ nivel[log.level] || log.level }}</span>
+                </td>
+              </tr>
+              <tr *ngIf="logs.length === 0">
+                <td colspan="5">
+                  <div class="empty">
+                    <strong>Nenhum registro</strong>
+                    <span>As ações do sistema aparecem aqui assim que acontecem.</span>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   `
 })
 export class AuditComponent implements OnInit {
   logs: any[] = [];
+  readonly nivel: Record<string, string> = { INFO: 'Info', WARN: 'Aviso', ERROR: 'Erro' };
   constructor(private tools: ToolsService) {}
   ngOnInit() { this.carregar(); }
   carregar() { this.tools.audit().subscribe(l => this.logs = l); }

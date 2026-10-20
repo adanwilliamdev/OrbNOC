@@ -9,68 +9,74 @@ import { AuthService } from '../../services/auth.service';
   standalone: true,
   imports: [CommonModule, FormsModule, RouterModule],
   template: `
-    <div class="auth-container">
-      <div class="auth-card">
-        <div class="auth-logo">
-          <svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" style="width:48px; height:48px;">
-            <rect x="0" y="0" width="48" height="48" rx="10" fill="#111827" stroke="rgba(251,191,36,0.25)" stroke-width="1"/>
-            <circle cx="24" cy="24" r="14" fill="none" stroke="#FBBF24" stroke-width="2.5" stroke-dasharray="66 22" stroke-linecap="round" transform="rotate(-45 24 24)"/>
-            <circle cx="24" cy="24" r="4" fill="#FBBF24" />
-          </svg>
-        </div>
-        <h1>Criar Conta</h1>
-        <p class="subtitle">Junte-se à equipe do OrbNOC</p>
-
-        <div class="auth-form">
-          <div class="field">
-            <label>Nome de Usuário</label>
-            <input type="text" placeholder="Ex: joao.silva" [(ngModel)]="username">
-          </div>
-          <div class="field">
-            <label>E-mail</label>
-            <input type="email" placeholder="joao@empresa.com" [(ngModel)]="email">
-          </div>
-          <div class="field">
-            <label>Senha</label>
-            <input type="password" placeholder="••••••••" [(ngModel)]="password">
-          </div>
-          <p class="error-msg" *ngIf="error">{{ error }}</p>
-          <p class="success-msg" *ngIf="success">{{ success }}</p>
-          <button class="btn-primary" (click)="onRegister()" [disabled]="loading">
-            {{ loading ? 'Cadastrando...' : 'Criar Conta' }}
-          </button>
+    <div class="auth">
+      <aside class="auth-aside" aria-hidden="true">
+        <div class="auth-brand">
+          <svg viewBox="0 0 48 48"><rect width="48" height="48" rx="10" fill="#0A0F15" stroke="rgba(251,191,36,0.28)"/><circle cx="24" cy="24" r="14" fill="none" stroke="#FBBF24" stroke-width="2.5" stroke-dasharray="66 22" stroke-linecap="round" transform="rotate(-45 24 24)"/><circle cx="24" cy="24" r="4" fill="#FBBF24"/><circle cx="38" cy="24" r="2.5" fill="#3DCC91"/></svg>
+          OrbNOC
         </div>
 
-        <p class="auth-footer">Já tem uma conta? <a routerLink="/login">Fazer Login</a></p>
-      </div>
+        <svg class="auth-art" viewBox="0 0 600 600" fill="none">
+          <circle cx="300" cy="300" r="90" stroke="#1F2B3A"/>
+          <circle cx="300" cy="300" r="170" stroke="#1F2B3A" stroke-dasharray="2 7"/>
+          <g class="spin-a"><circle cx="300" cy="300" r="250" stroke="#2B3A4D"/><circle cx="550" cy="300" r="7" fill="#3DCC91"/><circle cx="550" cy="300" r="14" fill="#3DCC91" fill-opacity=".14"/></g>
+          <g class="spin-b"><circle cx="300" cy="300" r="170" stroke="#2B3A4D" stroke-opacity="0"/><circle cx="130" cy="300" r="5" fill="#FBBF24"/><circle cx="300" cy="130" r="4" fill="#3DCC91"/></g>
+          <g class="spin-c"><circle cx="300" cy="210" r="4" fill="#3DCC91"/><circle cx="378" cy="345" r="3.5" fill="#F26B6B"/></g>
+          <circle cx="300" cy="300" r="26" fill="#FBBF24" fill-opacity=".12" stroke="#FBBF24" stroke-width="1.5"/>
+          <circle cx="300" cy="300" r="7" fill="#FBBF24"/>
+        </svg>
+
+        <div class="auth-pitch">
+          <h2>Crie sua conta e comece a monitorar.</h2>
+          <p>Depois de entrar, cadastre seus dispositivos e acompanhe o estado de cada um em tempo real.</p>
+        </div>
+      </aside>
+
+      <main class="auth-main">
+        <div class="auth-card">
+          <h1>Criar conta</h1>
+          <p class="subtitle">Preencha os dados para entrar na equipe.</p>
+
+          <form class="auth-form" (ngSubmit)="onRegister()" novalidate>
+            <div class="field">
+              <label for="r-user">Usuário</label>
+              <input id="r-user" name="username" class="input" type="text" placeholder="joao.silva" autocomplete="username" autofocus
+                     [(ngModel)]="username">
+            </div>
+            <div class="field">
+              <label for="r-mail">E-mail</label>
+              <input id="r-mail" name="email" class="input" type="email" placeholder="joao&#64;empresa.com.br" autocomplete="email"
+                     [(ngModel)]="email">
+            </div>
+            <div class="field">
+              <label for="r-pass">Senha</label>
+              <div class="pass-wrap">
+                <input id="r-pass" name="password" class="input" [type]="showPass ? 'text' : 'password'" autocomplete="new-password"
+                       [(ngModel)]="password">
+                <button type="button" class="btn-icon pass-toggle" (click)="showPass = !showPass"
+                        [attr.aria-label]="showPass ? 'Ocultar senha' : 'Mostrar senha'" [attr.aria-pressed]="showPass">
+                  <svg *ngIf="!showPass" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                  <svg *ngIf="showPass" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.9 17.9A10.9 10.9 0 0 1 12 20c-7 0-11-8-11-8a18.5 18.5 0 0 1 5.1-5.9M9.9 4.2A10.7 10.7 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.2 3.2M1 1l22 22"/></svg>
+                </button>
+              </div>
+            </div>
+            <p class="msg error" role="alert" *ngIf="error">{{ error }}</p>
+            <p class="msg success" role="status" *ngIf="success">{{ success }}</p>
+            <button type="submit" class="btn-primary" [disabled]="loading">{{ loading ? 'Criando conta…' : 'Criar conta' }}</button>
+          </form>
+
+          <p class="auth-footer">Já tem conta? <a routerLink="/login">Entrar</a></p>
+        </div>
+      </main>
     </div>
-  `,
-  styles: [`
-    .auth-container { display: flex; justify-content: center; align-items: center; min-height: 100vh; background: #090D16; }
-    .auth-card { width: 400px; background: #111827; border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 40px; box-shadow: 0 20px 60px rgba(0,0,0,0.8); text-align: center; }
-    .auth-logo { display: flex; justify-content: center; margin-bottom: 20px; }
-    h1 { color: #F9FAFB; font-size: 24px; margin: 0 0 8px 0; }
-    .subtitle { color: #9CA3AF; font-size: 14px; margin-bottom: 32px; }
-    .auth-form { display: flex; flex-direction: column; gap: 16px; text-align: left; }
-    .field { display: flex; flex-direction: column; gap: 6px; }
-    .field label { font-size: 12px; font-weight: 600; color: #9CA3AF; text-transform: uppercase; }
-    .field input { background: #090D16; border: 1px solid rgba(255,255,255,0.08); color: #F9FAFB; padding: 12px; border-radius: 8px; font-size: 14px; outline: none; }
-    .field input:focus { border-color: #6366F1; }
-    .error-msg { color: #EF4444; font-size: 13px; margin: 0; }
-    .success-msg { color: #10B981; font-size: 13px; margin: 0; }
-    .btn-primary { background: #6366F1; color: #fff; border: none; padding: 12px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; margin-top: 8px; transition: background 0.2s; }
-    .btn-primary:hover { background: #4F46E5; }
-    .btn-primary:disabled { opacity: 0.5; }
-    .auth-footer { color: #9CA3AF; font-size: 13px; margin-top: 24px; }
-    .auth-footer a { color: #6366F1; text-decoration: none; font-weight: 600; }
-    .auth-footer a:hover { text-decoration: underline; }
-  `]
+  `
 })
 export class RegisterComponent {
   username = '';
   email = '';
   password = '';
   loading = false;
+  showPass = false;
   error = '';
   success = '';
 
@@ -78,7 +84,7 @@ export class RegisterComponent {
 
   onRegister() {
     if (!this.username || !this.email || !this.password) {
-      this.error = 'Preencha todos os campos.';
+      this.error = 'Preencha usuário, e-mail e senha.';
       return;
     }
     this.loading = true;
@@ -87,11 +93,11 @@ export class RegisterComponent {
 
     this.auth.register({ username: this.username, email: this.email, password: this.password }).subscribe({
       next: (res: any) => {
-        this.success = res.message;
+        this.success = res.message || 'Conta criada. Redirecionando para o login…';
         setTimeout(() => this.router.navigate(['/login']), 2000);
       },
       error: (err) => {
-        this.error = err.error?.message || 'Falha ao cadastrar.';
+        this.error = err.error?.message || 'Não foi possível criar a conta. Tente de novo.';
         this.loading = false;
       }
     });

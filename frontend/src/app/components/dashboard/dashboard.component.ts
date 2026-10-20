@@ -2,48 +2,49 @@ import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { IncidentService, Incident } from '../../services/incident.service';
-import { DeviceService, Device, DiagResult } from '../../services/device.service';
+import { DeviceService, Device } from '../../services/device.service';
+import { DiagnosticModalComponent } from '../shared/diagnostic-modal.component';
 import { Subscription, interval } from 'rxjs';
+
+const CIRC = 2 * Math.PI * 52; // circunferência do donut (r = 52)
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule, RouterModule, DiagnosticModalComponent],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.css'
 })
 export class DashboardComponent implements OnInit, OnDestroy {
   incidents: Incident[] = [];
   devices: Device[] = [];
-  
-  currentTime: string = '';
+
+  currentTime = '';
   availability = 100;
   onlineCount = 0;
   offlineCount = 0;
+  maintenanceCount = 0;
   avgLatency = 0;
   maxLatency = 0;
   minLatency = 0;
   proximoPingEm = 30;
-  
-  // Alertas e Notificações
+
   notificacao: string | null = null;
   timelineData: any[] = [];
   onlinePercent = 0;
   offlinePercent = 0;
 
-  // Diagnóstico no Dashboard
-  diagModalAberto = false;
-  diagLoading = false;
-  diagResultado: DiagResult | null = null;
-  diagIpAtual = '';
-  latencyData: any[] = [];
+  diagIp: string | null = null;
+  readonly escala = [0, 50, 100, 150, 200];
+  readonly sevLabel: Record<string, string> = { CRITICAL: 'Crítico', HIGH: 'Alto', MEDIUM: 'Médio', LOW: 'Baixo' };
 
   private refreshSub: Subscription | null = null;
   private countdownSub: Subscription | null = null;
-  
-  // Áudio
+  private toastTimer: any = null;
+
   private audioCtx: AudioContext | null = null;
   private lastOfflineCount = 0;
+  private primeiraCarga = true;
 
   constructor(
     private incidentService: IncidentService,
@@ -54,7 +55,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.atualizarHorario();
     this.carregarDados();
 
-    // Inicializa o contexto de áudio no primeiro clique (regra dos navegadores)
+    // O contexto de áudio só pode ser criado após um gesto do usuário
     document.addEventListener('click', () => {
       if (!this.audioCtx) {
         this.audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -75,13 +76,38 @@ export class DashboardComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.refreshSub?.unsubscribe();
     this.countdownSub?.unsubscribe();
+    clearTimeout(this.toastTimer);
   }
+
+  /* ---- Estado exibido no cabeçalho ---- */
+  get estado(): 'vazio' | 'ok' | 'falha' {
+    if (this.devices.length === 0) return 'vazio';
+    return this.offlineCount > 0 ? 'falha' : 'ok';
+  }
+
+  get titulo(): string {
+    if (this.estado === 'vazio') return 'Nenhum ativo monitorado';
+    if (this.estado === 'ok') return 'Rede sem falhas';
+    return this.offlineCount === 1 ? '1 ativo fora do ar' : `${this.offlineCount} ativos fora do ar`;
+  }
+
+  get resumo(): string {
+    if (this.estado === 'vazio') return 'Cadastre dispositivos para começar a monitorar.';
+    const base = `${this.onlineCount} de ${this.devices.length} ativos respondendo`;
+    return this.maintenanceCount > 0 ? `${base}, ${this.maintenanceCount} em manutenção` : base;
+  }
+
+  get progresso(): number { return (this.proximoPingEm / 30) * 100; }
+
+  /* ---- Donut ---- */
+  get dashOnline(): string { return `${(this.onlinePercent / 100) * CIRC} ${CIRC}`; }
+  get dashOffline(): string { return `${(this.offlinePercent / 100) * CIRC} ${CIRC}`; }
+  get offsetOffline(): number { return -(this.onlinePercent / 100) * CIRC; }
 
   atualizarHorario() {
     this.currentTime = new Date().toLocaleTimeString('pt-BR');
   }
 
-  // SOM DE ALERTA
   tocarAlerta() {
     if (!this.audioCtx) return;
     const osc = this.audioCtx.createOscillator();
@@ -99,24 +125,24 @@ export class DashboardComponent implements OnInit, OnDestroy {
   carregarDados(): void {
     this.deviceService.list().subscribe(devices => {
       this.devices = devices;
-      
-      // Contadores
+
       this.onlineCount = devices.filter(d => d.status === 'UP').length;
       this.offlineCount = devices.filter(d => d.status !== 'UP' && !d.maintenance).length;
-      
-      // Porcentagens
-      this.availability = devices.length === 0 ? 100 : Math.round((this.onlineCount / devices.length) * 100);
-      this.onlinePercent = devices.length === 0 ? 0 : Math.round((this.onlineCount / devices.length) * 100);
-      this.offlinePercent = devices.length === 0 ? 0 : Math.round((this.offlineCount / devices.length) * 100);
+      this.maintenanceCount = devices.filter(d => d.status !== 'UP' && d.maintenance).length;
 
-      // Toca o som se um novo dispositivo ficou offline
-      if (this.offlineCount > this.lastOfflineCount && this.lastOfflineCount !== 0) {
+      const total = devices.length;
+      this.availability = total === 0 ? 100 : Math.round((this.onlineCount / total) * 100);
+      this.onlinePercent = total === 0 ? 0 : Math.round((this.onlineCount / total) * 100);
+      this.offlinePercent = total === 0 ? 0 : Math.round((this.offlineCount / total) * 100);
+
+      // Alerta quando surgem novos dispositivos offline (não dispara na primeira carga)
+      if (!this.primeiraCarga && this.offlineCount > this.lastOfflineCount) {
         this.tocarAlerta();
-        this.mostrarNotificacao('Atenção: Novo dispositivo OFFLINE detectado!');
+        this.mostrarNotificacao('Novo dispositivo fora do ar.');
       }
       this.lastOfflineCount = this.offlineCount;
+      this.primeiraCarga = false;
 
-      // Latências
       const latencias = devices
         .filter(d => d.status === 'UP' && d.latency != null)
         .map(d => d.latency as number);
@@ -128,20 +154,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
       } else {
         this.avgLatency = 0; this.minLatency = 0; this.maxLatency = 0;
       }
-
-      // Formato para o Gráfico de Barras
-      this.latencyData = devices.map(d => ({
-        name: d.hostname,
-        latency: d.latency ?? 0,
-        width: d.latency ? Math.min((d.latency / 200) * 100, 100) : 0,
-        status: d.status
-      }));
     });
 
     this.incidentService.list().subscribe(incidents => {
       this.incidents = incidents;
     });
-    
+
     this.gerarTimeline();
   }
 
@@ -152,17 +170,18 @@ export class DashboardComponent implements OnInit, OnDestroy {
       const hora = (agora - i + 24) % 24;
       const status = i === 0 ? 'gray' : (i === 5 ? 'yellow' : 'green');
       const percent = i === 5 ? 95.5 : (i === 0 ? '--' : 100);
-      this.timelineData.push({ 
-        hora: hora.toString().padStart(2, '0') + ':00', 
-        status: status, 
-        percent: percent 
+      this.timelineData.push({
+        hora: hora.toString().padStart(2, '0') + ':00',
+        status: status,
+        percent: percent
       });
     }
   }
 
   mostrarNotificacao(msg: string) {
     this.notificacao = msg;
-    setTimeout(() => this.notificacao = null, 5000);
+    clearTimeout(this.toastTimer);
+    this.toastTimer = setTimeout(() => this.notificacao = null, 5000);
   }
 
   larguraBarra(latency?: number | null): number {
@@ -170,36 +189,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return Math.min((latency / 200) * 100, 100);
   }
 
-  // --- Ações do Diagnóstico ---
-  abrirDiagnostico(ip: string) {
-    this.diagIpAtual = ip;
-    this.diagModalAberto = true;
-    this.diagResultado = null;
-    this.diagLoading = false;
-  }
+  abrirDiagnostico(ip: string) { this.diagIp = ip; }
 
-  fecharDiagnostico() { this.diagModalAberto = false; }
-  
   testarPing(): void {
     this.carregarDados();
     this.atualizarHorario();
-    this.mostrarNotificacao('Dados atualizados com sucesso.');
+    this.mostrarNotificacao('Dados atualizados.');
     this.proximoPingEm = 30;
-  }
-
-  rodarPingDiag() {
-    this.diagLoading = true;
-    this.deviceService.ping(this.diagIpAtual).subscribe({
-      next: (res) => { this.diagResultado = res; this.diagLoading = false; },
-      error: () => { this.diagLoading = false; }
-    });
-  }
-
-  rodarTracerouteDiag() {
-    this.diagLoading = true;
-    this.deviceService.traceroute(this.diagIpAtual).subscribe({
-      next: (res) => { this.diagResultado = res; this.diagLoading = false; },
-      error: () => { this.diagLoading = false; }
-    });
   }
 }

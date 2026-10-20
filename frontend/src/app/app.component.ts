@@ -9,9 +9,11 @@ import { filter } from 'rxjs/operators';
   standalone: true,
   imports: [RouterOutlet, NavbarComponent, CommonModule],
   template: `
-    <div class="dashboard-container">
+    <div class="shell" [class.bare]="!showNavbar">
       <app-navbar *ngIf="showNavbar"></app-navbar>
-      <router-outlet></router-outlet>
+      <div class="main">
+        <router-outlet></router-outlet>
+      </div>
     </div>
   `
 })

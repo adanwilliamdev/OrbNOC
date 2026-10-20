@@ -6,6 +6,18 @@ import { DeviceService } from '../../services/device.service';
 import { IncidentService } from '../../services/incident.service';
 import { AuthService } from '../../services/auth.service';
 
+interface SearchResult { title: string; meta: string; type: 'device' | 'incident' | 'page'; url: string; }
+
+const PAGES: SearchResult[] = [
+  { title: 'Visão geral', meta: 'Ir para a tela', type: 'page', url: '/dashboard' },
+  { title: 'Topologia', meta: 'Ir para a tela', type: 'page', url: '/topology' },
+  { title: 'Dispositivos', meta: 'Ir para a tela', type: 'page', url: '/devices' },
+  { title: 'Incidentes', meta: 'Ir para a tela', type: 'page', url: '/incidents' },
+  { title: 'Ferramentas', meta: 'Ir para a tela', type: 'page', url: '/tools' },
+  { title: 'Auditoria', meta: 'Ir para a tela', type: 'page', url: '/audit' },
+  { title: 'Modo TV', meta: 'Ir para a tela', type: 'page', url: '/wallboard' },
+];
+
 @Component({
   selector: 'app-navbar',
   standalone: true,
@@ -17,7 +29,8 @@ export class NavbarComponent {
   searchOpen = false;
   profileOpen = false;
   searchQuery = '';
-  searchResults: { title: string, type: string, url: string }[] = [];
+  searchResults: SearchResult[] = [];
+  activeIndex = 0;
   devices: any[] = [];
   incidents: any[] = [];
   user: any = null;
@@ -36,11 +49,24 @@ export class NavbarComponent {
 
   @HostListener('document:keydown', ['$event'])
   handleKeyboardEvent(event: KeyboardEvent) {
-    if ((event.ctrlKey || event.metaKey) && event.key === 'k') {
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
       event.preventDefault();
       this.openSearch();
+      return;
     }
-    if (event.key === 'Escape') this.closeAll();
+    if (event.key === 'Escape') { this.closeAll(); return; }
+
+    if (!this.searchOpen || this.searchResults.length === 0) return;
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      this.activeIndex = (this.activeIndex + 1) % this.searchResults.length;
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      this.activeIndex = (this.activeIndex - 1 + this.searchResults.length) % this.searchResults.length;
+    } else if (event.key === 'Enter') {
+      event.preventDefault();
+      this.goTo(this.searchResults[this.activeIndex].url);
+    }
   }
 
   @HostListener('document:click', ['$event'])
@@ -52,8 +78,9 @@ export class NavbarComponent {
     this.searchOpen = true;
     this.profileOpen = false;
     this.searchQuery = '';
-    this.searchResults = [];
-    setTimeout(() => this.searchInput.nativeElement.focus(), 100);
+    this.activeIndex = 0;
+    this.searchResults = PAGES;
+    setTimeout(() => this.searchInput?.nativeElement.focus(), 50);
     this.deviceService.list().subscribe(d => this.devices = d);
     this.incidentService.list().subscribe(i => this.incidents = i);
   }
@@ -64,21 +91,19 @@ export class NavbarComponent {
   }
 
   onSearchChange() {
-    const q = this.searchQuery.toLowerCase();
-    if (!q) { this.searchResults = []; return; }
-    const results: any[] = [];
-    this.devices.filter(d => d.hostname.toLowerCase().includes(q) || d.ipAddress.includes(q))
-      .forEach(d => results.push({ title: `Dispositivo: ${d.hostname} (${d.ipAddress})`, type: 'device', url: '/devices' }));
-    this.incidents.filter(i => i.title.toLowerCase().includes(q) || i.description.toLowerCase().includes(q))
-      .forEach(i => results.push({ title: `Incidente: ${i.title}`, type: 'incident', url: '/incidents' }));
-    const links = [
-      { title: 'Ir para Dashboard', type: 'page', url: '/dashboard' },
-      { title: 'Ir para Topologia', type: 'page', url: '/topology' },
-      { title: 'Ir para Ferramentas', type: 'page', url: '/tools' },
-      { title: 'Ir para Auditoria', type: 'page', url: '/audit' },
-    ];
-    links.filter(l => l.title.toLowerCase().includes(q)).forEach(l => results.push(l));
-    this.searchResults = results.slice(0, 6);
+    const q = this.searchQuery.trim().toLowerCase();
+    this.activeIndex = 0;
+    if (!q) { this.searchResults = PAGES; return; }
+
+    const results: SearchResult[] = [];
+    this.devices
+      .filter(d => (d.hostname || '').toLowerCase().includes(q) || (d.ipAddress || '').includes(q))
+      .forEach(d => results.push({ title: d.hostname, meta: `Dispositivo, ${d.ipAddress}`, type: 'device', url: '/devices' }));
+    this.incidents
+      .filter(i => (i.title || '').toLowerCase().includes(q) || (i.description || '').toLowerCase().includes(q))
+      .forEach(i => results.push({ title: i.title, meta: 'Incidente', type: 'incident', url: '/incidents' }));
+    PAGES.filter(p => p.title.toLowerCase().includes(q)).forEach(p => results.push(p));
+    this.searchResults = results.slice(0, 8);
   }
 
   goTo(url: string) {
