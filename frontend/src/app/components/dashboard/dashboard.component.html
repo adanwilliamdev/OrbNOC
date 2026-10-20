@@ -1,0 +1,81 @@
+<div class="dashboard">
+  <header>
+    <h1>OrbNOC</h1>
+    <p class="sub">Network Operations Center â€” Painel</p>
+  </header>
+
+  <p class="erro" *ngIf="erro">{{ erro }}</p>
+
+  <div class="cards">
+    <div class="card">
+      <h3>Incidentes</h3>
+      <p class="num">{{ incidents.length }}</p>
+    </div>
+    <div class="card">
+      <h3>Dispositivos</h3>
+      <p class="num">{{ devices.length }}</p>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-header">
+      <h2>Incidentes</h2>
+      <button (click)="criarIncidenteExemplo()">+ Criar incidente de teste</button>
+    </div>
+
+    <p *ngIf="carregando">Carregando...</p>
+
+    <table *ngIf="!carregando && incidents.length > 0; else vazio">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>TÃ­tulo</th>
+          <th>Severidade</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let i of incidents">
+          <td>{{ i.id }}</td>
+          <td>{{ i.title }}</td>
+          <td><span class="badge sev-{{ i.severity | lowercase }}">{{ i.severity }}</span></td>
+          <td>{{ i.status }}</td>
+        </tr>
+      </tbody>
+    </table>
+    <ng-template #vazio>
+      <p class="vazio">Nenhum incidente registrado.</p>
+    </ng-template>
+  </div>
+
+  <div class="panel">
+    <div class="panel-header">
+      <h2>Dispositivos</h2>
+      <button (click)="criarDeviceExemplo()">+ Adicionar dispositivo de teste</button>
+    </div>
+
+    <table *ngIf="devices.length > 0; else vazioDev">
+      <thead>
+        <tr>
+          <th>Hostname</th>
+          <th>IP</th>
+          <th>Tipo</th>
+          <th>Status</th>
+          <th>Local</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let d of devices">
+          <td>{{ d.hostname }}</td>
+          <td>{{ d.ipAddress }}</td>
+          <td>{{ d.deviceType }}</td>
+          <td>{{ d.status }}</td>
+          <td>{{ d.location }}</td>
+        </tr>
+      </tbody>
+    </table>
+    <ng-template #vazioDev>
+      <p class="vazio">Nenhum dispositivo cadastrado.</p>
+    </ng-template>
+  </div>
+</div>

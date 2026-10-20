@@ -1,4 +1,4 @@
-﻿package com.orbnoc.model;
+package com.orbnoc.model;
 
 import jakarta.persistence.*;
 

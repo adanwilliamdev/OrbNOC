@@ -1,4 +1,4 @@
-﻿package com.orbnoc.repository;
+package com.orbnoc.repository;
 
 import com.orbnoc.model.Incident;
 import org.springframework.data.jpa.repository.JpaRepository;

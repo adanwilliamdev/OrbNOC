@@ -1,4 +1,4 @@
-﻿package com.orbnoc.controller;
+package com.orbnoc.controller;
 
 import com.orbnoc.model.Incident;
 import com.orbnoc.repository.IncidentRepository;

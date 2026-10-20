@@ -1,4 +1,4 @@
-﻿import { Injectable } from '@angular/core';
+import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
@@ -18,8 +18,16 @@ export class IncidentService {
 
   constructor(private http: HttpClient) {}
 
-  list(): Observable<Incident[]> { return this.http.get<Incident[]>(this.apiUrl); }
-  create(incident: Incident): Observable<Incident> { return this.http.post<Incident>(this.apiUrl, incident); }
-  update(id: number, incident: Incident): Observable<Incident> { return this.http.put<Incident>(\\/\\, incident); }
-  delete(id: number): Observable<void> { return this.http.delete<void>(\\/\\); }
+  list(): Observable<Incident[]> {
+    return this.http.get<Incident[]>(this.apiUrl);
+  }
+  create(i: Incident): Observable<Incident> {
+    return this.http.post<Incident>(this.apiUrl, i);
+  }
+  update(id: number, i: Incident): Observable<Incident> {
+    return this.http.put<Incident>(`${this.apiUrl}/${id}`, i);
+  }
+  delete(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/${id}`);
+  }
 }

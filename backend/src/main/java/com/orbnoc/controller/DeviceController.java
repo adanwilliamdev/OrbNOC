@@ -1,4 +1,4 @@
-﻿package com.orbnoc.controller;
+package com.orbnoc.controller;
 
 import com.orbnoc.model.Device;
 import com.orbnoc.repository.DeviceRepository;
