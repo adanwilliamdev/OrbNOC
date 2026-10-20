@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { DeviceService, Device } from '../../services/device.service';
+import { DeviceService, Device, DiagResult } from '../../services/device.service';
 
 @Component({
   selector: 'app-devices',
@@ -54,8 +54,9 @@ import { DeviceService, Device } from '../../services/device.service';
               <td><span class="badge" [class.critical]="d.status === 'DOWN'">{{ d.status }}</span></td>
               <td>{{ d.location }}</td>
               <td>
-                <button class="btn-icon" (click)="editar(d)">&#9998;</button>
-                <button class="btn-icon danger" (click)="deletar(d.id!)">&#128465;</button>
+                <button class="btn-icon" title="Diagnostico" (click)="abrirDiagnostico(d.ipAddress)">&#9889;</button>
+                <button class="btn-icon" title="Editar" (click)="editar(d)">&#9998;</button>
+                <button class="btn-icon danger" title="Excluir" (click)="deletar(d.id!)">&#128465;</button>
               </td>
             </tr>
             <tr *ngIf="devices.length === 0">
@@ -65,6 +66,25 @@ import { DeviceService, Device } from '../../services/device.service';
         </table>
       </div>
     </div>
+
+    <div class="modal-overlay" *ngIf="diagModalAberto">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>Diagnostico: {{ diagIpAtual }}</h2>
+          <button class="btn-icon" (click)="fecharDiagnostico()">&#10005;</button>
+        </div>
+        <div class="modal-body">
+          <div class="diag-actions">
+            <button class="btn-primary" (click)="rodarPing()" [disabled]="diagLoading">Rodar Ping</button>
+            <button class="btn-outline" (click)="rodarTraceroute()" [disabled]="diagLoading">Rodar Traceroute</button>
+          </div>
+          <div class="diag-log" *ngIf="diagLoading"><p class="loading">Executando...</p></div>
+          <div class="diag-log" *ngIf="diagResultado && !diagLoading">
+            <pre>{{ diagResultado.message || diagResultado.log }}</pre>
+          </div>
+        </div>
+      </div>
+    </div>
   `
 })
 export class DevicesComponent implements OnInit {
@@ -72,6 +92,11 @@ export class DevicesComponent implements OnInit {
   exibirForm = false;
   editando = false;
   deviceAtual: Device = this.novoDevice();
+
+  diagModalAberto = false;
+  diagLoading = false;
+  diagResultado: DiagResult | null = null;
+  diagIpAtual = '';
 
   constructor(private service: DeviceService) {}
   ngOnInit() { this.carregar(); }
@@ -94,5 +119,21 @@ export class DevicesComponent implements OnInit {
     if (confirm('Excluir dispositivo #' + id + '?')) {
       this.service.delete(id).subscribe(() => this.carregar());
     }
+  }
+
+  abrirDiagnostico(ip: string) {
+    this.diagIpAtual = ip;
+    this.diagModalAberto = true;
+    this.diagResultado = null;
+    this.diagLoading = false;
+  }
+  fecharDiagnostico() { this.diagModalAberto = false; }
+  rodarPing() {
+    this.diagLoading = true;
+    this.service.ping(this.diagIpAtual).subscribe(res => { this.diagResultado = res; this.diagLoading = false; });
+  }
+  rodarTraceroute() {
+    this.diagLoading = true;
+    this.service.traceroute(this.diagIpAtual).subscribe(res => { this.diagResultado = res; this.diagLoading = false; });
   }
 }

@@ -15,7 +15,7 @@ public class Device {
     private String deviceType;
     private String status;
     private String location;
-    private Integer latency; // Campo novo para o frontend
+    private Integer latency;
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
