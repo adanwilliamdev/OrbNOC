@@ -1,16 +1,29 @@
 import { Component } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
+import { RouterOutlet, Router, NavigationEnd } from '@angular/router';
 import { NavbarComponent } from './components/navbar/navbar.component';
+import { CommonModule } from '@angular/common';
+import { filter } from 'rxjs/operators';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, NavbarComponent],
+  imports: [RouterOutlet, NavbarComponent, CommonModule],
   template: `
     <div class="dashboard-container">
-      <app-navbar></app-navbar>
+      <app-navbar *ngIf="showNavbar"></app-navbar>
       <router-outlet></router-outlet>
     </div>
   `
 })
-export class AppComponent {}
+export class AppComponent {
+  showNavbar = false;
+
+  constructor(private router: Router) {
+    this.router.events.pipe(
+      filter(event => event instanceof NavigationEnd)
+    ).subscribe((event: any) => {
+      // Esconde a navbar nas telas de login e cadastro
+      this.showNavbar = !event.url.includes('/login') && !event.url.includes('/register');
+    });
+  }
+}
