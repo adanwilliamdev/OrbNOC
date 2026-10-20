@@ -12,11 +12,11 @@ public class Device {
 
     private String hostname;
     private String ipAddress;
-    private String deviceType; // ROUTER, SWITCH, FIREWALL, SERVER
-    private String status;     // UP, DOWN, DEGRADED
+    private String deviceType;
+    private String status;
     private String location;
+    private Integer latency; // Campo novo para o frontend
 
-    // Getters e Setters
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     public String getHostname() { return hostname; }
@@ -29,4 +29,6 @@ public class Device {
     public void setStatus(String status) { this.status = status; }
     public String getLocation() { return location; }
     public void setLocation(String location) { this.location = location; }
+    public Integer getLatency() { return latency; }
+    public void setLatency(Integer latency) { this.latency = latency; }
 }

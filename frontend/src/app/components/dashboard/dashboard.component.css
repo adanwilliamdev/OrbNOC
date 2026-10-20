@@ -166,3 +166,17 @@
 .alert-desc { font-size: 12px; color: #9ca3af; margin: 0 0 8px 0; }
 .alert-badge { font-size: 10px; font-weight: 600; padding: 2px 6px; border-radius: 4px; background: #374151; color: #d1d5db; }
 .alert-badge.critical { background: #7f1d1d; color: #fecaca; }
+/* FORMS E BOTOES EXTRAS */
+.btn-primary {
+  background: #10b981; color: white; border: none;
+  padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 500;
+}
+.btn-primary:hover { background: #059669; }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
+.form-grid input, .form-grid select {
+  background: #0f151c; border: 1px solid #374151;
+  color: white; padding: 8px 12px; border-radius: 6px; outline: none;
+}
+.form-grid input:focus, .form-grid select:focus { border-color: #3b82f6; }
+.btn-icon { background: transparent; border: none; cursor: pointer; font-size: 16px; margin-right: 8px; color: #9ca3af; }
+.btn-icon.danger { color: #ef4444; }

@@ -1,0 +1,25 @@
+.topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 24px; height: 60px;
+  background-color: #121820; border-bottom: 1px solid #1f2937;
+}
+.brand { display: flex; align-items: center; gap: 12px; }
+.logo-mark {
+  background-color: #fbbf24; color: #000; font-weight: bold;
+  width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
+  border-radius: 6px; font-size: 16px;
+}
+.logo-text { font-weight: 600; font-size: 18px; color: #fff; }
+.badge-panel {
+  background-color: #1f2937; color: #9ca3af; font-size: 11px;
+  padding: 2px 8px; border-radius: 4px; border: 1px solid #374151;
+}
+.menu { display: flex; gap: 24px; height: 100%; align-items: center; }
+.menu a {
+  color: #9ca3af; text-decoration: none; font-size: 14px; height: 100%;
+  display: flex; align-items: center; border-bottom: 2px solid transparent;
+  transition: color 0.2s;
+}
+.menu a:hover { color: #fff; }
+.menu a.active { color: #fff; border-bottom-color: #fbbf24; }
+.user-profile { display: flex; align-items: center; gap: 8px; color: #9ca3af; font-size: 13px; }

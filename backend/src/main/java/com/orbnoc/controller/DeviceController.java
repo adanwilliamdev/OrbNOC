@@ -22,9 +22,7 @@ public class DeviceController {
 
     @GetMapping("/{id}")
     public ResponseEntity<Device> getById(@PathVariable Long id) {
-        return repository.findById(id)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+        return repository.findById(id).map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
     }
 
     @PostMapping

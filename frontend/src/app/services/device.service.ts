@@ -9,7 +9,6 @@ export interface Device {
   deviceType: string;
   status: string;
   location: string;
-  latency?: number; // Adicionado para simular a latÃªncia no frontend
 }
 
 @Injectable({ providedIn: 'root' })
@@ -18,4 +17,6 @@ export class DeviceService {
   constructor(private http: HttpClient) {}
   list(): Observable<Device[]> { return this.http.get<Device[]>(this.apiUrl); }
   create(d: Device): Observable<Device> { return this.http.post<Device>(this.apiUrl, d); }
+  update(id: number, d: Device): Observable<Device> { return this.http.put<Device>(`${this.apiUrl}/${id}`, d); }
+  delete(id: number): Observable<void> { return this.http.delete<void>(`${this.apiUrl}/${id}`); }
 }
