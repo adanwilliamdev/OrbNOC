@@ -2,15 +2,31 @@
   <div class="brand">
     <div class="logo-mark">V</div>
     <span class="logo-text">OrbNOC</span>
-    <span class="badge-panel">Painel</span>
+    <div class="workspace-selector">
+      <span class="env-dot"></span> Producao <span class="chevron">&#9662;</span>
+    </div>
   </div>
+  
   <nav class="menu">
-    <a routerLink="/dashboard" routerLinkActive="active">Dashboard</a>
-    <a routerLink="/devices" routerLinkActive="active">Dispositivos</a>
-    <a routerLink="/incidents" routerLinkActive="active">Incidentes</a>
-    <a href="#">Relatorios</a>
+    <a routerLink="/dashboard" routerLinkActive="active">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+      Dashboard
+    </a>
+    <a routerLink="/devices" routerLinkActive="active">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect><rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect><line x1="6" y1="6" x2="6.01" y2="6"></line><line x1="6" y1="18" x2="6.01" y2="18"></line></svg>
+      Dispositivos
+    </a>
+    <a routerLink="/incidents" routerLinkActive="active">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+      Incidentes
+    </a>
   </nav>
-  <div class="user-profile">
-    <span class="icon">&#128100;</span> admin
+
+  <div class="user-area">
+    <button class="search-btn">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+      Buscar <kbd>Ctrl K</kbd>
+    </button>
+    <div class="avatar">AD</div>
   </div>
 </header>

@@ -1,25 +1,33 @@
 .topbar {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 0 24px; height: 60px;
-  background-color: #121820; border-bottom: 1px solid #1f2937;
+  padding: 0 24px; height: 64px;
+  background-color: #090D16; border-bottom: 1px solid rgba(255,255,255,0.08);
 }
-.brand { display: flex; align-items: center; gap: 12px; }
-.logo-mark {
-  background-color: #fbbf24; color: #000; font-weight: bold;
-  width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
-  border-radius: 6px; font-size: 16px;
+.brand { display: flex; align-items: center; gap: 16px; }
+.logo-mark { background-color: #FBBF24; color: #000; font-weight: 800; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border-radius: 6px; font-size: 16px; }
+.logo-text { font-weight: 700; font-size: 18px; color: #fff; letter-spacing: -0.02em; }
+.workspace-selector {
+  display: flex; align-items: center; gap: 6px;
+  background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+  padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 500; color: #D1D5DB; cursor: pointer;
 }
-.logo-text { font-weight: 600; font-size: 18px; color: #fff; }
-.badge-panel {
-  background-color: #1f2937; color: #9ca3af; font-size: 11px;
-  padding: 2px 8px; border-radius: 4px; border: 1px solid #374151;
-}
-.menu { display: flex; gap: 24px; height: 100%; align-items: center; }
+.workspace-selector:hover { background: rgba(255,255,255,0.1); }
+.env-dot { width: 6px; height: 6px; border-radius: 50%; background: #10B981; box-shadow: 0 0 6px #10B981; }
+
+.menu { display: flex; gap: 8px; height: 100%; align-items: center; }
 .menu a {
-  color: #9ca3af; text-decoration: none; font-size: 14px; height: 100%;
-  display: flex; align-items: center; border-bottom: 2px solid transparent;
-  transition: color 0.2s;
+  color: #9CA3AF; text-decoration: none; font-size: 13px; font-weight: 500;
+  display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 6px;
+  transition: all 0.2s;
 }
-.menu a:hover { color: #fff; }
-.menu a.active { color: #fff; border-bottom-color: #fbbf24; }
-.user-profile { display: flex; align-items: center; gap: 8px; color: #9ca3af; font-size: 13px; }
+.menu a:hover { background: rgba(255,255,255,0.05); color: #fff; }
+.menu a.active { background: rgba(255,255,255,0.08); color: #fff; border-bottom: 2px solid #FBBF24; border-radius: 6px 6px 0 0; }
+
+.user-area { display: flex; align-items: center; gap: 16px; }
+.search-btn {
+  background: transparent; border: 1px solid rgba(255,255,255,0.1); color: #9CA3AF;
+  padding: 6px 12px; border-radius: 6px; font-size: 12px; display: flex; align-items: center; gap: 8px; cursor: pointer;
+}
+.search-btn:hover { background: rgba(255,255,255,0.05); }
+.search-btn kbd { font-family: monospace; font-size: 10px; background: rgba(255,255,255,0.1); padding: 2px 4px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.1); }
+.avatar { width: 32px; height: 32px; background: #374151; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; cursor: pointer; border: 1px solid rgba(255,255,255,0.1); }

@@ -15,7 +15,7 @@ import { Subscription, interval } from 'rxjs';
 export class DashboardComponent implements OnInit, OnDestroy {
   incidents: Incident[] = [];
   devices: Device[] = [];
-
+  
   currentTime: string = '';
   availability = 100;
   onlineCount = 0;
@@ -25,21 +25,16 @@ export class DashboardComponent implements OnInit, OnDestroy {
   minLatency = 0;
   proximoPingEm = 30;
   notificacao: string | null = null;
+  
+  timelineData: any[] = [];
+  onlinePercent = 0;
+  offlinePercent = 0;
 
-  // Diagnostico
   diagModalAberto = false;
   diagLoading = false;
   diagResultado: DiagResult | null = null;
   diagIpAtual = '';
-
-  // Campos do template legado (mantidos por compatibilidade)
   latencyData: any[] = [];
-  testarPing(): void {
-    this.carregarDados();
-    this.atualizarHorario();
-    this.mostrarNotificacao('Pings atualizados.');
-    this.proximoPingEm = 30;
-  }
 
   private refreshSub: Subscription | null = null;
   private countdownSub: Subscription | null = null;
@@ -93,8 +88,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
       }
 
       this.availability = devices.length === 0 ? 100 : Math.round((this.onlineCount / devices.length) * 100);
+      this.onlinePercent = devices.length === 0 ? 0 : Math.round((this.onlineCount / devices.length) * 100);
+      this.offlinePercent = devices.length === 0 ? 0 : Math.round((this.offlineCount / devices.length) * 100);
 
-      // Atualiza latencyData (formato antigo do template)
       this.latencyData = devices.map(d => ({
         name: d.hostname,
         latency: d.latency ?? 0,
@@ -110,6 +106,24 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.incidentService.list().subscribe(incidents => {
       this.incidents = incidents;
     });
+    
+    this.gerarTimeline();
+  }
+
+  gerarTimeline() {
+    const agora = new Date().getHours();
+    this.timelineData = [];
+    for (let i = 23; i >= 0; i--) {
+      const hora = (agora - i + 24) % 24;
+      // Simulação visual: a última hora (i=0) está como 'gray' (em andamento)
+      const status = i === 0 ? 'gray' : (i === 5 ? 'yellow' : 'green');
+      const percent = i === 5 ? 95.5 : (i === 0 ? '--' : 100);
+      this.timelineData.push({ 
+        hora: hora.toString().padStart(2, '0') + ':00', 
+        status: status, 
+        percent: percent 
+      });
+    }
   }
 
   mostrarNotificacao(msg: string) {
@@ -122,16 +136,21 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return Math.min((latency / 200) * 100, 100);
   }
 
-  // ---------- Diagnostico ----------
   abrirDiagnostico(ip: string) {
     this.diagIpAtual = ip;
     this.diagModalAberto = true;
     this.diagResultado = null;
     this.diagLoading = false;
   }
-  fecharDiagnostico() {
-    this.diagModalAberto = false;
+  fecharDiagnostico() { this.diagModalAberto = false; }
+  
+  testarPing(): void {
+    this.carregarDados();
+    this.atualizarHorario();
+    this.mostrarNotificacao('Pings atualizados com sucesso.');
+    this.proximoPingEm = 30;
   }
+
   rodarPingDiag() {
     this.diagLoading = true;
     this.deviceService.ping(this.diagIpAtual).subscribe({

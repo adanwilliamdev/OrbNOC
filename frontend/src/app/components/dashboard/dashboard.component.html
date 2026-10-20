@@ -1,55 +1,92 @@
-<div class="notificacao" *ngIf="notificacao">
-  &#128276; {{ notificacao }}
+<div class="notificacao" *ngIf="notificacao">&#128276; {{ notificacao }}</div>
+
+<div class="modal-overlay" *ngIf="diagModalAberto">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2>Diagnostico: {{ diagIpAtual }}</h2>
+      <button class="btn-outline" style="padding: 4px 8px;" (click)="fecharDiagnostico()">&#10005;</button>
+    </div>
+    <div class="modal-body">
+      <div class="diag-actions">
+        <button class="btn-primary" (click)="rodarPingDiag()" [disabled]="diagLoading">Rodar Ping</button>
+        <button class="btn-outline" (click)="rodarTracerouteDiag()" [disabled]="diagLoading">Rodar Traceroute</button>
+      </div>
+      <div class="diag-log" *ngIf="diagLoading"><p class="loading">Executando comando...</p></div>
+      <div class="diag-log" *ngIf="diagResultado && !diagLoading"><pre>{{ diagResultado.message || diagResultado.log }}</pre></div>
+    </div>
+  </div>
 </div>
 
 <main class="content">
   <div class="page-header">
     <div class="title-area">
-      <h1>Painel</h1>
+      <h1>Visão Geral</h1>
       <div class="status-indicators">
-        <span class="status-dot online"></span> Tempo real conectado
-        <span class="separator">&bull;</span> Atualizado as {{ currentTime }}
-        <span class="separator">&bull;</span> {{ devices.length }} dispositivos
-        <span class="separator">&bull;</span> Proximo ping em {{ proximoPingEm }}s
+        <span class="status-dot online"></span> Sistema operacional
+        <span class="separator">&bull;</span> Atualizado às {{ currentTime }}
+        <span class="separator">&bull;</span> Próximo ping em {{ proximoPingEm }}s
       </div>
     </div>
+    <button class="btn-outline" (click)="testarPing()">&#8635; Forçar Atualização</button>
   </div>
 
   <div class="kpi-grid">
     <div class="kpi-card">
       <div class="kpi-header">
-        <span class="kpi-title">Disponibilidade agora</span>
-        <span class="icon-box">&#128202;</span>
+        <span class="kpi-title">Disponibilidade</span>
+        <div class="icon-wrapper success-bg">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+        </div>
       </div>
       <div class="kpi-value">{{ availability }}%</div>
       <div class="kpi-sub">{{ onlineCount }} de {{ devices.length }} respondendo</div>
       <div class="bars">
-        <div class="bar" *ngFor="let d of devices" [class.off]="d.status !== 'UP'"></div>
+        <div class="bar" *ngFor="let d of devices" [class.off]="d.status !== 'UP'" [class.pulse]="d.status === 'UP'"></div>
       </div>
     </div>
 
     <div class="kpi-card">
-      <div class="kpi-header"><span class="kpi-title">Online</span><span class="icon-box">&#9989;</span></div>
+      <div class="kpi-header">
+        <span class="kpi-title">Online</span>
+        <div class="icon-wrapper success-bg">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2"><path d="M5 12.55a11 11 0 0 1 14.08 0"></path><path d="M1.42 9a16 16 0 0 1 21.16 0"></path><path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path><line x1="12" y1="20" x2="12.01" y2="20"></line></svg>
+        </div>
+      </div>
       <div class="kpi-value">{{ onlineCount }}</div>
       <div class="kpi-sub success">{{ availability }}% do total</div>
     </div>
 
     <div class="kpi-card">
-      <div class="kpi-header"><span class="kpi-title">Offline</span><span class="icon-box">&#10060;</span></div>
+      <div class="kpi-header">
+        <span class="kpi-title">Offline</span>
+        <div class="icon-wrapper danger-bg">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#EF4444" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
+        </div>
+      </div>
       <div class="kpi-value">{{ offlineCount }}</div>
-      <div class="kpi-sub danger">{{ offlineCount === 0 ? 'Nenhum equipamento fora' : 'Verificar incidentes' }}</div>
+      <div class="kpi-sub" [class.danger]="offlineCount > 0">{{ offlineCount === 0 ? 'Tudo operacional' : 'Verificar incidentes' }}</div>
     </div>
 
     <div class="kpi-card">
-      <div class="kpi-header"><span class="kpi-title">Latencia media</span><span class="icon-box">&#9889;</span></div>
+      <div class="kpi-header">
+        <span class="kpi-title">Latência Média</span>
+        <div class="icon-wrapper warning-bg">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FBBF24" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+        </div>
+      </div>
       <div class="kpi-value">{{ avgLatency }}<small>ms</small></div>
-      <div class="kpi-sub warning">min {{ minLatency }}ms / max {{ maxLatency }}ms</div>
+      <div class="kpi-sub warning">mín {{ minLatency }}ms / máx {{ maxLatency }}ms</div>
     </div>
 
     <div class="kpi-card">
-      <div class="kpi-header"><span class="kpi-title">Total de ativos</span><span class="icon-box">&#128187;</span></div>
+      <div class="kpi-header">
+        <span class="kpi-title">Total de Ativos</span>
+        <div class="icon-wrapper neutral-bg">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect><rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect><line x1="6" y1="6" x2="6.01" y2="6"></line><line x1="6" y1="18" x2="6.01" y2="18"></line></svg>
+        </div>
+      </div>
       <div class="kpi-value">{{ devices.length }}</div>
-      <div class="kpi-sub">{{ devices.length }} no monitoramento</div>
+      <div class="kpi-sub">no monitoramento</div>
     </div>
   </div>
 
@@ -57,48 +94,58 @@
     <div class="panel chart-panel">
       <div class="panel-header">
         <div>
-          <h2>Latencia em tempo real</h2>
-          <p class="subtitle">Ping real via ICMP a cada 30 segundos</p>
+          <h2>Latência em tempo real</h2>
+          <p class="subtitle">Monitoramento contínuo via ICMP (Ping) a cada 30 segundos</p>
+        </div>
+        <div class="header-badges">
+          <span class="badge-neutral">Média: {{ avgLatency }}ms</span>
+          <span class="badge-neutral">Mín: {{ minLatency }}ms</span>
+          <span class="badge-neutral">Máx: {{ maxLatency }}ms</span>
         </div>
       </div>
 
-      <div class="chart-stats">
-        <div class="stat"><span class="label">Media</span> <span class="value">{{ avgLatency }}ms</span></div>
-        <div class="stat"><span class="label">Minima</span> <span class="value">{{ minLatency }}ms</span></div>
-        <div class="stat"><span class="label">Maxima</span> <span class="value">{{ maxLatency }}ms</span></div>
-      </div>
-
-      <div class="bar-chart">
-        <div class="chart-row" *ngFor="let d of devices">
-          <span class="chart-label">{{ d.hostname }}</span>
-          <div class="chart-bar-container">
-            <div class="chart-bar" [style.width.%]="larguraBarra(d.latency)"
+      <div class="sparkline-container">
+        <div class="sparkline-row" *ngFor="let d of devices">
+          <span class="spark-label">
+            <span class="dot" [class.on]="d.status === 'UP'" [class.off]="d.status !== 'UP'"></span>
+            <!-- Favicon simulado -->
+            <img src="https://www.google.com/s2/favicons?domain={{ d.hostname }}.com&sz=16" 
+                 *ngIf="d.hostname !== 'localhost' && d.hostname !== '127.0.0.1'" 
+                 class="favicon" onerror="this.style.display='none'">
+            <span class="hostname">{{ d.hostname | titlecase }}</span>
+          </span>
+          <div class="spark-track">
+            <div class="spark-bar" 
+                 [style.width.%]="larguraBarra(d.latency)" 
                  [class.down]="d.status !== 'UP'"></div>
           </div>
-          <span class="chart-value">
-            <ng-container *ngIf="d.status === 'UP'; else down">
-              {{ d.latency }}ms
-            </ng-container>
-            <ng-template #down><span style="color:#ef4444">DOWN</span></ng-template>
+          <span class="spark-value" [class.text-danger]="d.status !== 'UP'">
+            {{ d.status === 'UP' ? (d.latency + 'ms') : 'DOWN' }}
           </span>
         </div>
-        <div *ngIf="devices.length === 0" class="subtitle">Nenhum dispositivo cadastrado.</div>
+        <div *ngIf="devices.length === 0" class="subtitle" style="padding: 20px 0;">Nenhum dispositivo monitorado.</div>
       </div>
     </div>
 
     <div class="panel">
-      <h2>Distribuicao</h2>
+      <h2>Distribuição de Status</h2>
       <div class="donut-container">
-        <div class="donut">
+        <div class="donut" [style.background]="'conic-gradient(#10B981 0% ' + onlinePercent + '%, #1F2937 ' + onlinePercent + '% 100%)'">
           <div class="donut-inner">
             <span class="donut-value">{{ devices.length }}</span>
-            <span class="donut-label">Total</span>
+            <span class="donut-label">TOTAL</span>
           </div>
         </div>
       </div>
       <div class="legend">
-        <div class="legend-item"><span class="dot green"></span> Online <span class="legend-val">{{ onlineCount }}</span></div>
-        <div class="legend-item"><span class="dot red"></span> Offline <span class="legend-val">{{ offlineCount }}</span></div>
+        <div class="legend-item">
+          <div class="legend-name"><span class="dot green"></span> Online</div>
+          <div class="legend-badge success">{{ onlineCount }} <small>({{ onlinePercent }}%)</small></div>
+        </div>
+        <div class="legend-item">
+          <div class="legend-name"><span class="dot red"></span> Offline</div>
+          <div class="legend-badge danger">{{ offlineCount }} <small>({{ offlinePercent }}%)</small></div>
+        </div>
       </div>
     </div>
   </div>
@@ -106,34 +153,53 @@
   <div class="bottom-grid">
     <div class="panel availability-panel">
       <div class="panel-header">
-        <h2>Disponibilidade nas ultimas 24h</h2>
+        <h2>Disponibilidade nas últimas 24h</h2>
         <span class="highlight-value">{{ availability }}%</span>
       </div>
-      <p class="subtitle">Media atual de todos os dispositivos</p>
+      <p class="subtitle">Média agregada de todos os dispositivos por hora</p>
+      
       <div class="timeline">
-        <div class="timeline-bar green" *ngFor="let i of [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]"></div>
-        <div class="timeline-bar yellow"></div>
+        <!-- Blocos com Tooltip Customizado -->
+        <div class="timeline-block-wrapper" *ngFor="let t of timelineData">
+          <div class="timeline-block" [class]="t.status"></div>
+          <div class="custom-tooltip">
+            {{ t.hora }} - {{ t.percent }}% de estabilidade
+          </div>
+        </div>
+      </div>
+      <div class="timeline-labels">
+        <span>00:00</span>
+        <span>12:00</span>
+        <span>Agora</span>
       </div>
     </div>
 
     <div class="panel alerts-panel">
       <div class="panel-header">
-        <h2>Alertas recentes</h2>
-        <a routerLink="/incidents" class="link">Ver todos</a>
+        <h2>Alertas Recentes</h2>
+        <a routerLink="/incidents" class="link-subtle">Ver todos</a>
       </div>
-      <div class="alert-list">
+      
+      <div class="alert-list" *ngIf="incidents.length > 0; else emptyState">
         <div class="alert-item" *ngFor="let incident of incidents | slice:0:3">
           <div class="alert-top">
             <span class="alert-title">{{ incident.title }}</span>
-            <span class="alert-time">recente</span>
+            <span class="alert-time">agora</span>
           </div>
           <p class="alert-desc">{{ incident.description }}</p>
-          <span class="alert-badge" [class.critical]="incident.severity === 'CRITICAL'">{{ incident.severity }}</span>
-        </div>
-        <div class="alert-item" *ngIf="incidents.length === 0">
-          <p class="subtitle">Nenhum alerta no momento.</p>
+          <span class="badge" [class.critical]="incident.severity === 'CRITICAL'">{{ incident.severity }}</span>
         </div>
       </div>
+
+      <ng-template #emptyState>
+        <div class="empty-state">
+          <div class="empty-icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="1.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+          </div>
+          <p class="empty-text">Tudo tranquilo por aqui</p>
+          <p class="empty-sub">Nenhum alerta ou incidente reportado nas últimas 24h.</p>
+        </div>
+      </ng-template>
     </div>
   </div>
 </main>
