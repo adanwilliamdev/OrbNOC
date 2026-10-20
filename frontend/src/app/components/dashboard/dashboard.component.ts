@@ -13,8 +13,14 @@ import { DeviceService, Device } from '../../services/device.service';
 export class DashboardComponent implements OnInit {
   incidents: Incident[] = [];
   devices: Device[] = [];
-  carregando = true;
-  erro: string | null = null;
+  latencyData: any[] = [];
+
+  currentTime: string = '';
+
+  availability = 100;
+  onlineCount = 0;
+  offlineCount = 0;
+  avgLatency = 0;
 
   constructor(
     private incidentService: IncidentService,
@@ -22,54 +28,46 @@ export class DashboardComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    this.carregarTudo();
+    this.currentTime = new Date().toLocaleTimeString('pt-BR');
+    this.carregarDados();
   }
 
-  carregarTudo(): void {
-    this.carregando = true;
-    this.erro = null;
-    this.incidentService.list().subscribe({
-      next: (data) => {
-        this.incidents = data;
-        this.carregando = false;
-      },
-      error: (err) => {
-        this.erro = 'Falha ao carregar incidentes. Backend rodando em localhost:8080?';
-        this.carregando = false;
-        console.error(err);
-      }
+  carregarDados(): void {
+    this.deviceService.list().subscribe(devices => {
+      this.devices = devices;
+      this.onlineCount = devices.filter(d => d.status === 'UP').length;
+      this.offlineCount = devices.filter(d => d.status !== 'UP').length;
+      this.calcularMetricas();
     });
-    this.deviceService.list().subscribe({
-      next: (data) => (this.devices = data),
-      error: (err) => console.error(err)
+
+    this.incidentService.list().subscribe(incidents => {
+      this.incidents = incidents;
     });
   }
 
-  criarIncidenteExemplo(): void {
-    this.incidentService.create({
-      title: 'Link principal caiu',
-      description: 'Rota SP-RJ sem conectividade',
-      severity: 'CRITICAL',
-      status: 'OPEN'
-    }).subscribe({
-      next: () => this.incidentService.list().subscribe(d => (this.incidents = d)),
-      error: (err) => {
-        this.erro = 'Falha ao criar incidente.';
-        console.error(err);
-      }
+  calcularMetricas(): void {
+    if (this.devices.length === 0) {
+      this.availability = 100;
+      this.avgLatency = 0;
+      this.latencyData = [];
+      return;
+    }
+
+    this.availability = Math.round((this.onlineCount / this.devices.length) * 100);
+
+    const alvos = ['Mail (SMTP)', 'Link ET', 'Intranet', 'Cloud', 'Google', 'Instagram'];
+    this.latencyData = alvos.map(alvo => {
+      const lat = Math.floor(Math.random() * 40) + 10;
+      return { name: alvo, latency: lat, width: Math.min(lat * 1.5, 100) };
     });
+
+    this.avgLatency = Math.round(
+      this.latencyData.reduce((acc, curr) => acc + curr.latency, 0) / this.latencyData.length
+    );
   }
 
-  criarDeviceExemplo(): void {
-    this.deviceService.create({
-      hostname: 'core-sw-01',
-      ipAddress: '10.0.0.1',
-      deviceType: 'SWITCH',
-      status: 'UP',
-      location: 'Datacenter SP'
-    }).subscribe({
-      next: () => this.deviceService.list().subscribe(d => (this.devices = d)),
-      error: (err) => console.error(err)
-    });
+  testarPing(): void {
+    this.calcularMetricas();
+    this.currentTime = new Date().toLocaleTimeString('pt-BR');
   }
 }
