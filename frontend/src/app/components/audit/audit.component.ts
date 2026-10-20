@@ -15,16 +15,32 @@ import { ToolsService } from '../../services/tools.service';
         </div>
         <button class="btn-outline" (click)="carregar()">&#8635; Atualizar</button>
       </div>
+
       <div class="panel table-panel">
         <table>
-          <thead><tr><th>Timestamp</th><th>Usuário</th><th>Ação</th><th>Detalhe</th><th>Nível</th></tr></thead>
+          <thead>
+            <tr>
+              <th>Timestamp</th>
+              <th>Usuário</th>
+              <th>Ação</th>
+              <th>Detalhe</th>
+              <th>Nível</th>
+            </tr>
+          </thead>
           <tbody>
             <tr *ngFor="let log of logs">
-              <td class="mono">{{ log.timestamp | date:'short' }}</td>
+              <td class="mono">{{ log.timestamp | date:'dd/MM/yyyy HH:mm' }}</td>
               <td><strong>{{ log.user }}</strong></td>
               <td>{{ log.action }}</td>
               <td class="text-muted">{{ log.detail }}</td>
-              <td><span class="badge" [class.critical]="log.level === 'WARN'">{{ log.level }}</span></td>
+              <td>
+                <span class="badge"
+                      [class.info]="log.level === 'INFO'"
+                      [class.warn]="log.level === 'WARN'"
+                      [class.error]="log.level === 'ERROR'">
+                  {{ log.level }}
+                </span>
+              </td>
             </tr>
           </tbody>
         </table>

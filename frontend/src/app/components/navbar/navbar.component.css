@@ -1,88 +1,64 @@
 .topbar {
   display: flex; align-items: center; justify-content: space-between;
   padding: 0 24px; height: 64px;
-  background-color: #090D16; border-bottom: 1px solid rgba(255,255,255,0.08);
+  background: linear-gradient(180deg, #0C1119 0%, #090D16 100%);
+  border-bottom: 1px solid var(--border-subtle);
 }
 .brand { display: flex; align-items: center; gap: 12px; }
-
-/* LOGO ORBITAL */
 .logo-link {
   display: inline-flex; align-items: center; justify-content: center;
   width: 36px; height: 36px; border-radius: 10px;
-  transition: all 0.3s ease; position: relative;
+  transition: all 0.3s ease;
 }
-.logo-link:hover {
-  box-shadow: 0 0 20px rgba(251, 191, 36, 0.4);
-  transform: scale(1.05);
-}
+.logo-link:hover { box-shadow: 0 0 20px rgba(251,191,36,0.4); transform: scale(1.05); }
 .logo-svg { width: 100%; height: 100%; display: block; }
+.logo-svg circle[stroke-dasharray] { transform-origin: 24px 24px; animation: ringSpin 8s linear infinite; }
+@keyframes ringSpin { from { transform: rotate(-45deg); } to { transform: rotate(315deg); } }
+.logo-svg .orbit-dot { transform-origin: 24px 24px; animation: dotOrbit 8s linear infinite; }
+@keyframes dotOrbit { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
-/* Anel orbital girando */
-.logo-svg circle[stroke-dasharray] {
-  transform-origin: 24px 24px;
-  animation: ringSpin 8s linear infinite;
-}
-@keyframes ringSpin {
-  from { transform: rotate(-45deg); }
-  to   { transform: rotate(315deg); }
-}
-
-/* Ponto verde orbitando ao redor do núcleo */
-.logo-svg .orbit-dot {
-  transform-origin: 24px 24px;
-  animation: dotOrbit 8s linear infinite;
-}
-@keyframes dotOrbit {
-  from { transform: rotate(0deg); }
-  to   { transform: rotate(360deg); }
-}
-
-/* Núcleo pulsando suavemente */
-.logo-svg circle[fill="#FBBF24"] {
-  animation: corePulse 3s ease-in-out infinite;
-}
-@keyframes corePulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
-}
-
-.logo-text { font-weight: 700; font-size: 18px; color: #fff; letter-spacing: -0.02em; }
+.logo-text { font-weight: 700; font-size: 17px; color: var(--text-main); letter-spacing: -0.025em; }
 .workspace-selector {
   display: flex; align-items: center; gap: 6px;
-  background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.03); border: 1px solid var(--border-subtle);
   padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 500;
-  color: #D1D5DB; cursor: pointer; transition: all 0.2s;
+  color: var(--text-muted); cursor: pointer; transition: all 0.2s;
 }
-.workspace-selector:hover { background: rgba(255,255,255,0.1); }
-.env-dot { width: 6px; height: 6px; border-radius: 50%; background: #10B981; box-shadow: 0 0 6px #10B981; }
+.workspace-selector:hover { background: var(--bg-hover); color: var(--text-main); }
+.env-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--success); box-shadow: 0 0 6px rgba(16,185,129,0.7); }
 
-.menu { display: flex; gap: 8px; height: 100%; align-items: center; }
+.menu { display: flex; gap: 4px; height: 100%; align-items: center; }
 .menu a {
-  color: #9CA3AF; text-decoration: none; font-size: 13px; font-weight: 500;
-  display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 6px;
-  transition: all 0.2s;
+  color: var(--text-muted); text-decoration: none; font-size: 13px; font-weight: 500;
+  padding: 8px 14px; border-radius: 8px; letter-spacing: -0.01em;
+  transition: all 0.15s ease;
 }
-.menu a:hover { background: rgba(255,255,255,0.05); color: #fff; }
-.menu a.active { background: rgba(255,255,255,0.08); color: #fff; border-bottom: 2px solid #FBBF24; border-radius: 6px 6px 0 0; }
+.menu a:hover { background: var(--bg-hover); color: var(--text-main); }
+.menu a.active { background: rgba(99,102,241,0.12); color: #C7D2FE; }
 
-.user-area { display: flex; align-items: center; gap: 16px; }
+.user-area { display: flex; align-items: center; gap: 14px; }
 .search-btn {
-  background: transparent; border: 1px solid rgba(255,255,255,0.1); color: #9CA3AF;
-  padding: 6px 12px; border-radius: 6px; font-size: 12px; display: flex; align-items: center; gap: 8px; cursor: pointer;
+  background: rgba(255,255,255,0.02); border: 1px solid var(--border-subtle);
+  color: var(--text-muted); padding: 6px 12px; border-radius: 7px;
+  font-size: 12px; display: flex; align-items: center; gap: 8px; cursor: pointer;
+  transition: all 0.2s; font-family: inherit;
 }
-.search-btn:hover { background: rgba(255,255,255,0.05); }
-.search-btn kbd { font-family: monospace; font-size: 10px; background: rgba(255,255,255,0.1); padding: 2px 4px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.1); }
-
+.search-btn:hover { background: var(--bg-hover); color: var(--text-main); }
+.search-btn kbd {
+  font-family: var(--font-mono); font-size: 10px;
+  background: rgba(255,255,255,0.06); padding: 2px 6px; border-radius: 4px;
+  border: 1px solid var(--border-subtle); color: var(--text-muted);
+}
 .avatar-wrapper {
-  position: relative; width: 36px; height: 36px; border-radius: 50%;
-  background: linear-gradient(135deg, #374151, #1F2937);
-  border: 1px solid rgba(255,255,255,0.1); cursor: pointer;
+  position: relative; width: 34px; height: 34px; border-radius: 50%;
+  background: linear-gradient(135deg, #4F46E5, #7C3AED);
+  border: 1px solid rgba(255,255,255,0.15); cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   transition: all 0.2s;
 }
-.avatar-wrapper:hover { border-color: rgba(251, 191, 36, 0.5); }
-.avatar-initials { font-size: 13px; font-weight: 700; color: #F3F4F6; letter-spacing: 0.5px; }
+.avatar-wrapper:hover { transform: scale(1.05); box-shadow: 0 0 12px rgba(99,102,241,0.5); }
+.avatar-initials { font-size: 12px; font-weight: 700; color: #fff; letter-spacing: 0.5px; }
 .status-indicator-online {
   position: absolute; bottom: -1px; right: -1px; width: 10px; height: 10px;
-  background: #10B981; border: 2px solid #090D16; border-radius: 50%;
+  background: var(--success); border: 2px solid #090D16; border-radius: 50%;
 }
