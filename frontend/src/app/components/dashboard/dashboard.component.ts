@@ -24,12 +24,14 @@ export class DashboardComponent implements OnInit, OnDestroy {
   maxLatency = 0;
   minLatency = 0;
   proximoPingEm = 30;
-  notificacao: string | null = null;
   
+  // Alertas e Notificações
+  notificacao: string | null = null;
   timelineData: any[] = [];
   onlinePercent = 0;
   offlinePercent = 0;
 
+  // Diagnóstico no Dashboard
   diagModalAberto = false;
   diagLoading = false;
   diagResultado: DiagResult | null = null;
@@ -38,6 +40,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   private refreshSub: Subscription | null = null;
   private countdownSub: Subscription | null = null;
+  
+  // Áudio
+  private audioCtx: AudioContext | null = null;
+  private lastOfflineCount = 0;
 
   constructor(
     private incidentService: IncidentService,
@@ -47,6 +53,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.atualizarHorario();
     this.carregarDados();
+
+    // Inicializa o contexto de áudio no primeiro clique (regra dos navegadores)
+    document.addEventListener('click', () => {
+      if (!this.audioCtx) {
+        this.audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      }
+    }, { once: true });
 
     this.refreshSub = interval(30000).subscribe(() => {
       this.atualizarHorario();
@@ -68,13 +81,42 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.currentTime = new Date().toLocaleTimeString('pt-BR');
   }
 
+  // SOM DE ALERTA
+  tocarAlerta() {
+    if (!this.audioCtx) return;
+    const osc = this.audioCtx.createOscillator();
+    const gain = this.audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(this.audioCtx.destination);
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(880, this.audioCtx.currentTime);
+    gain.gain.setValueAtTime(0.1, this.audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, this.audioCtx.currentTime + 0.5);
+    osc.start();
+    osc.stop(this.audioCtx.currentTime + 0.5);
+  }
+
   carregarDados(): void {
     this.deviceService.list().subscribe(devices => {
-      const prevOffline = this.offlineCount;
       this.devices = devices;
+      
+      // Contadores
       this.onlineCount = devices.filter(d => d.status === 'UP').length;
-      this.offlineCount = devices.filter(d => d.status !== 'UP').length;
+      this.offlineCount = devices.filter(d => d.status !== 'UP' && !d.maintenance).length;
+      
+      // Porcentagens
+      this.availability = devices.length === 0 ? 100 : Math.round((this.onlineCount / devices.length) * 100);
+      this.onlinePercent = devices.length === 0 ? 0 : Math.round((this.onlineCount / devices.length) * 100);
+      this.offlinePercent = devices.length === 0 ? 0 : Math.round((this.offlineCount / devices.length) * 100);
 
+      // Toca o som se um novo dispositivo ficou offline
+      if (this.offlineCount > this.lastOfflineCount && this.lastOfflineCount !== 0) {
+        this.tocarAlerta();
+        this.mostrarNotificacao('Atenção: Novo dispositivo OFFLINE detectado!');
+      }
+      this.lastOfflineCount = this.offlineCount;
+
+      // Latências
       const latencias = devices
         .filter(d => d.status === 'UP' && d.latency != null)
         .map(d => d.latency as number);
@@ -87,20 +129,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
         this.avgLatency = 0; this.minLatency = 0; this.maxLatency = 0;
       }
 
-      this.availability = devices.length === 0 ? 100 : Math.round((this.onlineCount / devices.length) * 100);
-      this.onlinePercent = devices.length === 0 ? 0 : Math.round((this.onlineCount / devices.length) * 100);
-      this.offlinePercent = devices.length === 0 ? 0 : Math.round((this.offlineCount / devices.length) * 100);
-
+      // Formato para o Gráfico de Barras
       this.latencyData = devices.map(d => ({
         name: d.hostname,
         latency: d.latency ?? 0,
         width: d.latency ? Math.min((d.latency / 200) * 100, 100) : 0,
         status: d.status
       }));
-
-      if (prevOffline > 0 && this.offlineCount > prevOffline) {
-        this.mostrarNotificacao('Atencao: novo dispositivo OFFLINE detectado!');
-      }
     });
 
     this.incidentService.list().subscribe(incidents => {
@@ -115,7 +150,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.timelineData = [];
     for (let i = 23; i >= 0; i--) {
       const hora = (agora - i + 24) % 24;
-      // Simulação visual: a última hora (i=0) está como 'gray' (em andamento)
       const status = i === 0 ? 'gray' : (i === 5 ? 'yellow' : 'green');
       const percent = i === 5 ? 95.5 : (i === 0 ? '--' : 100);
       this.timelineData.push({ 
@@ -136,18 +170,20 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return Math.min((latency / 200) * 100, 100);
   }
 
+  // --- Ações do Diagnóstico ---
   abrirDiagnostico(ip: string) {
     this.diagIpAtual = ip;
     this.diagModalAberto = true;
     this.diagResultado = null;
     this.diagLoading = false;
   }
+
   fecharDiagnostico() { this.diagModalAberto = false; }
   
   testarPing(): void {
     this.carregarDados();
     this.atualizarHorario();
-    this.mostrarNotificacao('Pings atualizados com sucesso.');
+    this.mostrarNotificacao('Dados atualizados com sucesso.');
     this.proximoPingEm = 30;
   }
 
@@ -158,6 +194,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       error: () => { this.diagLoading = false; }
     });
   }
+
   rodarTracerouteDiag() {
     this.diagLoading = true;
     this.deviceService.traceroute(this.diagIpAtual).subscribe({

@@ -7,11 +7,13 @@ import { ToolsComponent } from './components/tools/tools.component';
 import { AuditComponent } from './components/audit/audit.component';
 import { LoginComponent } from './components/login/login.component';
 import { RegisterComponent } from './components/register/register.component';
+import { WallboardComponent } from './components/wallboard/wallboard.component';
 import { AuthGuard } from './services/auth.guard';
 
 export const routes: Routes = [
   { path: 'login', component: LoginComponent },
   { path: 'register', component: RegisterComponent },
+  { path: 'wallboard', component: WallboardComponent, canActivate: [AuthGuard] },
   { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
   { path: 'dashboard', component: DashboardComponent, canActivate: [AuthGuard] },
   { path: 'topology', component: TopologyComponent, canActivate: [AuthGuard] },

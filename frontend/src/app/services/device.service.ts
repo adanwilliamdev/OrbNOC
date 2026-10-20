@@ -10,6 +10,9 @@ export interface Device {
   status: string;
   location: string;
   latency?: number | null;
+  tags?: string;
+  maintenance?: boolean;
+  monitorUrl?: string;
 }
 
 export interface DiagResult {
@@ -25,6 +28,7 @@ export interface DiagResult {
 export class DeviceService {
   private apiUrl = 'http://localhost:8080/api/devices';
   private diagUrl = 'http://localhost:8080/api/diagnostics';
+  private toolsUrl = 'http://localhost:8080/api/tools';
 
   constructor(private http: HttpClient) {}
 
@@ -35,4 +39,6 @@ export class DeviceService {
 
   ping(ip: string): Observable<DiagResult> { return this.http.get<DiagResult>(`${this.diagUrl}/ping/${ip}`); }
   traceroute(ip: string): Observable<DiagResult> { return this.http.get<DiagResult>(`${this.diagUrl}/traceroute/${ip}`); }
+  portscan(ip: string): Observable<any> { return this.http.get<any>(`${this.toolsUrl}/portscan/${ip}`); }
+  networkscan(subnet: string): Observable<any> { return this.http.get<any>(`${this.toolsUrl}/networkscan/${subnet}`); }
 }

@@ -17,13 +17,9 @@ import { filter } from 'rxjs/operators';
 })
 export class AppComponent {
   showNavbar = false;
-
   constructor(private router: Router) {
-    this.router.events.pipe(
-      filter(event => event instanceof NavigationEnd)
-    ).subscribe((event: any) => {
-      // Esconde a navbar nas telas de login e cadastro
-      this.showNavbar = !event.url.includes('/login') && !event.url.includes('/register');
+    this.router.events.pipe(filter(event => event instanceof NavigationEnd)).subscribe((event: any) => {
+      this.showNavbar = !event.url.includes('/login') && !event.url.includes('/register') && !event.url.includes('/wallboard');
     });
   }
 }

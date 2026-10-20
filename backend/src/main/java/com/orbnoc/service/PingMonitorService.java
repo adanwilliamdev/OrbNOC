@@ -8,49 +8,62 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.net.InetAddress;
-import java.time.LocalDateTime;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
 import java.util.List;
 
 @Service
 public class PingMonitorService {
-
     private static final Logger log = LoggerFactory.getLogger(PingMonitorService.class);
     private final DeviceRepository repository;
+    private final HttpClient httpClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(3)).build();
 
     public PingMonitorService(DeviceRepository repository) {
         this.repository = repository;
     }
 
-    // Roda a cada 30 segundos (fixedRate em milissegundos)
     @Scheduled(fixedRate = 30000)
     public void monitorarDispositivos() {
         List<Device> devices = repository.findAll();
-        if (devices.isEmpty()) return;
-
-        log.info("[NOC] Iniciando ciclo de ping em {} dispositivo(s) - {}", devices.size(), LocalDateTime.now());
-
         for (Device d : devices) {
+            if (d.isMaintenance()) {
+                log.info("[MUTE] {} em manutencao. Ignorando.", d.getHostname());
+                continue;
+            }
+
             try {
                 long inicio = System.currentTimeMillis();
-                // timeout de 2 segundos por host
-                boolean alcancavel = InetAddress.getByName(d.getIpAddress()).isReachable(2000);
+                boolean sucesso = false;
+
+                // Se tem URL, testa HTTP, senao testa ICMP
+                if (d.getMonitorUrl() != null && !d.getMonitorUrl().isEmpty()) {
+                    HttpRequest req = HttpRequest.newBuilder().uri(URI.create(d.getMonitorUrl())).GET().build();
+                    HttpResponse<String> res = httpClient.send(req, HttpResponse.BodyHandlers.ofString());
+                    sucesso = (res.statusCode() >= 200 && res.statusCode() < 400);
+                } else {
+                    sucesso = InetAddress.getByName(d.getIpAddress()).isReachable(2000);
+                }
+
                 long latencia = System.currentTimeMillis() - inicio;
 
-                if (alcancavel) {
+                if (sucesso) {
                     d.setStatus("UP");
                     d.setLatency((int) latencia);
-                    log.info("  UP   {} ({}) - {} ms", d.getHostname(), d.getIpAddress(), latencia);
                 } else {
+                    if (!"DOWN".equals(d.getStatus())) {
+                        log.warn("[NOC] Dispositivo {} caiu! Disparando alertas.", d.getHostname());
+                        // Aqui entraria a chamada do TelegramService
+                    }
                     d.setStatus("DOWN");
                     d.setLatency(null);
-                    log.warn("  DOWN {} ({})", d.getHostname(), d.getIpAddress());
                 }
                 repository.save(d);
             } catch (Exception e) {
                 d.setStatus("DOWN");
-                d.setLatency(null);
                 repository.save(d);
-                log.error("  ERRO {} ({}): {}", d.getHostname(), d.getIpAddress(), e.getMessage());
             }
         }
     }
