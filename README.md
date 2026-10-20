@@ -1,50 +1,72 @@
-﻿# OrbNOC
+# OrbNOC
 
-Projeto full stack Java para **Network Operations Center (NOC)**.
+Projeto full stack para **Network Operations Center (NOC)**, desenvolvido para centralizar o gerenciamento de dispositivos de rede e o acompanhamento de incidentes em uma interface web.
 
-## Stack
+## 🛠️ Tecnologias utilizadas
 
-- **Backend:** Java 17 + Spring Boot 3.3.5 + Spring Data JPA + H2 (dev)
-- **Frontend:** Angular 19 + TypeScript
-- **Build:** Maven (backend) / npm (frontend)
+- **Backend:** Java 17, Spring Boot 3.3.5, Spring Data JPA e H2 (desenvolvimento)
+- **Frontend:** Angular 19 e TypeScript
+- **Build:** Maven (backend) e npm (frontend)
 
-## Estrutura
+## 📁 Estrutura do projeto
 
-\\\
+```text
 OrbNOC/
-â”œâ”€â”€ backend/          # Spring Boot (API REST)
-â”œâ”€â”€ frontend/         # Angular
-â””â”€â”€ docs/
-\\\
+├── backend/          # API REST com Spring Boot
+├── frontend/         # Aplicação Angular
+└── docs/              # Documentação do projeto
+```
 
-## Como rodar
+## 🚀 Como executar o projeto
 
 ### Backend
-\\\ash
+
+Acesse o diretório do backend e inicie a aplicação:
+
+```bash
 cd backend
 mvn spring-boot:run
-\\\
-API em \http://localhost:8080\.
-Console H2 em \http://localhost:8080/h2-console\ (JDBC URL: \jdbc:h2:mem:orbnocdb\).
+```
+
+Após a inicialização, a API estará disponível em:
+
+- **API REST:** http://localhost:8080
+- **Console H2:** http://localhost:8080/h2-console
+
+Configuração do banco de dados H2:
+
+```text
+JDBC URL: jdbc:h2:mem:orbnocdb
+```
 
 ### Frontend
-\\\ash
+
+Em outro terminal, acesse o diretório do frontend e execute:
+
+```bash
 cd frontend
 npm install
 npm start
-\\\
-Acesse \http://localhost:4200\.
+```
 
-## Endpoints iniciais
+A aplicação Angular estará disponível em:
 
-| Recurso     | Rota               |
-|-------------|--------------------|
-| Incidentes  | \/api/incidents\  |
-| Dispositivos| \/api/devices\    |
+http://localhost:4200
 
-## PrÃ³ximos passos sugeridos
+## 🔌 Endpoints iniciais
 
-1. Adicionar autenticaÃ§Ã£o (Spring Security + JWT).
-2. Criar dashboard com mÃ©tricas de disponibilidade.
-3. Implementar polling de status de dispositivos.
-4. Integrar com ferramentas de monitoramento (Zabbix, Prometheus).
+| Recurso | Rota |
+|---|---|
+| Incidentes | `/api/incidents` |
+| Dispositivos | `/api/devices` |
+
+## 🗺️ Próximas melhorias planejadas
+
+- [ ] Implementar autenticação e autorização com Spring Security e JWT.
+- [ ] Desenvolver um dashboard com métricas de disponibilidade.
+- [ ] Implementar consultas periódicas para monitoramento do status dos dispositivos.
+- [ ] Integrar ferramentas de monitoramento, como Zabbix e Prometheus.
+
+---
+
+**OrbNOC** — Monitoramento de redes e gerenciamento de incidentes em um só lugar.
