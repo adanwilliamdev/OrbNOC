@@ -1,0 +1,34 @@
+<svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" class="logo-svg">
+  <defs>
+    <linearGradient id="ringGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FCD34D" />
+      <stop offset="50%" stop-color="#FBBF24" />
+      <stop offset="100%" stop-color="#F59E0B" />
+    </linearGradient>
+    <radialGradient id="coreGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FBBF24" stop-opacity="0.6" />
+      <stop offset="100%" stop-color="#FBBF24" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+
+  <!-- Container base (squircle) -->
+  <rect x="0" y="0" width="48" height="48" rx="10" fill="#111827" stroke="rgba(251,191,36,0.2)" stroke-width="1"/>
+
+  <!-- Glow central -->
+  <circle cx="24" cy="24" r="18" fill="url(#coreGlow)" />
+
+  <!-- Anel orbital (O estilizado, aberto) -->
+  <circle cx="24" cy="24" r="14" fill="none" stroke="url(#ringGradient)" stroke-width="2.5"
+          stroke-dasharray="66 22" stroke-linecap="round"
+          transform="rotate(-45 24 24)"/>
+
+  <!-- Núcleo -->
+  <circle cx="24" cy="24" r="4" fill="#FBBF24" />
+  <circle cx="24" cy="24" r="2" fill="#FEF3C7" />
+
+  <!-- Ponto verde orbital (com glow) -->
+  <g class="orbit-dot">
+    <circle cx="38" cy="24" r="3.5" fill="#10B981" opacity="0.3" />
+    <circle cx="38" cy="24" r="2" fill="#10B981" />
+  </g>
+</svg>

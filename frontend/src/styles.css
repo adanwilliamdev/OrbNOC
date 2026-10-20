@@ -98,3 +98,51 @@ tr:hover td { background-color: var(--bg-hover); }
 .diag-actions { display: flex; gap: 12px; margin-bottom: 20px; }
 .diag-log { background: var(--bg-main); border: 1px solid var(--border-subtle); border-radius: 8px; padding: 16px; min-height: 100px; font-family: monospace; color: var(--success); }
 .diag-log pre { margin: 0; white-space: pre-wrap; font-size: 13px; }
+/* REFINAMENTOS DE TABELAS E BOTÕES */
+.table-panel { padding: 0; overflow: hidden; }
+.table-panel table { margin: 0; }
+.table-panel th { padding: 16px 24px; background: rgba(255,255,255,0.02); }
+.table-panel td { padding: 16px 24px; }
+.mono { font-family: monospace; font-size: 13px; color: #9CA3AF; }
+.text-muted { color: #9CA3AF; }
+.sub-desc { font-size: 12px; color: #6B7280; margin-top: 4px; }
+
+/* BADGES DE STATUS (UP/DOWN com ponto piscando) */
+.badge-status {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 600;
+  background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #9CA3AF;
+}
+.badge-status.up { background: rgba(16,185,129,0.1); color: #10B981; border-color: rgba(16,185,129,0.2); }
+.badge-status.down { background: rgba(239,68,68,0.1); color: #EF4444; border-color: rgba(239,68,68,0.2); }
+.badge-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.badge-status.up .badge-dot { box-shadow: 0 0 6px rgba(16,185,129,0.6); animation: pulseDot 2s infinite; }
+@keyframes pulseDot { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+
+/* STATUS TEXT (Incidentes) */
+.status-text { font-size: 13px; color: #FBBF24; font-weight: 600; }
+.status-text.resolved { color: #10B981; }
+
+/* AÇÕES EM GRUPO (Botões escuros, hover suave) */
+.actions-group { display: flex; gap: 6px; justify-content: flex-end; }
+.btn-icon {
+  width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;
+  background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05);
+  border-radius: 6px; cursor: pointer; font-size: 14px; color: #9CA3AF;
+  transition: all 0.2s;
+}
+.btn-icon:hover { background: rgba(255,255,255,0.1); color: #fff; }
+.btn-icon.danger:hover { background: rgba(239,68,68,0.15); color: #EF4444; border-color: rgba(239,68,68,0.3); }
+
+/* EMPTY STATE DE TABELA */
+.table-empty {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 48px 24px; text-align: center;
+}
+.table-empty svg { margin-bottom: 16px; opacity: 0.6; }
+.table-empty p { font-size: 16px; font-weight: 600; color: #F3F4F6; margin: 0 0 4px 0; }
+.table-empty span { font-size: 13px; color: #6B7280; max-width: 300px; }
+
+/* BADGES DE SEVERIDADE */
+.badge.critical { background: rgba(239,68,68,0.1); color: #EF4444; border-color: rgba(239,68,68,0.2); }
+.badge.high { background: rgba(251,191,36,0.1); color: #FBBF24; border-color: rgba(251,191,36,0.2); }

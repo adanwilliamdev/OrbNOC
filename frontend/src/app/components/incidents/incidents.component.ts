@@ -11,21 +11,24 @@ import { IncidentService, Incident } from '../../services/incident.service';
     <div class="content">
       <div class="page-header">
         <div class="title-area">
-          <h1>Gerenciar Incidentes</h1>
-          <p class="subtitle">Registre, atualize e resolva chamados do NOC.</p>
+          <h1>Incidentes</h1>
+          <p class="subtitle">Registre, atualize e gerencie chamados e alertas do NOC.</p>
         </div>
-        <button class="btn-primary" (click)="abrirFormulario()">+ Novo Incidente</button>
+        <button class="btn-primary" (click)="abrirFormulario()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px; vertical-align: middle;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          Novo Incidente
+        </button>
       </div>
 
       <div class="panel" *ngIf="exibirForm">
         <h2>{{ editando ? 'Editar' : 'Novo' }} Incidente</h2>
         <div class="form-grid">
-          <input type="text" placeholder="Titulo" [(ngModel)]="incidentAtual.title">
-          <input type="text" placeholder="Descricao" [(ngModel)]="incidentAtual.description">
+          <input type="text" placeholder="Título (ex: Queda no Link Principal)" [(ngModel)]="incidentAtual.title">
+          <input type="text" placeholder="Descrição detalhada" [(ngModel)]="incidentAtual.description">
           <select [(ngModel)]="incidentAtual.severity">
-            <option value="CRITICAL">Critico</option>
+            <option value="CRITICAL">Crítico</option>
             <option value="HIGH">Alto</option>
-            <option value="MEDIUM">Medio</option>
+            <option value="MEDIUM">Médio</option>
             <option value="LOW">Baixo</option>
           </select>
           <select [(ngModel)]="incidentAtual.status">
@@ -40,24 +43,39 @@ import { IncidentService, Incident } from '../../services/incident.service';
         </div>
       </div>
 
-      <div class="panel">
+      <div class="panel table-panel">
         <table>
           <thead>
-            <tr><th>ID</th><th>Titulo</th><th>Severidade</th><th>Status</th><th>Acoes</th></tr>
+            <tr><th>ID</th><th>Título</th><th>Severidade</th><th>Status</th><th style="text-align:right">Ações</th></tr>
           </thead>
           <tbody>
             <tr *ngFor="let i of incidents">
-              <td>{{ i.id }}</td>
-              <td>{{ i.title }}</td>
-              <td><span class="badge" [class.critical]="i.severity === 'CRITICAL'">{{ i.severity }}</span></td>
-              <td>{{ i.status }}</td>
+              <td><span class="mono">#{{ i.id }}</span></td>
               <td>
-                <button class="btn-icon" (click)="editar(i)">&#9998;</button>
-                <button class="btn-icon danger" (click)="deletar(i.id!)">&#128465;</button>
+                <strong>{{ i.title }}</strong>
+                <div class="sub-desc">{{ i.description }}</div>
+              </td>
+              <td>
+                <span class="badge" [class.critical]="i.severity === 'CRITICAL'" [class.high]="i.severity === 'HIGH'">{{ i.severity }}</span>
+              </td>
+              <td>
+                <span class="status-text" [class.resolved]="i.status === 'RESOLVED'">{{ i.status | titlecase }}</span>
+              </td>
+              <td style="text-align:right">
+                <div class="actions-group">
+                  <button class="btn-icon" title="Editar" (click)="editar(i)">&#9998;</button>
+                  <button class="btn-icon danger" title="Excluir" (click)="deletar(i.id!)">&#128465;</button>
+                </div>
               </td>
             </tr>
             <tr *ngIf="incidents.length === 0">
-              <td colspan="5" class="vazio">Nenhum incidente registrado ainda.</td>
+              <td colspan="5">
+                <div class="table-empty">
+                  <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#4B5563" stroke-width="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path><polyline points="9 12 12 15 15 9"></polyline></svg>
+                  <p>Tudo sob controle</p>
+                  <span>Nenhum incidente ou alerta registrado nas últimas 24 horas.</span>
+                </div>
+              </td>
             </tr>
           </tbody>
         </table>
