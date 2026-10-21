@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<body>
+<th:block th:fragment="list">
+  <section class="kpis">
+    <article class="kpi"><span class="kpi-label">Total</span><strong class="kpi-value" th:text="${countAll}">0</strong><span class="kpi-sub">últimos eventos</span></article>
+    <article class="kpi" th:classappend="${countUnread > 0} ? 'kpi-warn'"><span class="kpi-label">Não lidos</span><strong class="kpi-value" th:text="${countUnread}">0</strong><span class="kpi-sub">aguardando confirmação</span></article>
+    <article class="kpi" th:classappend="${countErrors > 0} ? 'kpi-bad'"><span class="kpi-label">Críticos</span><strong class="kpi-value" th:text="${countErrors}">0</strong><span class="kpi-sub">hosts offline</span></article>
+    <article class="kpi"><span class="kpi-label">Avisos</span><strong class="kpi-value" th:text="${countWarnings}">0</strong><span class="kpi-sub">latência acima do limite</span></article>
+  </section>
+
+  <section class="card">
+    <h2>Atividade nas últimas 24 h</h2>
+    <div class="activity" role="img" aria-label="Eventos por hora">
+      <span class="act-col" th:each="a : ${activity}" th:title="${a.count()} + ' evento(s)'">
+        <span class="act-bar" th:style="'height:' + ${a.pct()} + '%'"></span>
+      </span>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-head">
+      <div class="segmented" role="group" aria-label="Filtrar alertas">
+        <a href="/alerts" th:classappend="${f == 'all'} ? 'on'">Todos</a>
+        <a href="/alerts?f=unread" th:classappend="${f == 'unread'} ? 'on'">Não lidos</a>
+        <a href="/alerts?f=error" th:classappend="${f == 'error'} ? 'on'">Críticos</a>
+        <a href="/alerts?f=warning" th:classappend="${f == 'warning'} ? 'on'">Avisos</a>
+      </div>
+      <button type="button" class="btn btn-outline btn-sm" data-action="ack-all" th:disabled="${countUnread == 0}">Marcar todos como lidos</button>
+    </div>
+    <ul class="alert-list" th:if="${!rows.isEmpty()}">
+      <li th:each="a : ${rows}" th:classappend="${a.event().acknowledgedAt() == null} ? 'unread'">
+        <i class="dot" th:classappend="'dot-' + ${@fmt.severityClass(a.event().severity())}"></i>
+        <div class="alert-body">
+          <div class="alert-title">
+            <b th:text="${a.deviceName()}">host</b>
+            <span class="pill" th:classappend="'pill-' + ${@fmt.severityClass(a.event().severity())}" th:text="${@fmt.severityLabel(a.event().severity())}">Crítico</span>
+            <span class="muted small" th:text="${@fmt.kindLabel(a.event().kind())}">tipo</span>
+          </div>
+          <p th:text="${a.event().message()}">mensagem</p>
+          <time class="muted small" data-localtime="datetime" th:attr="data-iso=${@fmt.iso(a.event().createdAt())}" th:text="${@fmt.utc(a.event().createdAt())}">data</time>
+        </div>
+        <button type="button" class="btn btn-ghost btn-xs" th:if="${a.event().acknowledgedAt() == null}" data-action="ack" th:attr="data-id=${a.event().id()}">Marcar como lido</button>
+      </li>
+    </ul>
+    <p class="muted empty" th:if="${rows.isEmpty()}">Nenhum alerta neste filtro.</p>
+  </section>
+</th:block>
+</body>
+</html>

@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<body>
+<th:block th:fragment="board">
+  <section class="wall-stats">
+    <div class="wall-stat"><span>Dispositivos</span><b th:text="${stats.total()}">0</b></div>
+    <div class="wall-stat ok"><span>Online</span><b th:text="${stats.online()}">0</b></div>
+    <div class="wall-stat" th:classappend="${stats.offline() > 0} ? 'bad'"><span>Offline</span><b th:text="${stats.offline()}">0</b></div>
+    <div class="wall-stat"><span>Disponibilidade</span><b th:text="${stats.availability()} + '%'">0%</b></div>
+    <div class="wall-stat"><span>Latência média</span><b th:text="${@fmt.ms(stats.avgLatency())}">—</b></div>
+  </section>
+  <section class="wall-grid" th:if="${!tiles.isEmpty()}">
+    <article class="tile" th:each="d : ${tiles}" th:classappend="'tile-' + ${@fmt.statusClass(d.status())}">
+      <b th:text="${d.name()}">nome</b>
+      <span class="mono" th:text="${d.ip()}">ip</span>
+      <span class="tile-lat" th:text="${d.status() == 'offline'} ? 'OFFLINE' : ${@fmt.ms(d.latency())}">—</span>
+    </article>
+  </section>
+  <p class="muted empty" th:if="${tiles.isEmpty()}">Nenhum dispositivo cadastrado.</p>
+</th:block>
+</body>
+</html>

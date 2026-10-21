@@ -1,758 +1,158 @@
-# 🛰️ OrbNOC
+<p align="center">
+  <img src="docs/img/OrbNOC_capa.png" alt="OrbNOC" width="720">
+</p>
+
+<h1 align="center">OrbNOC</h1>
+<p align="center">Plataforma de monitoramento de rede em tempo real, feita 100% em Java.</p>
 
 <p align="center">
-  <img src="./frontend/public/OrbNOC_capa.png" alt="OrbNOC" width="100%">
+  <img alt="Java 21" src="https://img.shields.io/badge/Java-21-orange">
+  <img alt="Spring Boot 3.5" src="https://img.shields.io/badge/Spring%20Boot-3.5-6db33f">
+  <img alt="PostgreSQL" src="https://img.shields.io/badge/PostgreSQL-16-336791">
+  <img alt="Licença MIT" src="https://img.shields.io/badge/licen%C3%A7a-MIT-blue">
 </p>
 
-**OrbNOC** é uma plataforma de monitoramento de equipamentos de rede com acompanhamento em tempo real, alertas, diagnóstico e relatórios operacionais.
-
-Cada usuário pode cadastrar seus próprios dispositivos e acompanhar:
-
-- 🟢 Status dos dispositivos
-- 📡 Latência, jitter e perda de pacotes
-- 🚨 Alertas de indisponibilidade
-- ⏱️ Monitoramento de SLA
-- 🔔 Notificações via Telegram
-- 🔎 Diagnóstico de rede
-- 🗺️ Visualização em mapa
-- 📑 Relatórios CSV e XLSX
-- 🖥️ Wallboard operacional
-
-O monitoramento é executado por um **worker Python independente**, responsável pelas verificações periódicas dos dispositivos.
-
 ---
 
-## 🎥 Demonstração
+O OrbNOC acompanha a disponibilidade e a latência de roteadores, switches, servidores e serviços, avisa
+quando algo cai ou fica lento e mostra tudo num painel que se atualiza sozinho.
 
-[▶️ Assistir demonstração](https://github.com/user-attachments/assets/2b40a048-2ea3-4723-b909-7f1d90a4134d)
+## Recursos
 
----
+- **Monitoramento contínuo** por ICMP (ping) ou TCP (porta), com intervalo e limite de falhas por dispositivo.
+  Um host só é marcado offline após N falhas seguidas, o que elimina falsos alarmes.
+- **Tempo real**: o painel, o mapa e o wallboard se atualizam via WebSocket, sem recarregar a página.
+- **Alertas** de queda, recuperação e latência acima do limite (SLA), com confirmação de leitura e
+  notificação opcional por **Telegram** (o token fica cifrado no banco).
+- **Mapa de rede** com layouts hierárquico, radial e em grade, com zoom e arrastar.
+- **Relatórios de SLA** de 24 h, 7 dias e 30 dias, com exportação em **CSV** e **Excel** e versão para impressão.
+- **Diagnóstico**: ping, traceroute, DNS e teste de portas a partir do servidor.
+- **Wallboard** em tela cheia para TVs de NOC.
+- **Usuários** com perfis (administrador e usuário), cada um vendo apenas os próprios dispositivos.
 
-## 🚀 Stack
+## Arquitetura
 
-<p>
-  <img src="https://img.shields.io/badge/Python%203.12-3776AB?style=for-the-badge&logo=python&logoColor=white" />
-  <img src="https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white" />
-  <img src="https://img.shields.io/badge/Next.js%2016-000000?style=for-the-badge&logo=next.js&logoColor=white" />
-  <img src="https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white" />
-</p>
+Um único serviço Spring Boot faz tudo: API REST, páginas (Thymeleaf), WebSocket e o monitor em segundo plano.
+O banco é o PostgreSQL.
 
-<p>
-  <img src="https://img.shields.io/badge/PostgreSQL-4169E1?style=for-the-badge&logo=postgresql&logoColor=white" />
-  <img src="https://img.shields.io/badge/SQLAlchemy%202-BA2D2D?style=for-the-badge&logo=sqlalchemy&logoColor=white" />
-  <img src="https://img.shields.io/badge/Alembic-1E1E1E?style=for-the-badge&logo=alembic&logoColor=white" />
-  <img src="https://img.shields.io/badge/Redis-DC382D?style=for-the-badge&logo=redis&logoColor=white" />
-</p>
-
-<p>
-  <img src="https://img.shields.io/badge/Tailwind%20CSS%204-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white" />
-  <img src="https://img.shields.io/badge/TanStack%20Query-FF4154?style=for-the-badge&logo=reactquery&logoColor=white" />
-  <img src="https://img.shields.io/badge/Caddy-1F88C9?style=for-the-badge&logo=caddy&logoColor=white" />
-  <img src="https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white" />
-</p>
-
-| Área | Tecnologias |
-|---|---|
-| **API** | FastAPI · Python 3.12 · uv · Ruff · Pytest |
-| **Frontend** | Next.js 16 · TypeScript · Tailwind CSS 4 · TanStack Query · Radix/shadcn-style |
-| **Banco** | PostgreSQL · SQLAlchemy 2 Async · Alembic |
-| **Monitoramento** | Worker Python independente · ICMP com fallback TCP |
-| **Mensageria** | Redis Pub/Sub |
-| **Tempo real** | WebSocket |
-| **Autenticação** | Argon2 · JWT · Cookies `httpOnly` |
-| **Autorização** | `admin` · `user` |
-| **Proxy** | Caddy |
-| **Métricas** | PostgreSQL · agregação horária · retenção |
-
-> As métricas são armazenadas diretamente no PostgreSQL, sem TimescaleDB.
-
----
-
-## 🏗️ Arquitetura
-
-```text
-                        ┌──────────────────┐
-                        │    Navegador     │
-                        └────────┬─────────┘
-                                 │
-                                 ▼
-                        ┌──────────────────┐
-                        │      Caddy       │
-                        │  Reverse Proxy   │
-                        └────────┬─────────┘
-                                 │
-                    ┌────────────┴────────────┐
-                    ▼                         ▼
-             ┌──────────────┐          ┌──────────────┐
-             │   Next.js    │          │   FastAPI    │
-             │   Frontend   │          │     API      │
-             └──────────────┘          └──────┬───────┘
-                                              │
-                         ┌────────────────────┼──────────────────┐
-                         ▼                    ▼                  ▼
-                  ┌────────────┐      ┌──────────────┐   ┌──────────────┐
-                  │   Redis    │      │ PostgreSQL   │   │  WebSocket   │
-                  │  Pub/Sub   │      │              │   │     /ws      │
-                  └─────▲──────┘      └──────▲───────┘   └──────────────┘
-                        │                    │
-                        └──────────┬─────────┘
-                                   │
-                           ┌───────┴────────┐
-                           │ Worker Python  │
-                           │   ICMP / TCP   │
-                           └────────────────┘
+```
+Navegador ──HTTP/WebSocket──► OrbNOC (Spring Boot) ──JDBC──► PostgreSQL
+                                 ├─ API REST (/api/...)
+                                 ├─ Páginas e fragmentos HTML (Thymeleaf)
+                                 ├─ WebSocket (/ws)
+                                 └─ Monitor (threads virtuais: ICMP/TCP, métricas, alertas)
 ```
 
-### Fluxo
-
-1. O usuário acessa o frontend através do Caddy.
-2. O Next.js consome a API FastAPI.
-3. O worker executa as verificações dos dispositivos.
-4. As métricas são persistidas no PostgreSQL.
-5. Eventos são publicados através do Redis.
-6. A API distribui atualizações via WebSocket.
-7. Mudanças de estado e violações de SLA podem gerar notificações via Telegram.
-
----
-
-## ⚙️ Monitoramento
-
-### Estados
-
-```text
-unknown ──► online ──► offline
-              ▲           │
-              └───────────┘
-```
-
-Estados disponíveis:
-
-- `unknown`
-- `online`
-- `offline`
-
-Um dispositivo somente é considerado **offline após falhas consecutivas**, configuráveis por dispositivo.
-
-O intervalo padrão é de **30 segundos**, com configuração entre **5 e 3600 segundos**.
-
-Com `30s × 3 falhas`, o dispositivo normalmente será considerado offline após aproximadamente **90 segundos**.
-
-### Worker
-
-O monitoramento roda em um processo independente:
-
-```bash
-python -m app.worker
-```
-
-Características:
-
-- Um único worker
-- Sem eleição de líder
-- Concorrência limitada
-- Uma nova rodada não inicia enquanto a anterior estiver em execução
-- Cada rodada registra métricas
-- Estado atualizado conforme o resultado
-- Eventos gerados somente quando necessários
-- Notificações enviadas apenas em mudanças relevantes
-
-Eventos:
-
-- Dispositivo ficou offline
-- Dispositivo voltou online
-- SLA excedido
-- SLA voltou ao normal
-
----
-
-## 📊 SLA e métricas
-
-O SLA utiliza **agregações horárias**, evitando depender apenas da relação instantânea entre dispositivos online e total de dispositivos.
-
-Janelas disponíveis:
-
-- `24h`
-- `7d`
-- `30d`
-
-O histórico de uptime e os limites de SLA são persistidos no servidor.
-
----
-
-## 🔔 Alertas e Telegram
-
-Os alertas são persistidos no backend e podem ser reconhecidos individualmente ou em massa.
-
-Recursos:
-
-- Reconhecimento individual
-- Reconhecimento de todos
-- Configuração de SLA
-- Integração com Telegram
-- Teste de notificações
-- Teste de dispositivos
-
-### Segurança
-
-O token do Telegram:
-
-- É armazenado criptografado com **Fernet**
-- Nunca é retornado pela API
-- A API informa somente se existe um token configurado
-
----
-
-## 🔎 Diagnóstico de rede
-
-Ferramentas disponíveis:
-
-- Ping
-- Traceroute
-- DNS Lookup
-- Teste de porta
-- Diagnóstico completo
-
-Os comandos são executados **sem shell**, utilizando argumentos estruturados.
-
-Os hosts são previamente validados para impedir acesso a destinos indevidos.
-
-### Restrições
-
-Bloqueados:
-
-- Loopback
-- Endereços link-local
-- Endereços de metadata de provedores de nuvem
-
-Redes privadas podem ser permitidas para monitoramento de infraestrutura local:
-
-```env
-ALLOW_PRIVATE_NETWORKS=true
-```
-
----
-
-## 🌐 ICMP com fallback TCP
-
-O worker tenta utilizar ICMP para as verificações.
-
-Quando ICMP é bloqueado, utiliza automaticamente TCP.
-
-Portas utilizadas:
-
-```text
-443 · 80 · 22 · 53 · 8080 · 8443
-```
-
-Um **RST** também é considerado evidência de que o host está respondendo.
-
-O endpoint `/health` informa o modo atual através de `icmp_mode`.
-
-Em Docker, o worker utiliza:
-
-```text
-CAP_NET_RAW
-```
-
----
-
-## ❤️ Health Checks
-
-### `/health`
-
-Executa verificações reais de:
-
-- PostgreSQL
-- Redis
-- Heartbeat do worker
-
-Caso um componente essencial esteja indisponível:
-
-```text
-503 Service Unavailable
-```
-
-### `/health/live`
-
-Verificação básica de disponibilidade da aplicação.
-
----
-
-## 📑 Relatórios
-
-Formatos disponíveis:
-
-- CSV
-- XLSX
-
-Os arquivos são gerados no servidor e possuem proteção contra **injeção de fórmulas**.
-
-O relatório PDF utiliza a própria impressão do navegador:
-
-```text
-/reports/print
-```
-
----
-
-## 🐳 Docker
-
-### 1. Configurar ambiente
+| Camada | Tecnologia |
+| --- | --- |
+| Linguagem / runtime | Java 21 (threads virtuais) |
+| Aplicação | Spring Boot 3.5 (Web, Data JPA, WebSocket) |
+| Interface | Thymeleaf renderizado no servidor, CSS próprio e um único arquivo JavaScript sem dependências |
+| Banco | PostgreSQL 16 + Flyway (migrações) |
+| Segurança | Argon2 para senhas, sessão em cookie httpOnly assinado (HS256), AES-256-GCM para segredos |
+| Exportação | Apache POI (XLSX) |
+
+## Como rodar
+
+### Com Docker (recomendado)
 
 ```bash
 cp .env.example .env
+# edite o .env: defina POSTGRES_PASSWORD, JWT_SECRET (openssl rand -base64 48) e ADMIN_PASSWORD
+docker compose up -d --build
 ```
 
-Configure pelo menos:
+Acesse <http://localhost:8080> e entre com o usuário e a senha de administrador definidos no `.env`.
 
-```env
-JWT_SECRET=
-POSTGRES_PASSWORD=
-ADMIN_PASSWORD=
-```
-
-Gerar um segredo JWT:
+Para HTTPS automático com Caddy (domínio apontando para o servidor):
 
 ```bash
-openssl rand -hex 32
+# no .env: SITE_ADDRESS=noc.exemplo.com, PUBLIC_URL=https://noc.exemplo.com, COOKIE_SECURE=true
+docker compose --profile https up -d
 ```
 
-### 2. Iniciar
+### Sem Docker (desenvolvimento)
+
+Requisitos: JDK 21, Maven 3.9+ e um PostgreSQL acessível.
 
 ```bash
-docker compose up --build
+export DATABASE_URL=jdbc:postgresql://localhost:5432/orbnoc
+export DATABASE_USER=orbnoc
+export DATABASE_PASSWORD=orbnoc
+export ADMIN_PASSWORD='Troque123'
+mvn spring-boot:run
 ```
 
-A aplicação estará disponível em:
-
-```text
-http://localhost:8080
-```
-
-Entre utilizando:
-
-```env
-ADMIN_USERNAME
-ADMIN_PASSWORD
-```
-
-> Não existe login demo. Cada usuário possui sua própria conta e acesso isolado aos dispositivos, alertas e configurações do Telegram.
-
----
-
-## 👥 Usuários
-
-Administradores podem acessar **Usuários** pelo cabeçalho da aplicação.
-
-Operações:
-
-- Criar usuários
-- Redefinir senhas
-- Desativar/reativar usuários
-- Alterar perfil
-- Remover usuários
-
-Perfis:
-
-```text
-admin
-user
-```
-
-Quando um usuário é desativado:
-
-- O login é bloqueado
-- Seus dispositivos deixam de ser monitorados
-
-### Registro público
-
-Desativado por padrão.
-
-Para habilitar:
-
-```env
-REGISTRATION_ENABLED=true
-```
-
----
-
-## 🔐 Redefinição do administrador
-
-O administrador definido no `.env` é criado somente na primeira inicialização, quando o banco está vazio.
-
-Alterar posteriormente:
-
-```env
-ADMIN_PASSWORD=
-```
-
-não modifica a senha existente.
-
-Para redefinir:
+Para o ICMP funcionar sem privilégios no Linux, permita sockets de datagrama ICMP:
 
 ```bash
-docker compose exec backend \
-  python -m app.create_admin \
-  --reset \
-  -u admin \
-  -p 'NovaSenha123'
+sudo sysctl -w net.ipv4.ping_group_range="0 2147483647"
 ```
 
-Sem `-p`, o sistema solicita a nova senha.
+Sem ICMP o monitor usa conexões TCP em portas comuns como alternativa (o `/health` informa o modo ativo).
 
-Sem `-u`, utiliza `ADMIN_USERNAME`.
+### Provedores com `DATABASE_URL` no formato `postgresql://`
 
----
+A aplicação aceita tanto `jdbc:postgresql://...` (com `DATABASE_USER` e `DATABASE_PASSWORD`) quanto o formato
+`postgresql://usuario:senha@host:5432/banco?sslmode=require` usado por Neon, Supabase e Render.
 
-## 🚀 Produção
+## Configuração
 
-Configure:
+Tudo é feito por variáveis de ambiente (veja o [`.env.example`](.env.example)).
 
-```env
-SITE_ADDRESS=seu.dominio
-PUBLIC_URL=https://seu.dominio
-ENVIRONMENT=production
-```
+| Variável | Padrão | Descrição |
+| --- | --- | --- |
+| `JWT_SECRET` | — | Assinatura da sessão. Obrigatória em produção (mínimo de 32 caracteres) |
+| `ENCRYPTION_KEY` | usa `JWT_SECRET` | Chave dos segredos guardados no banco |
+| `ADMIN_USERNAME` / `ADMIN_EMAIL` / `ADMIN_PASSWORD` | `admin` / — / vazio | Admin criado na primeira inicialização |
+| `ADMIN_FORCE_RESET` | `false` | Redefine a senha do admin existente (recuperação de acesso) |
+| `REGISTRATION_ENABLED` | `false` | Permite auto-cadastro na tela de login |
+| `PUBLIC_URL` / `EXTRA_ORIGINS` | `http://localhost:8080` | Origens aceitas em requisições que alteram estado |
+| `COOKIE_SECURE` | `true` em produção | Cookie só por HTTPS |
+| `ALLOW_PRIVATE_NETWORKS` | `true` | `false` bloqueia alvos em redes privadas |
+| `MONITOR_CONCURRENCY` | `20` | Checagens simultâneas |
+| `PROBE_TIMEOUT_SECONDS` | `2` | Tempo limite de cada checagem |
+| `METRICS_RETENTION_DAYS` | `14` | Retenção das amostras brutas (agregados horários: 400 dias) |
 
-Em produção:
+Recuperar o acesso de administrador: defina `ADMIN_PASSWORD` e `ADMIN_FORCE_RESET=true`, reinicie o
+serviço e remova `ADMIN_FORCE_RESET` em seguida.
 
-- `JWT_SECRET` forte é obrigatório
-- Cookies utilizam `Secure`
-- HTTPS é necessário
-- Caddy gerencia automaticamente o certificado TLS
+## Segurança
 
----
+- Senhas com Argon2; login com limite de tentativas por IP e usuário.
+- Sessão em cookie `httpOnly` + `SameSite=Lax`; proteção CSRF por verificação de origem em toda requisição que altera estado.
+- Alvos de diagnóstico e monitoramento passam por validação: loopback, link-local, endereços de metadata de
+  nuvem, multicast e reservados são sempre bloqueados; redes privadas podem ser desativadas.
+- Comandos do sistema (`ping`, `traceroute`) são executados sem shell, com argumentos em lista e IP já resolvido e validado.
+- Cabeçalhos de segurança (CSP, `X-Frame-Options`, `nosniff`, HSTS em produção).
+- Veja também a [política de segurança](SECURITY.md).
 
-## 💻 Desenvolvimento
-
-### Requisitos
-
-- Python 3.12+
-- uv
-- Node.js 20.9+
-- PostgreSQL
-- Redis
-- traceroute
-
-### Backend
+## Desenvolvimento
 
 ```bash
-cd backend
-
-cp .env.example .env
-
-uv sync
-
-uv run alembic upgrade head
-
-uv run uvicorn app.main:get_app \
-  --factory \
-  --reload \
-  --port 8000
+mvn verify          # compila e roda os testes unitários
+mvn spring-boot:run # sobe a aplicação
 ```
 
-Worker:
+Estrutura:
 
-```bash
-cd backend
-uv run python -m app.worker
+```
+src/main/java/dev/orbnoc
+├── core      regras puras e testáveis (validação de hosts, sondas, máquina de estados, tokens, criptografia)
+├── domain    entidades JPA
+├── repo      repositórios Spring Data
+├── service   casos de uso, monitor, tempo real, notificações, relatórios
+├── web/api   API REST
+├── web/ui    páginas Thymeleaf, gráficos SVG e layout do mapa
+└── ws        WebSocket
+src/main/resources
+├── db/migration   migrações Flyway
+├── templates      páginas e fragmentos HTML
+└── static         CSS e JavaScript
 ```
 
-### Frontend
+Veja o [guia de contribuição](CONTRIBUTING.md).
 
-```bash
-cd frontend
+## Licença
 
-npm install
-
-cp .env.example .env.local
-
-npm run dev
-```
-
-Sem Caddy, adicione ao `.env` do backend:
-
-```env
-EXTRA_ORIGINS=http://localhost:3000
-```
-
----
-
-## 🗃️ Migrations
-
-Após alterar:
-
-```text
-backend/app/db/models.py
-```
-
-gere a migration:
-
-```bash
-uv run alembic revision \
-  --autogenerate \
-  -m "descrição"
-```
-
-Aplique:
-
-```bash
-uv run alembic upgrade head
-```
-
----
-
-## 🧪 Testes
-
-### Backend
-
-```bash
-cd backend
-
-uv run ruff check .
-uv run pytest
-```
-
-Os testes utilizam **PostgreSQL e Redis reais**.
-
-Configuração:
-
-```env
-TEST_DATABASE_URL=
-TEST_REDIS_URL=
-```
-
-Por padrão, o banco de testes utiliza:
-
-```text
-orbnoc_test
-```
-
-As migrations são aplicadas do zero a cada execução.
-
-### Frontend
-
-```bash
-cd frontend
-
-npm run typecheck
-npm run lint
-npm run build
-```
-
----
-
-## 📁 Estrutura
-
-```text
-orbnoc/
-├── backend/
-│   ├── app/
-│   │   ├── api/
-│   │   ├── core/
-│   │   ├── db/
-│   │   ├── services/
-│   │   └── worker/
-│   ├── alembic/
-│   ├── tests/
-│   ├── pyproject.toml
-│   └── Dockerfile
-│
-├── frontend/
-│   └── src/
-│       └── app/
-│           └── (authenticated)/
-│
-├── docker-compose.yml
-├── Caddyfile
-├── .env.example
-├── .github/workflows/ci.yml
-├── SECURITY.md
-├── LICENSE
-└── README.md
-```
-
----
-
-## 🔌 API
-
-### Autenticação
-
-| Método | Endpoint | Descrição |
-|---|---|---|
-| POST | `/api/auth/login` | Login |
-| POST | `/api/auth/logout` | Logout |
-| GET | `/api/auth/me` | Usuário autenticado |
-| GET | `/api/auth/config` | Configuração |
-| POST | `/api/auth/register` | Registro, quando habilitado |
-
-### Usuários
-
-| Método | Endpoint | Descrição |
-|---|---|---|
-| GET | `/api/users` | Listar |
-| POST | `/api/users` | Criar |
-| PATCH | `/api/users/{id}` | Atualizar |
-| DELETE | `/api/users/{id}` | Remover |
-
-### Dispositivos
-
-| Método | Endpoint | Descrição |
-|---|---|---|
-| GET | `/api/devices` | Listar |
-| POST | `/api/devices` | Criar |
-| PATCH | `/api/devices/{id}` | Atualizar |
-| DELETE | `/api/devices/{id}` | Remover |
-| GET | `/api/devices/{id}/ping` | Ping |
-| POST | `/api/devices/{id}/check-port` | Testar porta |
-| GET | `/api/devices/{id}/history` | Histórico |
-| GET | `/api/devices/{id}/sla` | SLA |
-
-### Alertas
-
-| Método | Endpoint |
-|---|---|
-| GET | `/api/alerts` |
-| POST | `/api/alerts/{id}/ack` |
-| POST | `/api/alerts/ack-all` |
-| GET | `/api/alerts/telegram` |
-| POST | `/api/alerts/telegram` |
-| DELETE | `/api/alerts/telegram` |
-| POST | `/api/alerts/sla/configure` |
-| POST | `/api/alerts/test-telegram` |
-| POST | `/api/alerts/test-host` |
-
-### Diagnóstico
-
-```text
-POST /api/diagnostic/ping
-POST /api/diagnostic/traceroute
-POST /api/diagnostic/port-check
-POST /api/diagnostic/dns-lookup
-POST /api/diagnostic/full-diagnostic
-```
-
-### Relatórios
-
-| Método | Endpoint | Descrição |
-|---|---|---|
-| GET | `/api/sla` | Indicadores de SLA |
-| GET | `/api/uptime-series` | Uptime histórico |
-| GET | `/api/reports/summary` | Resumo operacional |
-| GET | `/api/reports/export` | CSV/XLSX |
-
-Exemplo:
-
-```text
-/api/reports/export?format=csv&window=24h
-```
-
-Janelas:
-
-```text
-24h · 7d · 30d
-```
-
----
-
-## ⚡ Tempo real
-
-WebSocket:
-
-```text
-WS /ws
-```
-
-A autenticação utiliza o cookie de sessão.
-
-Principais mensagens:
-
-```text
-devices_update
-event
-```
-
----
-
-## 📐 Convenções da API
-
-Os campos utilizam `snake_case`.
-
-```json
-{
-  "latency": 12.4,
-  "latency_ms": 12.4,
-  "packet_loss": 0,
-  "sla_threshold_ms": 100
-}
-```
-
-Erros:
-
-```json
-{
-  "detail": "mensagem"
-}
-```
-
----
-
-## 📚 Documentação da API
-
-A documentação interativa pode ser habilitada com:
-
-```env
-ENABLE_DOCS=true
-```
-
-Depois:
-
-```text
-/api/docs
-```
-
----
-
-## 🔒 Segurança
-
-O OrbNOC implementa:
-
-- 🔐 Senhas protegidas com Argon2
-- 🍪 JWT em cookie `httpOnly`
-- 🛡️ Cookies `Secure` em produção
-- 🔄 Proteção CSRF baseada em origens conhecidas
-- 🚦 Rate limit de login utilizando Redis
-- 🔑 Tokens do Telegram criptografados
-- 🌐 Validação de hosts para diagnóstico
-- 🚫 Bloqueio de loopback e metadata
-- 🧩 Execução de comandos sem shell
-- 📊 Proteção contra injeção de fórmulas
-- 👥 Controle de acesso por perfil
-- 🔒 Isolamento dos dispositivos por usuário
-
----
-
-## ✨ Principais recursos
-
-| Recurso | Descrição |
-|---|---|
-| 📡 Monitoramento | ICMP / TCP |
-| 📊 Métricas | Latência · Jitter · Packet Loss |
-| 🚨 Alertas | Indisponibilidade e SLA |
-| 🔔 Telegram | Notificações e testes |
-| 🔎 Diagnóstico | Ping · Traceroute · DNS · Portas |
-| 📈 Histórico | Uptime e métricas |
-| 🗺️ Mapa | Visualização dos dispositivos |
-| 📑 Relatórios | CSV / XLSX |
-| 🖥️ Wallboard | Visão operacional |
-| ⚡ Tempo real | WebSocket |
-| 👥 Usuários | Admin / User |
-| ❤️ Health | PostgreSQL · Redis · Worker |
-
----
-
-## 📄 Licença
-
-Este projeto está licenciado sob a **MIT License**.
-
-Consulte o arquivo [`LICENSE`](LICENSE) para mais informações.
+MIT — veja [LICENSE](LICENSE).

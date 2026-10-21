@@ -1,16 +1,22 @@
-# Contribuindo para o OrbNOC
+# Contribuindo
 
-O passo a passo de ambiente, testes e migrations está no [README](./README.md#desenvolvimento).
+Obrigado por querer ajudar!
 
-Antes de abrir um PR, rode o mesmo que o CI roda:
+## Ambiente
 
-```bash
-cd backend  && uv run ruff check . && uv run ruff format --check . && uv run pytest
-cd frontend && npm run typecheck && npm run lint && npm run build
-```
+Requisitos: JDK 21, Maven 3.9+ e PostgreSQL (ou Docker). As instruções de execução estão no [README](README.md).
 
-- Crie a branch a partir de `main` e faça commits pequenos e descritivos.
-- Rotas, services e regras de negócio novos precisam de teste (os testes do backend usam PostgreSQL e Redis reais).
-- Mudou o esquema? Altere `app/db/models.py` e gere a migration com `uv run alembic revision --autogenerate`; revise o arquivo antes de commitar.
-- Campos da API ficam em `snake_case` (contrato com o frontend).
-- Vulnerabilidades: veja [SECURITY.md](./SECURITY.md) — não abra issue pública.
+## Fluxo
+
+1. Faça um fork e crie uma branch (`feature/minha-ideia`).
+2. Escreva testes para o que mudar — a lógica de negócio fica em `core`, sem dependência de framework, para ser fácil de testar.
+3. Rode `mvn verify` antes de abrir o pull request.
+4. Descreva o que mudou e por quê.
+
+## Padrões
+
+- Java 21, formatação padrão do IntelliJ/Google Java Style, sem imports não usados.
+- Mensagens para o usuário em português do Brasil.
+- Alterações no banco entram como nova migração em `src/main/resources/db/migration` (nunca edite uma migração já publicada).
+- Entradas externas (hosts, portas, corpo de requisições) sempre validadas; comandos do sistema só com argumentos em lista, sem shell.
+- Não registre segredos (tokens, senhas) em logs.

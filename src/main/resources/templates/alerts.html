@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Alertas')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: appbar}"></header>
+<main class="page">
+  <div class="page-head">
+    <div><span class="eyebrow"><i class="dot dot-ok"></i> eventos em tempo real</span><h1>Alertas <span class="accent">e eventos</span></h1><p class="muted">Quedas, recuperações e violações de limite de latência</p></div>
+    <div class="actions"><span class="conn" data-conn>Conectando…</span></div>
+  </div>
+  <div id="live-alerts" data-fragment="/ui/fragments/alerts"><th:block th:replace="~{fragments/alerts :: list}"></th:block></div>
+</main>
+<div th:replace="~{fragments/layout :: toasts}"></div>
+</body>
+</html>

@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Painel')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: appbar}"></header>
+
+<main class="page">
+  <div class="page-head">
+    <div>
+      <span class="eyebrow"><i class="dot dot-ok"></i> monitoramento em tempo real</span>
+      <h1>Sua rede, <span class="accent">ao vivo.</span></h1>
+      <p class="muted">Disponibilidade, latência e alertas de toda a infraestrutura monitorada, num só lugar.</p>
+    </div>
+    <div class="actions">
+      <span class="conn" data-conn>Conectando…</span>
+      <button type="button" class="btn btn-ghost btn-sm" data-action="sound" title="Som ao receber alerta crítico">Som: <span data-sound-state>desligado</span></button>
+      <button type="button" class="btn btn-outline btn-sm" data-action="telegram">Telegram</button>
+      <button type="button" class="btn btn-outline btn-sm" data-action="test-all">Testar todos</button>
+      <button type="button" class="btn btn-outline btn-sm" data-action="refresh">Atualizar</button>
+      <a class="btn btn-outline btn-sm" href="/wallboard">Tela cheia</a>
+    </div>
+  </div>
+
+  <div id="live-top" data-fragment="/ui/fragments/dashboard-top"><th:block th:replace="~{fragments/dashboard :: top}"></th:block></div>
+
+  <section class="card devices-card">
+    <div class="card-head">
+      <h2>Dispositivos</h2>
+      <button type="button" class="btn btn-primary btn-sm" data-action="toggle-add">Adicionar dispositivo</button>
+    </div>
+
+    <form id="add-device-form" class="add-form" hidden>
+      <div class="form-grid">
+        <label class="field"><span>Nome</span><input class="input" name="name" required maxlength="255" placeholder="Roteador de borda"></label>
+        <label class="field"><span>Host (IP ou nome)</span><input class="input" name="ip" required maxlength="255" placeholder="192.168.0.1"></label>
+        <label class="field"><span>Local (opcional)</span><input class="input" name="location" maxlength="255" placeholder="Matriz"></label>
+        <label class="field"><span>Checagem</span>
+          <select class="input" name="check_type">
+            <option value="icmp">ICMP (ping)</option>
+            <option value="tcp">TCP (porta)</option>
+          </select>
+        </label>
+        <label class="field" data-tcp-only hidden><span>Porta</span><input class="input" type="number" name="port" min="1" max="65535" placeholder="443"></label>
+        <label class="field"><span>Intervalo (s)</span><input class="input" type="number" name="interval_seconds" min="5" max="3600" value="30"></label>
+        <label class="field"><span>Offline após (falhas)</span><input class="input" type="number" name="failure_threshold" min="1" max="20" value="3"></label>
+        <label class="field"><span>Limite de latência (ms)</span><input class="input" type="number" name="sla_threshold_ms" min="1" max="60000" placeholder="opcional"></label>
+      </div>
+      <p id="add-error" class="form-error" role="alert" hidden></p>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary btn-sm">Salvar</button>
+        <button type="button" class="btn btn-ghost btn-sm" data-action="toggle-add">Cancelar</button>
+      </div>
+    </form>
+
+    <form class="filters" method="get" action="/">
+      <input type="hidden" name="sort" th:value="${p.sort()}">
+      <input type="hidden" name="dir" th:value="${p.dir()}">
+      <input type="hidden" name="status" th:value="${p.status()}">
+      <input class="input" type="search" name="q" th:value="${p.q()}" placeholder="Buscar por nome, host ou local" aria-label="Buscar">
+      <div class="segmented" role="group" aria-label="Filtrar por status">
+        <a th:href="${@fmt.filterUrl(p, 'all')}" th:classappend="${p.status() == 'all'} ? 'on'">Todos</a>
+        <a th:href="${@fmt.filterUrl(p, 'online')}" th:classappend="${p.status() == 'online'} ? 'on'">Online</a>
+        <a th:href="${@fmt.filterUrl(p, 'offline')}" th:classappend="${p.status() == 'offline'} ? 'on'">Offline</a>
+        <a th:href="${@fmt.filterUrl(p, 'unknown')}" th:classappend="${p.status() == 'unknown'} ? 'on'">Aguardando</a>
+      </div>
+      <details class="advanced" th:open="${p.hasAdvancedFilters()}">
+        <summary>Filtros avançados</summary>
+        <div class="advanced-body">
+          <label class="field"><span>Latência mín. (ms)</span><input class="input" name="min" inputmode="decimal" th:value="${p.min()}"></label>
+          <label class="field"><span>Latência máx. (ms)</span><input class="input" name="max" inputmode="decimal" th:value="${p.max()}"></label>
+        </div>
+      </details>
+      <button type="submit" class="btn btn-outline btn-sm">Filtrar</button>
+      <a class="btn btn-ghost btn-sm" href="/" th:if="${p.active()}">Limpar</a>
+    </form>
+
+    <div id="live-table" data-fragment="/ui/fragments/dashboard-table"><th:block th:replace="~{fragments/dashboard :: table}"></th:block></div>
+  </section>
+</main>
+
+<dialog id="sla-dialog" class="dialog">
+  <form method="dialog" class="stack" id="sla-form">
+    <h3>Limite de latência</h3>
+    <p class="muted">Gera um alerta quando a latência de <b id="sla-name">—</b> passar do limite e outro quando voltar ao normal.</p>
+    <label class="field"><span>Limite (ms)</span><input class="input" type="number" id="sla-input" min="1" max="60000" placeholder="ex.: 80"></label>
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary btn-sm" value="save">Salvar</button>
+      <button type="button" class="btn btn-outline btn-sm" data-action="sla-clear">Remover limite</button>
+      <button type="button" class="btn btn-ghost btn-sm" data-action="close-dialog">Cancelar</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="telegram-dialog" class="dialog">
+  <form method="dialog" class="stack" id="telegram-form">
+    <h3>Notificações no Telegram</h3>
+    <p class="muted">Crie um bot com o @BotFather, inicie uma conversa com ele e informe o token e o Chat ID. O token é guardado cifrado.</p>
+    <label class="field"><span>Token do bot</span><input class="input" name="bot_token" autocomplete="off" placeholder="deixe vazio para manter o atual"></label>
+    <label class="field"><span>Chat ID</span><input class="input" name="chat_id" autocomplete="off" placeholder="123456789 ou @canal"></label>
+    <label class="check"><input type="checkbox" name="enabled"> Enviar alertas</label>
+    <p id="telegram-status" class="muted" hidden></p>
+    <p id="telegram-error" class="form-error" role="alert" hidden></p>
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary btn-sm" value="save">Salvar e testar</button>
+      <button type="button" class="btn btn-outline btn-sm" data-action="telegram-remove">Remover</button>
+      <button type="button" class="btn btn-ghost btn-sm" data-action="close-dialog">Fechar</button>
+    </div>
+  </form>
+</dialog>
+
+<div th:replace="~{fragments/layout :: toasts}"></div>
+</body>
+</html>

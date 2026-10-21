@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<th:block th:fragment="pingBox(p)">
+  <div class="kpis kpis-sm">
+    <article class="kpi" th:classappend="${p['status'] == 'online'} ? 'kpi-ok' : 'kpi-bad'"><span class="kpi-label">Resultado</span><strong class="kpi-value" th:text="${p['status'] == 'online'} ? 'Respondeu' : 'Sem resposta'">—</strong><span class="kpi-sub" th:text="${p['success_count']} + ' de ' + ${p['total_count']} + ' pacotes · ' + ${p['method']}">—</span></article>
+    <article class="kpi"><span class="kpi-label">Perda</span><strong class="kpi-value" th:text="${p['packet_loss']} + '%'">0%</strong></article>
+    <article class="kpi"><span class="kpi-label">Latência média</span><strong class="kpi-value" th:text="${@fmt.ms(p['avg_latency'])}">—</strong></article>
+    <article class="kpi"><span class="kpi-label">Mín / Máx</span><strong class="kpi-value" th:text="${@fmt.ms(p['min_latency'])} + ' / ' + ${@fmt.ms(p['max_latency'])}">—</strong></article>
+  </div>
+</th:block>
+
+<th:block th:fragment="portsTable(list)">
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>Porta</th><th>Estado</th><th class="num">Latência</th></tr></thead>
+      <tbody>
+        <tr th:each="x : ${list}">
+          <td class="mono" th:text="${x['port']}">80</td>
+          <td><span class="pill" th:classappend="${x['open']} ? 'pill-ok' : 'pill-bad'" th:text="${x['open']} ? 'Aberta' : 'Fechada/filtrada'">Aberta</span></td>
+          <td class="num" th:text="${x['open']} ? ${@fmt.ms(x['latency'])} : '—'">—</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</th:block>
+
+<th:block th:fragment="dnsBox(d)">
+  <p th:if="${!d['success']}" class="text-bad">Consulta DNS falhou: <b th:text="${d['error']}">erro</b></p>
+  <div class="table-wrap" th:if="${d['success']}">
+    <table class="table">
+      <thead><tr><th th:text="'Registros ' + ${d['record_type']} + ' de ' + ${d['domain']}">Registros</th></tr></thead>
+      <tbody><tr th:each="rec : ${d['records']}"><td class="mono" th:text="${rec['value']}">valor</td></tr></tbody>
+    </table>
+  </div>
+</th:block>
+
+<th:block th:fragment="result">
+  <div class="alert-box" th:if="${error != null}" role="alert" th:text="${error}">erro</div>
+
+  <th:block th:if="${error == null and r != null}">
+    <p class="muted" th:if="${r['host'] != null}">Alvo: <b th:text="${r['host']}">host</b><span th:if="${r['address'] != null and r['address'] != r['host']}"> → <span class="mono" th:text="${r['address']}">ip</span></span></p>
+
+    <th:block th:if="${tool == 'ping'}"><th:block th:replace="~{fragments/diagnostic :: pingBox(${r})}"></th:block></th:block>
+
+    <th:block th:if="${tool == 'traceroute'}">
+      <div class="table-wrap">
+        <table class="table">
+          <thead><tr><th>Salto</th><th>Endereço</th><th class="num">Latência</th></tr></thead>
+          <tbody>
+            <tr th:each="h : ${r['hops']}">
+              <td th:text="${h['hop']}">1</td>
+              <td class="mono" th:text="${h['ip'] != null} ? ${h['ip']} : '* sem resposta'">ip</td>
+              <td class="num" th:text="${@fmt.ms(h['latency'])}">—</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </th:block>
+
+    <th:block th:if="${tool == 'dns'}"><th:block th:replace="~{fragments/diagnostic :: dnsBox(${r})}"></th:block></th:block>
+
+    <th:block th:if="${tool == 'ports'}"><th:block th:replace="~{fragments/diagnostic :: portsTable(${r['results']})}"></th:block></th:block>
+
+    <th:block th:if="${tool == 'full'}">
+      <h3>Ping</h3>
+      <th:block th:replace="~{fragments/diagnostic :: pingBox(${r['ping']})}"></th:block>
+      <h3>Portas</h3>
+      <th:block th:replace="~{fragments/diagnostic :: portsTable(${r['ports']})}"></th:block>
+      <th:block th:if="${r['dns'] != null}">
+        <h3>DNS</h3>
+        <th:block th:replace="~{fragments/diagnostic :: dnsBox(${r['dns']})}"></th:block>
+      </th:block>
+    </th:block>
+  </th:block>
+</th:block>
+
+</body>
+</html>

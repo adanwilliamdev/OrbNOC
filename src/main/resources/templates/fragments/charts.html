@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<body>
+<svg th:fragment="line(c, cls, xmode)" class="chart" th:attr="viewBox='0 0 ' + ${c.width()} + ' ' + ${c.height()}" role="img">
+  <g class="chart-grid">
+    <line th:each="t : ${c.yTicks()}" th:attr="x1=${c.left()},x2=${c.width() - c.right()},y1=${t.pos()},y2=${t.pos()}"></line>
+  </g>
+  <g class="chart-ylabels">
+    <text th:each="t : ${c.yTicks()}" text-anchor="end" th:attr="x=${c.left() - 6},y=${t.pos() + 4}" th:text="${t.text()}"></text>
+  </g>
+  <g class="chart-xlabels">
+    <text th:each="t : ${c.xTicks()}" text-anchor="middle" th:attr="x=${t.pos()},y=${c.height() - 8},data-iso=${t.iso()},data-localtime=${xmode}"></text>
+  </g>
+  <path th:class="'chart-area ' + ${cls}" th:attr="d=${c.area()}"></path>
+  <path th:class="'chart-line ' + ${cls}" th:attr="d=${c.path()}"></path>
+</svg>
+</body>
+</html>

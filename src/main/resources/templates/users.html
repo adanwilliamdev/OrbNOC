@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Usuários')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: appbar}"></header>
+<main class="page">
+  <div class="page-head">
+    <div><span class="eyebrow"><i class="dot dot-ok"></i> administração</span><h1>Gestão de <span class="accent">usuários</span></h1><p class="muted">Contas com acesso ao OrbNOC</p></div>
+    <div class="actions"><button type="button" class="btn btn-primary btn-sm" data-action="user-new">Novo usuário</button></div>
+  </div>
+  <section class="card">
+    <div class="table-wrap">
+      <table class="table">
+        <thead><tr><th>Usuário</th><th>Email</th><th>Perfil</th><th>Status</th><th>Último acesso</th><th class="actions-col">Ações</th></tr></thead>
+        <tbody>
+          <tr th:each="u : ${list}">
+            <td><b th:text="${u.username()}">usuario</b><span class="pill pill-info" th:if="${u.id() == user.id}">você</span></td>
+            <td th:text="${u.email()}">email</td>
+            <td th:text="${@fmt.roleLabel(u.role())}">Usuário</td>
+            <td><span class="pill" th:classappend="${u.active()} ? 'pill-ok' : 'pill-idle'" th:text="${u.active()} ? 'Ativo' : 'Desativado'">Ativo</span></td>
+            <td class="muted"><time data-localtime="datetime" th:attr="data-iso=${@fmt.iso(u.lastLogin())}" th:text="${u.lastLogin() != null} ? ${@fmt.utc(u.lastLogin())} : 'nunca'">—</time></td>
+            <td class="actions-col">
+              <button type="button" class="btn btn-outline btn-xs" data-action="user-toggle" th:attr="data-id=${u.id()},data-active=${!u.active()}" th:text="${u.active()} ? 'Desativar' : 'Ativar'">Desativar</button>
+              <button type="button" class="btn btn-outline btn-xs" data-action="user-role" th:attr="data-id=${u.id()},data-role=${u.role() == 'admin' ? 'user' : 'admin'}" th:text="${u.role() == 'admin'} ? 'Tornar usuário' : 'Tornar admin'">Tornar admin</button>
+              <button type="button" class="btn btn-outline btn-xs" data-action="user-reset" th:attr="data-id=${u.id()},data-name=${u.username()}">Nova senha</button>
+              <button type="button" class="btn btn-danger btn-xs" data-action="user-delete" th:attr="data-id=${u.id()},data-name=${u.username()}">Remover</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<dialog id="user-dialog" class="dialog">
+  <form method="dialog" class="stack" id="user-form">
+    <h3>Novo usuário</h3>
+    <label class="field"><span>Usuário</span><input class="input" name="username" required maxlength="100" autocomplete="off"></label>
+    <label class="field"><span>Email</span><input class="input" type="email" name="email" required maxlength="255" autocomplete="off"></label>
+    <label class="field"><span>Senha inicial</span><input class="input" type="password" name="password" required minlength="8" maxlength="128" autocomplete="new-password"></label>
+    <label class="field"><span>Perfil</span><select class="input" name="role"><option value="user">Usuário</option><option value="admin">Administrador</option></select></label>
+    <p id="user-error" class="form-error" role="alert" hidden></p>
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary btn-sm" value="save">Criar</button>
+      <button type="button" class="btn btn-ghost btn-sm" data-action="close-dialog">Cancelar</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="reset-dialog" class="dialog">
+  <form method="dialog" class="stack" id="reset-form">
+    <h3>Nova senha</h3>
+    <p class="muted">Definir nova senha para <b id="reset-name">—</b>.</p>
+    <label class="field"><span>Nova senha</span><input class="input" type="password" name="password" required minlength="8" maxlength="128" autocomplete="new-password"></label>
+    <p id="reset-error" class="form-error" role="alert" hidden></p>
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary btn-sm" value="save">Salvar</button>
+      <button type="button" class="btn btn-ghost btn-sm" data-action="close-dialog">Cancelar</button>
+    </div>
+  </form>
+</dialog>
+
+<div th:replace="~{fragments/layout :: toasts}"></div>
+</body>
+</html>

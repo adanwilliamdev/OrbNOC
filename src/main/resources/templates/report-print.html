@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Relatório de SLA')}"></head>
+<body class="print-body">
+<main class="print-page">
+  <div class="print-head">
+    <div>
+      <h1>OrbNOC — Relatório de SLA</h1>
+      <p>Janela: <b th:text="${window}">24h</b> · Gerado em <time data-localtime="datetime" th:attr="data-iso=${@fmt.iso(generatedAt)}" th:text="${@fmt.utc(generatedAt)}">—</time> · <span th:text="${user.username}">usuário</span></p>
+    </div>
+    <button type="button" class="btn btn-primary btn-sm no-print" data-action="print">Imprimir / salvar PDF</button>
+  </div>
+  <p class="print-summary">
+    Disponibilidade média <b th:text="${@fmt.pct(totals['avg_uptime'], 2)}">—</b> ·
+    Latência média <b th:text="${@fmt.ms(totals['avg_latency'])}">—</b> ·
+    <b th:text="${totals['devices']}">0</b> dispositivos (<span th:text="${totals['online']}">0</span> online, <span th:text="${totals['offline']}">0</span> offline)
+  </p>
+  <table class="print-table">
+    <thead><tr><th>Dispositivo</th><th>Host</th><th>Local</th><th>Status</th><th>Disponibilidade</th><th>Latência média</th><th>Amostras</th><th>Limite</th></tr></thead>
+    <tbody>
+      <tr th:each="r : ${rows}">
+        <td th:text="${r.name()}">nome</td>
+        <td th:text="${r.ip()}">ip</td>
+        <td th:text="${r.location() != null} ? ${r.location()} : '—'">—</td>
+        <td th:text="${@fmt.statusLabel(r.status())}">Online</td>
+        <td th:text="${@fmt.pct(r.uptimePct(), 3)}">—</td>
+        <td th:text="${@fmt.ms(r.avgLatency())}">—</td>
+        <td th:text="${r.sampleCount()}">0</td>
+        <td th:text="${r.slaThresholdMs() != null} ? ${r.slaThresholdMs()} + ' ms' : '—'">—</td>
+      </tr>
+    </tbody>
+  </table>
+</main>
+</body>
+</html>

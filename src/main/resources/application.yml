@@ -1,0 +1,76 @@
+spring:
+  application:
+    name: orbnoc
+  main:
+    banner-mode: off
+  threads:
+    virtual:
+      enabled: true
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: none
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  jackson:
+    property-naming-strategy: SNAKE_CASE
+    serialization:
+      write-dates-as-timestamps: false
+  thymeleaf:
+    cache: true
+    prefix: classpath:/templates/
+    suffix: .html
+  web:
+    resources:
+      cache:
+        cachecontrol:
+          max-age: 1h
+
+server:
+  port: ${PORT:8080}
+  forward-headers-strategy: native
+  compression:
+    enabled: true
+  error:
+    include-message: never
+    include-stacktrace: never
+  servlet:
+    session:
+      tracking-modes: cookie
+
+logging:
+  level:
+    root: INFO
+
+orbnoc:
+  environment: ${ENVIRONMENT:development}
+  database-url: ${DATABASE_URL:postgresql://postgres:postgres@localhost:5432/orbnoc}
+  database-user: ${DATABASE_USER:}
+  database-password: ${DATABASE_PASSWORD:}
+  database-ssl: ${DATABASE_SSL:false}
+  jwt-secret: ${JWT_SECRET:}
+  encryption-key: ${ENCRYPTION_KEY:}
+  session-ttl-hours: ${SESSION_TTL_HOURS:24}
+  cookie-name: ${COOKIE_NAME:orbnoc_session}
+  cookie-secure: ${COOKIE_SECURE:auto}
+  public-url: ${PUBLIC_URL:http://localhost:8080}
+  extra-origins: ${EXTRA_ORIGINS:}
+  registration-enabled: ${REGISTRATION_ENABLED:false}
+  admin-username: ${ADMIN_USERNAME:admin}
+  admin-email: ${ADMIN_EMAIL:admin@example.com}
+  admin-password: ${ADMIN_PASSWORD:}
+  admin-force-reset: ${ADMIN_FORCE_RESET:false}
+  allow-private-networks: ${ALLOW_PRIVATE_NETWORKS:true}
+  worker-enabled: ${WORKER_ENABLED:true}
+  worker-tick-seconds: ${WORKER_TICK_SECONDS:2}
+  monitor-concurrency: ${MONITOR_CONCURRENCY:20}
+  probe-timeout-seconds: ${PROBE_TIMEOUT_SECONDS:2}
+  metrics-retention-days: ${METRICS_RETENTION_DAYS:14}
+  hourly-retention-days: ${HOURLY_RETENTION_DAYS:400}
+  events-retention-days: ${EVENTS_RETENTION_DAYS:90}
+  access-log-retention-days: ${ACCESS_LOG_RETENTION_DAYS:180}
+  health-worker-max-age-seconds: ${HEALTH_WORKER_MAX_AGE_SECONDS:30}
+  login-max-attempts: ${LOGIN_MAX_ATTEMPTS:8}
+  login-window-seconds: ${LOGIN_WINDOW_SECONDS:900}

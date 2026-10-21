@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<th:block th:fragment="top">
+  <section class="kpis">
+    <article class="kpi">
+      <span class="kpi-label">Dispositivos</span>
+      <strong class="kpi-value" th:text="${stats.total()}">0</strong>
+      <span class="kpi-sub" th:text="${stats.unknown() > 0} ? ${stats.unknown()} + ' aguardando 1ª checagem' : 'monitorados'">monitorados</span>
+    </article>
+    <article class="kpi kpi-ok">
+      <span class="kpi-label">Online</span>
+      <strong class="kpi-value" th:text="${stats.online()}">0</strong>
+      <span class="kpi-sub" th:text="'latência média ' + ${@fmt.ms(stats.avgLatency())}">—</span>
+    </article>
+    <article class="kpi" th:classappend="${stats.offline() > 0} ? 'kpi-bad'">
+      <span class="kpi-label">Offline</span>
+      <strong class="kpi-value" th:text="${stats.offline()}">0</strong>
+      <span class="kpi-sub" th:text="${stats.offline() > 0} ? 'requer atenção' : 'tudo respondendo'">—</span>
+    </article>
+    <article class="kpi">
+      <span class="kpi-label">Disponibilidade</span>
+      <strong class="kpi-value" th:text="${stats.availability()} + '%'">0%</strong>
+      <span class="kpi-sub">dos dispositivos medidos</span>
+    </article>
+  </section>
+
+  <section class="fleet card" aria-label="Frota">
+    <div class="fleet-head"><h2>Frota</h2><span class="muted" th:text="${stats.total()} + ' dispositivos'">0</span></div>
+    <div class="fleet-strip" th:if="${!fleet.isEmpty()}">
+      <span th:each="d : ${fleet}" class="tick" th:classappend="'tick-' + ${@fmt.statusClass(d.status())}"
+            th:title="${d.name()} + ' · ' + ${@fmt.statusLabel(d.status())}"></span>
+    </div>
+    <p class="muted empty" th:if="${fleet.isEmpty()}">Nenhum dispositivo ainda. Adicione o primeiro abaixo.</p>
+  </section>
+
+  <section class="grid-4">
+    <article class="card">
+      <h2>Latência por dispositivo</h2>
+      <div class="bars" th:if="${!bars.isEmpty()}">
+        <div class="bar-row" th:each="b : ${bars}" th:title="${b.fullName()}">
+          <span class="bar-name" th:text="${b.name()}">host</span>
+          <span class="bar-track"><span class="bar-fill" th:classappend="'bar-' + ${b.cls()}" th:style="'width:' + ${b.pct()} + '%'"></span></span>
+          <span class="bar-val" th:text="${b.valueText()}">0 ms</span>
+        </div>
+      </div>
+      <p class="muted empty" th:if="${bars.isEmpty()}">Sem medições de latência ainda.</p>
+    </article>
+
+    <article class="card">
+      <h2>Status</h2>
+      <div class="donut-wrap">
+        <svg class="donut" viewBox="0 0 128 128" role="img" aria-label="Distribuição de status">
+          <circle class="donut-track" cx="64" cy="64" r="51" fill="none" stroke-width="18"></circle>
+          <g transform="rotate(-90 64 64)">
+            <circle th:each="s : ${donut.segments()}" cx="64" cy="64" r="51" fill="none" stroke-width="18"
+                    th:class="${s.color()}" th:attr="stroke-dasharray=${s.dash()},stroke-dashoffset=${s.offset()}"></circle>
+          </g>
+          <text x="64" y="62" text-anchor="middle" class="donut-num" th:text="${stats.total()}">0</text>
+          <text x="64" y="80" text-anchor="middle" class="donut-cap">dispositivos</text>
+        </svg>
+        <ul class="legend">
+          <li><i class="dot dot-ok"></i> Online <b th:text="${stats.online()}">0</b></li>
+          <li><i class="dot dot-bad"></i> Offline <b th:text="${stats.offline()}">0</b></li>
+          <li th:if="${stats.unknown() > 0}"><i class="dot dot-idle"></i> Aguardando <b th:text="${stats.unknown()}">0</b></li>
+        </ul>
+      </div>
+    </article>
+
+    <article class="card">
+      <h2>Disponibilidade (24 h)</h2>
+      <div class="uptime-big" th:text="${@fmt.pct(uptimeNow, 2)}">—</div>
+      <svg class="spark" th:if="${!uptimeLine.empty()}" th:attr="viewBox='0 0 ' + ${uptimeLine.width()} + ' ' + ${uptimeLine.height()}" preserveAspectRatio="none" role="img" aria-label="Disponibilidade nas últimas 24 horas">
+        <path class="spark-area" th:attr="d=${uptimeLine.area()}"></path>
+        <path class="spark-line" th:attr="d=${uptimeLine.path()}"></path>
+      </svg>
+      <p class="muted empty" th:if="${uptimeLine.empty()}">O histórico aparece após a primeira hora de coleta.</p>
+    </article>
+
+    <article class="card card-term">
+      <div class="term-head"><i></i><i></i><i></i><span>~/alertas</span></div>
+      <div class="term-body">
+      <div class="card-head"><h2><span class="term-prompt">$</span> alertas recentes</h2><a class="link" href="/alerts">ver todos</a></div>
+      <ul class="alert-mini" th:if="${!recent.isEmpty()}">
+        <li th:each="a : ${recent}">
+          <i class="dot" th:classappend="'dot-' + ${@fmt.severityClass(a.event().severity())}"></i>
+          <div>
+            <b th:text="${a.deviceName()}">host</b>
+            <span class="muted" th:text="${@fmt.kindLabel(a.event().kind())}">tipo</span>
+          </div>
+          <time class="muted" data-localtime="rel" th:attr="data-iso=${@fmt.iso(a.event().createdAt())}" th:text="${@fmt.ago(a.event().createdAt())}">agora</time>
+        </li>
+      </ul>
+      <p class="muted empty" th:if="${recent.isEmpty()}">Nenhum alerta. Tudo tranquilo.</p>
+      </div>
+    </article>
+  </section>
+</th:block>
+
+<th:block th:fragment="table">
+  <p class="muted result-count" th:text="'Mostrando ' + ${devices.size()} + ' de ' + ${total} + ' dispositivos'">0</p>
+  <div class="table-wrap" th:if="${!devices.isEmpty()}">
+    <table class="table">
+      <thead>
+        <tr>
+          <th><a th:href="${@fmt.sortUrl(p, 'status')}">Status <span th:text="${@fmt.sortMark(p, 'status')}"></span></a></th>
+          <th><a th:href="${@fmt.sortUrl(p, 'name')}">Dispositivo <span th:text="${@fmt.sortMark(p, 'name')}"></span></a></th>
+          <th><a th:href="${@fmt.sortUrl(p, 'ip')}">Host <span th:text="${@fmt.sortMark(p, 'ip')}"></span></a></th>
+          <th class="num"><a th:href="${@fmt.sortUrl(p, 'latency')}">Latência <span th:text="${@fmt.sortMark(p, 'latency')}"></span></a></th>
+          <th class="num">Perda</th>
+          <th><a th:href="${@fmt.sortUrl(p, 'checked')}">Checagem <span th:text="${@fmt.sortMark(p, 'checked')}"></span></a></th>
+          <th class="actions-col">Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        <th:block th:each="d : ${devices}">
+          <tr class="row" th:attr="data-row=${d.id()}">
+            <td>
+              <span class="pill" th:classappend="'pill-' + ${@fmt.statusClass(d.status())}">
+                <i class="dot" th:classappend="'dot-' + ${@fmt.statusClass(d.status())}"></i><span th:text="${@fmt.statusLabel(d.status())}">Online</span>
+              </span>
+              <span class="pill pill-warn" th:if="${d.slaBreached()}" title="Latência acima do limite configurado">SLA</span>
+            </td>
+            <td>
+              <button type="button" class="linklike" data-action="toggle-row" th:attr="data-id=${d.id()}" th:text="${d.name()}">nome</button>
+              <div class="muted small" th:if="${d.location() != null}" th:text="${d.location()}"></div>
+            </td>
+            <td class="mono"><span th:text="${d.ip()}">0.0.0.0</span><span class="muted small" th:if="${d.checkType() == 'tcp'}" th:text="' :' + ${d.port()}"></span></td>
+            <td class="num"><span class="lat" th:classappend="'lat-' + ${@fmt.latencyClass(d.latency())}" th:text="${@fmt.ms(d.latency())}">—</span></td>
+            <td class="num" th:text="${@fmt.pct(d.packetLoss(), 0)}">—</td>
+            <td class="muted"><time data-localtime="rel" th:attr="data-iso=${@fmt.iso(d.lastCheck())}" th:text="${@fmt.ago(d.lastCheck())}">—</time></td>
+            <td class="actions-col">
+              <button type="button" class="btn btn-outline btn-xs" data-action="ping" th:attr="data-id=${d.id()}">Ping</button>
+              <button type="button" class="btn btn-outline btn-xs" data-action="sla"
+                      th:attr="data-id=${d.id()},data-name=${d.name()},data-threshold=${d.slaThresholdMs()}">Limite</button>
+              <button type="button" class="btn btn-danger btn-xs" data-action="remove" th:attr="data-id=${d.id()},data-name=${d.name()}">Remover</button>
+            </td>
+          </tr>
+          <tr class="detail" hidden th:attr="data-detail=${d.id()}">
+            <td colspan="7">
+              <dl class="detail-grid">
+                <div><dt>Média</dt><dd th:text="${@fmt.ms(d.avgLatency())}">—</dd></div>
+                <div><dt>Mínima</dt><dd th:text="${@fmt.ms(d.minLatency())}">—</dd></div>
+                <div><dt>Máxima</dt><dd th:text="${@fmt.ms(d.maxLatency())}">—</dd></div>
+                <div><dt>Jitter</dt><dd th:text="${@fmt.ms(d.jitter())}">—</dd></div>
+                <div><dt>Estado há</dt><dd th:text="${@fmt.since(d.lastStatusChange())}">—</dd></div>
+                <div><dt>Checagem</dt><dd th:text="${d.checkType() == 'tcp'} ? 'TCP porta ' + ${d.port()} : 'ICMP (ping)'">ICMP</dd></div>
+                <div><dt>Intervalo</dt><dd th:text="${d.intervalSeconds()} + ' s'">30 s</dd></div>
+                <div><dt>Offline após</dt><dd th:text="${d.failureThreshold()} + ' falhas'">3</dd></div>
+                <div><dt>Limite de latência</dt><dd th:text="${d.slaThresholdMs() != null} ? ${d.slaThresholdMs()} + ' ms' : 'não definido'">—</dd></div>
+                <div class="wide" th:if="${d.lastError() != null}"><dt>Último erro</dt><dd class="text-bad" th:text="${d.lastError()}">—</dd></div>
+              </dl>
+            </td>
+          </tr>
+        </th:block>
+      </tbody>
+    </table>
+  </div>
+  <p class="muted empty" th:if="${devices.isEmpty() and total > 0}">Nenhum dispositivo corresponde aos filtros.</p>
+  <p class="muted empty" th:if="${total == 0}">Nenhum dispositivo cadastrado.</p>
+</th:block>
+
+</body>
+</html>

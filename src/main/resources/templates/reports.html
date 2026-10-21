@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Relatórios')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: appbar}"></header>
+<main class="page">
+  <div class="page-head">
+    <div><span class="eyebrow"><i class="dot dot-ok"></i> métricas consolidadas</span><h1>Relatórios de <span class="accent">SLA</span></h1><p class="muted">Disponibilidade e latência por dispositivo</p></div>
+    <div class="actions">
+      <div class="segmented" role="group" aria-label="Janela">
+        <a href="/reports?window=24h" th:classappend="${window == '24h'} ? 'on'">24 horas</a>
+        <a href="/reports?window=7d" th:classappend="${window == '7d'} ? 'on'">7 dias</a>
+        <a href="/reports?window=30d" th:classappend="${window == '30d'} ? 'on'">30 dias</a>
+      </div>
+      <a class="btn btn-outline btn-sm" th:href="@{/api/reports/export(window=${window},format='csv')}">CSV</a>
+      <a class="btn btn-outline btn-sm" th:href="@{/api/reports/export(window=${window},format='xlsx')}">Excel</a>
+      <a class="btn btn-outline btn-sm" th:href="@{/reports/print(window=${window})}" target="_blank" rel="noopener">Imprimir</a>
+    </div>
+  </div>
+
+  <section class="kpis">
+    <article class="kpi"><span class="kpi-label">Disponibilidade média</span><strong class="kpi-value" th:text="${@fmt.pct(totals['avg_uptime'], 2)}">—</strong><span class="kpi-sub">na janela selecionada</span></article>
+    <article class="kpi"><span class="kpi-label">Latência média</span><strong class="kpi-value" th:text="${@fmt.ms(totals['avg_latency'])}">—</strong><span class="kpi-sub">somente respostas válidas</span></article>
+    <article class="kpi"><span class="kpi-label">Dispositivos</span><strong class="kpi-value" th:text="${totals['devices']}">0</strong><span class="kpi-sub" th:text="${totals['online']} + ' online · ' + ${totals['offline']} + ' offline'">—</span></article>
+    <article class="kpi" th:classappend="${totals['sla_breached'] > 0} ? 'kpi-warn'"><span class="kpi-label">Acima do limite agora</span><strong class="kpi-value" th:text="${totals['sla_breached']}">0</strong><span class="kpi-sub">latência acima do configurado</span></article>
+  </section>
+
+  <section class="grid-2">
+    <article class="card">
+      <h2>Disponibilidade da frota</h2>
+      <th:block th:if="${!uptimeChart.empty()}"><th:block th:replace="~{fragments/charts :: line(${uptimeChart}, 'c-ok', ${xMode})}"></th:block></th:block>
+      <p class="muted empty" th:if="${uptimeChart.empty()}">Ainda não há dados consolidados por hora.</p>
+    </article>
+    <article class="card">
+      <h2>Latência média da frota</h2>
+      <th:block th:if="${!latencyChart.empty()}"><th:block th:replace="~{fragments/charts :: line(${latencyChart}, 'c-info', ${xMode})}"></th:block></th:block>
+      <p class="muted empty" th:if="${latencyChart.empty()}">Ainda não há dados consolidados por hora.</p>
+    </article>
+  </section>
+
+  <section class="card">
+    <h2>Por dispositivo</h2>
+    <div class="table-wrap" th:if="${!rows.isEmpty()}">
+      <table class="table">
+        <thead><tr><th>Dispositivo</th><th>Host</th><th>Status</th><th class="num">Disponibilidade</th><th class="num">Latência média</th><th class="num">Amostras</th><th class="num">Limite</th></tr></thead>
+        <tbody>
+          <tr th:each="r : ${rows}">
+            <td><b th:text="${r.name()}">nome</b><div class="muted small" th:if="${r.location() != null}" th:text="${r.location()}"></div></td>
+            <td class="mono" th:text="${r.ip()}">0.0.0.0</td>
+            <td><span class="pill" th:classappend="'pill-' + ${@fmt.statusClass(r.status())}" th:text="${@fmt.statusLabel(r.status())}">Online</span></td>
+            <td class="num" th:text="${@fmt.pct(r.uptimePct(), 3)}">—</td>
+            <td class="num">
+              <span th:text="${@fmt.ms(r.avgLatency())}">—</span>
+              <span class="pill pill-warn" th:if="${r.slaThresholdMs() != null and r.avgLatency() != null and r.avgLatency() > r.slaThresholdMs()}">acima</span>
+            </td>
+            <td class="num" th:text="${r.sampleCount()}">0</td>
+            <td class="num" th:text="${r.slaThresholdMs() != null} ? ${r.slaThresholdMs()} + ' ms' : '—'">—</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="muted empty" th:if="${rows.isEmpty()}">Nenhum dispositivo cadastrado.</p>
+  </section>
+</main>
+<div th:replace="~{fragments/layout :: toasts}"></div>
+</body>
+</html>

@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Diagnóstico')}"></head>
+<body>
+<header th:replace="~{fragments/layout :: appbar}"></header>
+<main class="page">
+  <div class="page-head">
+    <div><span class="eyebrow"><i class="dot dot-ok"></i> ferramentas de rede</span><h1>Diagnóstico <span class="accent">de rede</span></h1><p class="muted">Ping, traceroute, DNS e teste de portas a partir do servidor OrbNOC</p></div>
+  </div>
+
+  <section class="card">
+    <div class="segmented tool-tabs" role="tablist" aria-label="Ferramenta">
+      <button type="button" data-action="diag-tool" data-tool="full" th:classappend="${tool == 'full'} ? 'on'">Completo</button>
+      <button type="button" data-action="diag-tool" data-tool="ping" th:classappend="${tool == 'ping'} ? 'on'">Ping</button>
+      <button type="button" data-action="diag-tool" data-tool="traceroute" th:classappend="${tool == 'traceroute'} ? 'on'">Traceroute</button>
+      <button type="button" data-action="diag-tool" data-tool="dns" th:classappend="${tool == 'dns'} ? 'on'">DNS</button>
+      <button type="button" data-action="diag-tool" data-tool="ports" th:classappend="${tool == 'ports'} ? 'on'">Portas</button>
+    </div>
+    <form id="diag-form" class="diag-form">
+      <input type="hidden" name="tool" th:value="${tool}">
+      <label class="field grow"><span data-host-label>Host</span><input class="input" name="host" required maxlength="255" placeholder="8.8.8.8 ou exemplo.com" autocomplete="off"></label>
+      <label class="field tool-field" data-for="ping"><span>Pacotes</span><input class="input" type="number" name="count" min="1" max="10" value="4"></label>
+      <label class="field tool-field" data-for="traceroute"><span>Saltos máx.</span><input class="input" type="number" name="max_hops" min="1" max="30" value="20"></label>
+      <label class="field tool-field" data-for="dns">
+        <span>Registro</span>
+        <select class="input" name="record_type"><option>A</option><option>AAAA</option><option>MX</option><option>TXT</option><option>CNAME</option><option>NS</option><option>SOA</option><option>PTR</option></select>
+      </label>
+      <label class="field tool-field" data-for="ports full"><span>Portas</span><input class="input" name="ports" placeholder="22, 80, 443" autocomplete="off"></label>
+      <button type="submit" class="btn btn-primary">Executar</button>
+    </form>
+  </section>
+
+  <section class="card card-term" id="diag-result-card">
+    <div class="term-head"><i></i><i></i><i></i><span>~/diagnostico</span></div>
+    <div class="term-body"><div id="diag-result"><p class="muted empty"><span class="term-prompt">$</span> escolha uma ferramenta, informe o host e execute.</p></div></div>
+  </section>
+</main>
+<div th:replace="~{fragments/layout :: toasts}"></div>
+</body>
+</html>

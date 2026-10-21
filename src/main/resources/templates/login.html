@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Entrar')}"></head>
+<body class="login-body">
+<main class="login-wrap">
+  <section class="login-card">
+    <div class="login-brand">
+      <img src="/favicon.svg" alt="" width="48" height="48">
+      <div>
+        <h1>Orb<b>NOC</b></h1>
+        <p class="muted">Monitoramento de rede em tempo real</p>
+      </div>
+    </div>
+    <form id="login-form" class="stack" autocomplete="on">
+      <label class="field">
+        <span>Usuário ou email</span>
+        <input class="input" name="username" autocomplete="username" required maxlength="255" autofocus>
+      </label>
+      <label class="field">
+        <span>Senha</span>
+        <input class="input" type="password" name="password" autocomplete="current-password" required maxlength="256">
+      </label>
+      <p id="login-error" class="form-error" role="alert" hidden></p>
+      <button class="btn btn-primary btn-block" type="submit">Entrar</button>
+    </form>
+    <details id="register-box" class="register" hidden>
+      <summary>Criar conta</summary>
+      <form id="register-form" class="stack">
+        <label class="field"><span>Usuário</span><input class="input" name="username" autocomplete="username" required maxlength="100"></label>
+        <label class="field"><span>Email</span><input class="input" type="email" name="email" autocomplete="email" required maxlength="255"></label>
+        <label class="field"><span>Senha</span><input class="input" type="password" name="password" autocomplete="new-password" required minlength="8" maxlength="128"></label>
+        <p id="register-error" class="form-error" role="alert" hidden></p>
+        <button class="btn btn-outline btn-block" type="submit">Registrar</button>
+      </form>
+    </details>
+  </section>
+</main>
+<div th:replace="~{fragments/layout :: toasts}"></div>
+</body>
+</html>

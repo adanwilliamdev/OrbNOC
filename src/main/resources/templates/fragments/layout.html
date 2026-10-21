@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<head th:fragment="head(title)">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title th:text="${title} + ' · OrbNOC'">OrbNOC</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="stylesheet" href="/css/app.css">
+  <script src="/js/live.js" defer></script>
+</head>
+<body>
+
+<th:block th:fragment="badge"><span th:if="${unread != null and unread > 0}" class="nav-badge" th:text="${unread > 99 ? '99+' : unread}">0</span></th:block>
+
+<header class="appbar" th:fragment="appbar">
+  <div class="appbar-inner">
+    <a class="brand" href="/">
+      <img src="/favicon.svg" alt="" width="26" height="26">
+      <span>Orb<b>NOC</b></span>
+    </a>
+    <nav class="nav" aria-label="Principal">
+      <a href="/" th:classappend="${nav == 'dashboard'} ? 'active'">Painel</a>
+      <a href="/network-map" th:classappend="${nav == 'network-map'} ? 'active'">Mapa</a>
+      <a href="/alerts" th:classappend="${nav == 'alerts'} ? 'active'">Alertas
+        <span class="badge-slot" data-fragment="/ui/fragments/alert-badge"><th:block th:replace="~{fragments/layout :: badge}"></th:block></span>
+      </a>
+      <a href="/reports" th:classappend="${nav == 'reports'} ? 'active'">Relatórios</a>
+      <a href="/diagnostic" th:classappend="${nav == 'diagnostic'} ? 'active'">Diagnóstico</a>
+      <a href="/users" th:if="${isAdmin}" th:classappend="${nav == 'users'} ? 'active'">Usuários</a>
+    </nav>
+    <div class="appbar-user">
+      <span class="who" th:text="${user.username}">usuário</span>
+      <button type="button" class="btn btn-ghost btn-sm" data-action="logout">Sair</button>
+    </div>
+  </div>
+</header>
+
+<div th:fragment="toasts" class="toasts" id="toasts" aria-live="polite"></div>
+
+</body>
+</html>

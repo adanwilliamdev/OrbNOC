@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
+<body>
+<th:block th:fragment="map">
+  <div class="map-legend">
+    <span><i class="dot dot-ok"></i> Online <b th:text="${stats.online()}">0</b></span>
+    <span><i class="dot dot-bad"></i> Offline <b th:text="${stats.offline()}">0</b></span>
+    <span><i class="dot dot-idle"></i> Aguardando <b th:text="${stats.unknown()}">0</b></span>
+  </div>
+  <div class="map-frame">
+    <svg id="net-map" class="net-map" data-pan-zoom th:attr="viewBox=${layout.viewBox()}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Mapa de rede">
+      <g class="edges">
+        <path th:each="e : ${layout.edges()}" th:attr="d=${e.path()}" class="edge" th:classappend="'edge-' + ${@fmt.statusClass(e.status())}"></path>
+      </g>
+      <g class="nodes">
+        <g th:each="n : ${layout.nodes()}" class="node" th:classappend="${n.core()} ? 'node-core' : 'node-' + ${@fmt.statusClass(n.status())}"
+           th:attr="transform=${n.transform()},data-title=${n.title()},data-sub=${n.subtitle()},data-status=${n.statusText()},data-latency=${n.latency()},data-checked=${n.checked()}"
+           tabindex="0">
+          <rect width="168" height="76" rx="12" class="node-box"></rect>
+          <circle cx="18" cy="20" r="5" class="node-dot"></circle>
+          <text x="32" y="25" class="node-title" th:text="${#strings.abbreviate(n.title(), 20)}">nome</text>
+          <text x="16" y="48" class="node-sub" th:text="${#strings.abbreviate(n.subtitle(), 28)}">ip</text>
+          <text x="16" y="64" class="node-meta" th:text="${n.meta()}">—</text>
+        </g>
+      </g>
+    </svg>
+    <aside class="map-detail" id="map-detail" hidden>
+      <h3 data-d="title">—</h3>
+      <dl>
+        <div><dt>Endereço</dt><dd data-d="sub">—</dd></div>
+        <div><dt>Status</dt><dd data-d="status">—</dd></div>
+        <div><dt>Latência</dt><dd data-d="latency">—</dd></div>
+        <div><dt>Última checagem</dt><dd data-d="checked">—</dd></div>
+      </dl>
+    </aside>
+  </div>
+</th:block>
+</body>
+</html>
