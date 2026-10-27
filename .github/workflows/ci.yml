@@ -15,8 +15,18 @@ jobs:
           distribution: temurin
           java-version: "21"
           cache: maven
+      # "verify" roda os testes unitários (surefire) e os de integração *IT (failsafe), que usam
+      # PostgreSQL real via Testcontainers; o runner do GitHub já traz Docker.
       - name: Compilar e testar
         run: mvn -B verify
+      - name: Anexar relatórios de teste (em caso de falha)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: relatorios-de-teste
+          path: |
+            target/surefire-reports
+            target/failsafe-reports
 
   docker:
     runs-on: ubuntu-latest

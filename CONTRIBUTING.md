@@ -10,7 +10,7 @@ Requisitos: JDK 21, Maven 3.9+ e PostgreSQL (ou Docker). As instruções de exec
 
 1. Faça um fork e crie uma branch (`feature/minha-ideia`).
 2. Escreva testes para o que mudar — a lógica de negócio fica em `core`, sem dependência de framework, para ser fácil de testar.
-3. Rode `mvn verify` antes de abrir o pull request.
+3. Rode `mvn verify` antes de abrir o pull request (inclui os testes de integração, que precisam de Docker). Para endpoints, regras de banco e monitor, prefira um `*IT` que estenda `IntegrationTestBase`.
 4. Descreva o que mudou e por quê.
 
 ## Padrões

@@ -130,9 +130,24 @@ serviço e remova `ADMIN_FORCE_RESET` em seguida.
 ## Desenvolvimento
 
 ```bash
-mvn verify          # compila e roda os testes unitários
+mvn verify          # compila e roda os testes unitários e de integração (requer Docker)
 mvn spring-boot:run # sobe a aplicação
 ```
+
+### Testes
+
+| Tipo | Classes | Comando | Requisitos |
+|---|---|---|---|
+| Unitários | `*Test` (regras puras de `core`, helpers de UI) | `mvn test` | nenhum |
+| Integração | `*IT` (API, segurança, monitor, banco) | `mvn verify` | Docker |
+
+Os testes de integração sobem a aplicação inteira contra um **PostgreSQL real** (Testcontainers,
+imagem `postgres:16-alpine`, a mesma do `docker-compose.yml`). Um único contêiner é compartilhado por
+toda a suíte e o banco é esvaziado antes de cada teste. As sondas de rede são simuladas, então nada
+sai da máquina. Sem Docker, os `*IT` são ignorados localmente e **falham no CI** (variável `CI`).
+
+Para rodar uma classe: `mvn verify -Dit.test=DeviceApiIT` (e `-Dtest=NaoExiste -Dsurefire.failIfNoSpecifiedTests=false`
+para pular os unitários). Novos testes de integração estendem `dev.orbnoc.support.IntegrationTestBase`.
 
 Estrutura:
 

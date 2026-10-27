@@ -45,7 +45,7 @@ public class MonitorWorker {
 
     private record Target(Long id, String ip, String checkType, Integer port) {}
 
-    private record Round(int checked, long durationMillis) {}
+    record Round(int checked, long durationMillis) {}
 
     private final OrbNocProperties props;
     private final DeviceRepository devices;
