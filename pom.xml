@@ -22,6 +22,7 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <poi.version>5.4.0</poi.version>
     <bouncycastle.version>1.80</bouncycastle.version>
+    <jacoco.version>0.8.13</jacoco.version>
   </properties>
 
   <dependencies>
@@ -111,6 +112,28 @@
             <configuration>
               <classesDirectory>${project.build.outputDirectory}</classesDirectory>
             </configuration>
+          </execution>
+        </executions>
+      </plugin>
+      <!-- Cobertura: o agente cobre os testes unitários (surefire) e os de integração (failsafe);
+           o relatório HTML/XML sai em target/site/jacoco depois do "verify". -->
+      <plugin>
+        <groupId>org.jacoco</groupId>
+        <artifactId>jacoco-maven-plugin</artifactId>
+        <version>${jacoco.version}</version>
+        <executions>
+          <execution>
+            <id>prepare-agent</id>
+            <goals>
+              <goal>prepare-agent</goal>
+            </goals>
+          </execution>
+          <execution>
+            <id>report</id>
+            <phase>verify</phase>
+            <goals>
+              <goal>report</goal>
+            </goals>
           </execution>
         </executions>
       </plugin>

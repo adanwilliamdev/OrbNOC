@@ -19,6 +19,13 @@ jobs:
       # PostgreSQL real via Testcontainers; o runner do GitHub já traz Docker.
       - name: Compilar e testar
         run: mvn -B verify
+      - name: Anexar relatório de cobertura (JaCoCo)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cobertura-jacoco
+          path: target/site/jacoco
+          if-no-files-found: ignore
       - name: Anexar relatórios de teste (em caso de falha)
         if: failure()
         uses: actions/upload-artifact@v4
