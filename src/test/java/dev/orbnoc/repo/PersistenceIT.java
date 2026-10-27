@@ -192,6 +192,7 @@ class PersistenceIT extends IntegrationTestBase {
         assertEquals(0, eventRepository.countByUserIdAndAcknowledgedAtIsNull(ana.getId()));
         assertEquals(1, eventRepository.countByUserIdAndAcknowledgedAtIsNull(bruno.getId()));
         // Repetir não reconhece de novo o que já foi reconhecido.
-        assertEquals(0, tx.execute(s -> eventRepository.acknowledgeAll(ana.getId(), Instant.now())));
+        Integer reconhecidosDeNovo = tx.execute(s -> eventRepository.acknowledgeAll(ana.getId(), Instant.now()));
+        assertEquals(0, reconhecidosDeNovo);
     }
 }
