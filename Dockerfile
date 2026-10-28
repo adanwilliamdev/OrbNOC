@@ -7,7 +7,7 @@ COPY src ./src
 RUN mvn -q -B -DskipTests package
 
 # ---- runtime ----
-FROM eclipse-temurin:21-jre-noble
+FROM eclipse-temurin:24-jre-noble
 # ping/traceroute: checagens ICMP e diagnóstico; curl: healthcheck
 RUN apt-get update \
     && apt-get install -y --no-install-recommends iputils-ping traceroute curl \
