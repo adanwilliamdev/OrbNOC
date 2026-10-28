@@ -79,9 +79,9 @@
     </article>
 
     <article class="card card-term">
-      
+      <div class="term-head"><i></i><i></i><i></i><span>~/alertas</span></div>
       <div class="term-body">
-      <div class="card-head"><h2>Alertas recentes</h2><a class="link" href="/alerts">ver todos</a></div>
+      <div class="card-head"><h2><span class="term-prompt">$</span> alertas recentes</h2><a class="link" href="/alerts">ver todos</a></div>
       <ul class="alert-mini" th:if="${!recent.isEmpty()}">
         <li th:each="a : ${recent}">
           <i class="dot" th:classappend="'dot-' + ${@fmt.severityClass(a.event().severity())}"></i>

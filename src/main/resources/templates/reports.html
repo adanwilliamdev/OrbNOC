@@ -5,7 +5,7 @@
 <header th:replace="~{fragments/layout :: appbar}"></header>
 <main class="page">
   <div class="page-head">
-    <div><h1>Relatórios de SLA</h1><p class="muted">Disponibilidade e latência por dispositivo</p></div>
+    <div><span class="eyebrow"><i class="dot dot-ok"></i> métricas consolidadas</span><h1>Relatórios de <span class="accent">SLA</span></h1><p class="muted">Disponibilidade e latência por dispositivo</p></div>
     <div class="actions">
       <div class="segmented" role="group" aria-label="Janela">
         <a href="/reports?window=24h" th:classappend="${window == '24h'} ? 'on'">24 horas</a>
