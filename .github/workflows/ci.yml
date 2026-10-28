@@ -21,14 +21,14 @@ jobs:
         run: mvn -B verify
       - name: Anexar relatório de cobertura (JaCoCo)
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: cobertura-jacoco
           path: target/site/jacoco
           if-no-files-found: ignore
       - name: Anexar relatórios de teste (em caso de falha)
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: relatorios-de-teste
           path: |
