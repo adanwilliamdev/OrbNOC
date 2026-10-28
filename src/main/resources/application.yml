@@ -62,6 +62,7 @@ orbnoc:
   admin-email: ${ADMIN_EMAIL:admin@example.com}
   admin-password: ${ADMIN_PASSWORD:}
   admin-force-reset: ${ADMIN_FORCE_RESET:false}
+  seed-demo-hosts: ${SEED_DEMO_HOSTS:false}
   allow-private-networks: ${ALLOW_PRIVATE_NETWORKS:true}
   worker-enabled: ${WORKER_ENABLED:true}
   worker-tick-seconds: ${WORKER_TICK_SECONDS:2}
