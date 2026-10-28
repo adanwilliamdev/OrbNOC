@@ -13,6 +13,18 @@
 </p>
 
 ---
+## 🚀 Demonstração Online
+
+O projeto está hospedado no Render para fins de avaliação. Sinta-se à vontade para explorar o painel e testar os recursos.
+
+* **URL de acesso:** https://orbnoc-jj51.onrender.com
+* **Usuário:** `demo`
+* **Senha:** `OrbNOC@2026!`
+
+> ⚠️ **Nota sobre o ambiente de demo:** 
+> 1. Como o projeto roda no plano gratuito do Render, o serviço entra em modo de suspensão após 15 minutos de inatividade. Se o link demorar a abrir ou der erro 502, aguarde cerca de 1 minuto e recarregue a página.
+> 2. O ambiente roda em uma sandbox que bloqueia pacotes ICMP (ping). O sistema detecta isso automaticamente e usa TCP como fallback.
+---
 
 O OrbNOC acompanha a disponibilidade e a latência de roteadores, switches, servidores e serviços, avisa
 quando algo cai ou fica lento e mostra tudo num painel que se atualiza sozinho.
