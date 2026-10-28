@@ -1,185 +1,314 @@
+# OrbNOC — Monitoramento de Redes em Tempo Real
+
 <p align="center">
   <img src="docs/img/OrbNOC_capa.png" alt="OrbNOC" width="720">
 </p>
 
 <h1 align="center">OrbNOC</h1>
-<p align="center">Plataforma de monitoramento de rede em tempo real, feita 100% em Java.</p>
+
+<p align="center">
+  Plataforma de monitoramento de redes em tempo real, desenvolvida 100% em Java.
+</p>
 
 <p align="center">
   <img alt="Java 21" src="https://img.shields.io/badge/Java-21-orange">
   <img alt="Spring Boot 3.5" src="https://img.shields.io/badge/Spring%20Boot-3.5-6db33f">
-  <img alt="PostgreSQL" src="https://img.shields.io/badge/PostgreSQL-16-336791">
-  <img alt="Licença MIT" src="https://img.shields.io/badge/licen%C3%A7a-MIT-blue">
+  <img alt="PostgreSQL 16" src="https://img.shields.io/badge/PostgreSQL-16-336791">
+  <img alt="Licença MIT" src="https://img.shields.io/badge/Licen%C3%A7a-MIT-blue">
 </p>
 
 ---
+
 ## 🚀 Demonstração Online
 
-O projeto está hospedado no Render para fins de avaliação. Sinta-se à vontade para explorar o painel e testar os recursos.
+O OrbNOC está hospedado no Render para fins de avaliação. Explore o painel e teste os recursos da plataforma.
 
-* **URL de acesso:** https://orbnoc-jj51.onrender.com
-* **Usuário:** `demo`
-* **Senha:** `OrbNOC@2026!`
+- **URL:** https://orbnoc-jj51.onrender.com
+- **Usuário:** `demo`
+- **Senha:** `OrbNOC@2026!`
 
-> ⚠️ **Nota sobre o ambiente de demo:** 
-> 1. Como o projeto roda no plano gratuito do Render, o serviço entra em modo de suspensão após 15 minutos de inatividade. Se o link demorar a abrir ou der erro 502, aguarde cerca de 1 minuto e recarregue a página.
-> 2. O ambiente roda em uma sandbox que bloqueia pacotes ICMP (ping). O sistema detecta isso automaticamente e usa TCP como fallback.
+> **⚠️ Observações sobre o ambiente de demonstração**
+>
+> 1. O serviço utiliza o plano gratuito do Render e pode entrar em suspensão após 15 minutos de inatividade. Se o carregamento demorar ou ocorrer um erro 502, aguarde cerca de um minuto e recarregue a página.
+> 2. O ambiente de hospedagem bloqueia pacotes ICMP (ping). O sistema detecta essa limitação e utiliza TCP como alternativa.
+
 ---
 
-O OrbNOC acompanha a disponibilidade e a latência de roteadores, switches, servidores e serviços, avisa
-quando algo cai ou fica lento e mostra tudo num painel que se atualiza sozinho.
+## 📡 Sobre o Projeto
 
-## Recursos
+O OrbNOC é uma plataforma de monitoramento de infraestrutura de rede que acompanha a disponibilidade e a latência de roteadores, switches, servidores e serviços.
 
-- **Monitoramento contínuo** por ICMP (ping) ou TCP (porta), com intervalo e limite de falhas por dispositivo.
-  Um host só é marcado offline após N falhas seguidas, o que elimina falsos alarmes.
-- **Tempo real**: o painel, o mapa e o wallboard se atualizam via WebSocket, sem recarregar a página.
-- **Alertas** de queda, recuperação e latência acima do limite (SLA), com confirmação de leitura e
-  notificação opcional por **Telegram** (o token fica cifrado no banco).
-- **Mapa de rede** com layouts hierárquico, radial e em grade, com zoom e arrastar.
-- **Relatórios de SLA** de 24 h, 7 dias e 30 dias, com exportação em **CSV** e **Excel** e versão para impressão.
-- **Diagnóstico**: ping, traceroute, DNS e teste de portas a partir do servidor.
-- **Wallboard** em tela cheia para TVs de NOC.
-- **Usuários** com perfis (administrador e usuário), cada um vendo apenas os próprios dispositivos.
+Com atualização em tempo real, alertas automatizados e relatórios de SLA, a aplicação permite identificar indisponibilidades, acompanhar métricas e centralizar a visibilidade operacional em um único painel.
 
-## Arquitetura
+## ✨ Recursos
 
-Um único serviço Spring Boot faz tudo: API REST, páginas (Thymeleaf), WebSocket e o monitor em segundo plano.
-O banco é o PostgreSQL.
+- **Monitoramento contínuo:** verificações por ICMP (ping) ou TCP (porta), com intervalos configuráveis e limite de falhas por dispositivo. Um host só é marcado como offline após um número configurado de falhas consecutivas, reduzindo falsos alarmes.
+- **Atualização em tempo real:** painel, mapa e wallboard atualizados via WebSocket, sem recarregar a página.
+- **Alertas inteligentes:** notificações de queda, recuperação e latência acima do limite de SLA, com confirmação de leitura e integração opcional com Telegram. Os tokens são armazenados de forma criptografada.
+- **Mapa de rede:** visualizações hierárquica, radial e em grade, com zoom e movimentação.
+- **Relatórios de SLA:** análises de 24 horas, 7 dias e 30 dias, com exportação para CSV e Excel e versão para impressão.
+- **Diagnóstico de rede:** ferramentas de ping, traceroute, consulta DNS e teste de portas executadas pelo servidor.
+- **Wallboard para NOC:** painel em tela cheia, ideal para monitores e TVs de centros de operações.
+- **Controle de acesso:** perfis de administrador e usuário, com isolamento dos dispositivos de cada usuário.
 
+## 🏗️ Arquitetura
+
+A aplicação utiliza uma arquitetura monolítica modular, com um único serviço Spring Boot responsável pela API REST, renderização das páginas, comunicação em tempo real e monitoramento em segundo plano.
+
+O PostgreSQL armazena os dados, enquanto threads virtuais do Java permitem executar verificações de rede concorrentes.
+
+```text
+Navegador ── HTTP/WebSocket ──► OrbNOC (Spring Boot) ── JDBC ──► PostgreSQL
+                                      │
+                                      ├── API REST (/api/...)
+                                      ├── Interface web (Thymeleaf)
+                                      ├── WebSocket (/ws)
+                                      └── Monitor em segundo plano
+                                           ├── Verificações ICMP/TCP
+                                           ├── Coleta de métricas
+                                           └── Geração de alertas
 ```
-Navegador ──HTTP/WebSocket──► OrbNOC (Spring Boot) ──JDBC──► PostgreSQL
-                                 ├─ API REST (/api/...)
-                                 ├─ Páginas e fragmentos HTML (Thymeleaf)
-                                 ├─ WebSocket (/ws)
-                                 └─ Monitor (threads virtuais: ICMP/TCP, métricas, alertas)
-```
+
+### 🧰 Tecnologias
 
 | Camada | Tecnologia |
-| --- | --- |
-| Linguagem / runtime | Java 21 (threads virtuais) |
-| Aplicação | Spring Boot 3.5 (Web, Data JPA, WebSocket) |
-| Interface | Thymeleaf renderizado no servidor, CSS próprio e um único arquivo JavaScript sem dependências |
-| Banco | PostgreSQL 16 + Flyway (migrações) |
-| Segurança | Argon2 para senhas, sessão em cookie httpOnly assinado (HS256), AES-256-GCM para segredos |
+|---|---|
+| Linguagem e runtime | Java 21, threads virtuais |
+| Backend | Spring Boot 3.5, Spring Web, Spring Data JPA |
+| Interface | Thymeleaf, CSS próprio e JavaScript sem dependências |
+| Banco de dados | PostgreSQL 16 |
+| Migrações | Flyway |
+| Comunicação em tempo real | WebSocket |
+| Segurança | Argon2, cookies de sessão assinados com HS256 e AES-256-GCM |
 | Exportação | Apache POI (XLSX) |
+| Testes | Testcontainers e testes unitários e de integração |
+| Infraestrutura | Docker, Docker Compose e Caddy |
 
-## Como rodar
+---
 
-### Com Docker (recomendado)
+## ⚙️ Como Executar
+
+### 🐳 Com Docker (recomendado)
+
+**1.** Clone o repositório e acesse a pasta do projeto.
+
+```bash
+git clone https://github.com/adanwilliamdev/OrbNOC.git
+cd OrbNOC
+```
+
+**2.** Crie o arquivo de configuração:
 
 ```bash
 cp .env.example .env
-# edite o .env: defina POSTGRES_PASSWORD, JWT_SECRET (openssl rand -base64 48) e ADMIN_PASSWORD
+```
+
+**3.** Edite o arquivo `.env` e configure as variáveis necessárias, incluindo `POSTGRES_PASSWORD`, `JWT_SECRET` e `ADMIN_PASSWORD`.
+
+Para gerar um segredo seguro, utilize:
+
+```bash
+openssl rand -base64 48
+```
+
+**4.** Inicie a aplicação:
+
+```bash
 docker compose up -d --build
 ```
 
-Acesse <http://localhost:8080> e entre com o usuário e a senha de administrador definidos no `.env`.
+**5.** Acesse:
 
-Para HTTPS automático com Caddy (domínio apontando para o servidor):
+http://localhost:8080
+
+Entre com as credenciais de administrador definidas no arquivo `.env`.
+
+### 🔒 HTTPS automático com Caddy
+
+Se você possui um domínio apontado para o servidor, configure as variáveis no `.env`:
+
+```dotenv
+SITE_ADDRESS=noc.exemplo.com
+PUBLIC_URL=https://noc.exemplo.com
+COOKIE_SECURE=true
+```
+
+Inicie os serviços com o perfil HTTPS:
 
 ```bash
-# no .env: SITE_ADDRESS=noc.exemplo.com, PUBLIC_URL=https://noc.exemplo.com, COOKIE_SECURE=true
 docker compose --profile https up -d
 ```
 
-### Sem Docker (desenvolvimento)
+### 💻 Sem Docker (desenvolvimento)
 
-Requisitos: JDK 21, Maven 3.9+ e um PostgreSQL acessível.
+**Requisitos:**
+
+- JDK 21
+- Maven 3.9 ou superior
+- PostgreSQL acessível
+
+Configure as variáveis de ambiente:
 
 ```bash
 export DATABASE_URL=jdbc:postgresql://localhost:5432/orbnoc
 export DATABASE_USER=orbnoc
 export DATABASE_PASSWORD=orbnoc
 export ADMIN_PASSWORD='Troque123'
+```
+
+Execute a aplicação:
+
+```bash
 mvn spring-boot:run
 ```
 
-Para o ICMP funcionar sem privilégios no Linux, permita sockets de datagrama ICMP:
+#### Permissões para ICMP no Linux
+
+Para permitir sockets de datagrama ICMP sem executar a aplicação como root:
 
 ```bash
 sudo sysctl -w net.ipv4.ping_group_range="0 2147483647"
 ```
 
-Sem ICMP o monitor usa conexões TCP em portas comuns como alternativa (o `/health` informa o modo ativo).
+Se o ICMP não estiver disponível, o monitor utiliza conexões TCP como alternativa. O endpoint `/health` informa o modo ativo.
 
-### Provedores com `DATABASE_URL` no formato `postgresql://`
+### 🌐 Compatibilidade com provedores PostgreSQL
 
-A aplicação aceita tanto `jdbc:postgresql://...` (com `DATABASE_USER` e `DATABASE_PASSWORD`) quanto o formato
-`postgresql://usuario:senha@host:5432/banco?sslmode=require` usado por Neon, Supabase e Render.
+A aplicação aceita tanto URLs JDBC convencionais quanto URLs no formato `postgresql://`, utilizado por provedores como Neon, Supabase e Render.
 
-## Configuração
+**Formato JDBC:**
 
-Tudo é feito por variáveis de ambiente (veja o [`.env.example`](.env.example)).
-
-| Variável | Padrão | Descrição |
-| --- | --- | --- |
-| `JWT_SECRET` | — | Assinatura da sessão. Obrigatória em produção (mínimo de 32 caracteres) |
-| `ENCRYPTION_KEY` | usa `JWT_SECRET` | Chave dos segredos guardados no banco |
-| `ADMIN_USERNAME` / `ADMIN_EMAIL` / `ADMIN_PASSWORD` | `admin` / — / vazio | Admin criado na primeira inicialização |
-| `ADMIN_FORCE_RESET` | `false` | Redefine a senha do admin existente (recuperação de acesso) |
-| `REGISTRATION_ENABLED` | `false` | Permite auto-cadastro na tela de login |
-| `PUBLIC_URL` / `EXTRA_ORIGINS` | `http://localhost:8080` | Origens aceitas em requisições que alteram estado |
-| `COOKIE_SECURE` | `true` em produção | Cookie só por HTTPS |
-| `ALLOW_PRIVATE_NETWORKS` | `true` | `false` bloqueia alvos em redes privadas |
-| `MONITOR_CONCURRENCY` | `20` | Checagens simultâneas |
-| `PROBE_TIMEOUT_SECONDS` | `2` | Tempo limite de cada checagem |
-| `METRICS_RETENTION_DAYS` | `14` | Retenção das amostras brutas (agregados horários: 400 dias) |
-
-Recuperar o acesso de administrador: defina `ADMIN_PASSWORD` e `ADMIN_FORCE_RESET=true`, reinicie o
-serviço e remova `ADMIN_FORCE_RESET` em seguida.
-
-## Segurança
-
-- Senhas com Argon2; login com limite de tentativas por IP e usuário.
-- Sessão em cookie `httpOnly` + `SameSite=Lax`; proteção CSRF por verificação de origem em toda requisição que altera estado.
-- Alvos de diagnóstico e monitoramento passam por validação: loopback, link-local, endereços de metadata de
-  nuvem, multicast e reservados são sempre bloqueados; redes privadas podem ser desativadas.
-- Comandos do sistema (`ping`, `traceroute`) são executados sem shell, com argumentos em lista e IP já resolvido e validado.
-- Cabeçalhos de segurança (CSP, `X-Frame-Options`, `nosniff`, HSTS em produção).
-- Veja também a [política de segurança](SECURITY.md).
-
-## Desenvolvimento
-
-```bash
-mvn verify          # compila e roda os testes unitários e de integração (requer Docker)
-mvn spring-boot:run # sobe a aplicação
+```text
+jdbc:postgresql://localhost:5432/orbnoc
 ```
 
-### Testes
+Utilize `DATABASE_USER` e `DATABASE_PASSWORD` para informar as credenciais.
+
+**Formato PostgreSQL:**
+
+```text
+postgresql://usuario:senha@host:5432/banco?sslmode=require
+```
+
+---
+
+## 🔧 Configuração
+
+A configuração é realizada por variáveis de ambiente. Consulte o arquivo [`.env.example`](.env.example).
+
+| Variável | Padrão | Descrição |
+|---|---|---|
+| `JWT_SECRET` | — | Segredo para assinatura da sessão. Obrigatório em produção, com pelo menos 32 caracteres. |
+| `ENCRYPTION_KEY` | Derivada de `JWT_SECRET` | Chave utilizada para proteger segredos armazenados no banco. |
+| `ADMIN_USERNAME` | `admin` | Nome do administrador inicial. |
+| `ADMIN_EMAIL` | — | E-mail do administrador inicial. |
+| `ADMIN_PASSWORD` | Vazio | Senha do administrador inicial. |
+| `ADMIN_FORCE_RESET` | `false` | Redefine a senha de um administrador existente. |
+| `REGISTRATION_ENABLED` | `false` | Habilita o cadastro de usuários pela tela de login. |
+| `PUBLIC_URL` | `http://localhost:8080` | URL pública da aplicação. |
+| `EXTRA_ORIGINS` | — | Origens adicionais permitidas nas requisições que alteram estado. |
+| `COOKIE_SECURE` | `true` em produção | Restringe o envio do cookie a conexões HTTPS. |
+| `ALLOW_PRIVATE_NETWORKS` | `true` | Quando `false`, bloqueia alvos em redes privadas. |
+| `MONITOR_CONCURRENCY` | `20` | Número de verificações simultâneas. |
+| `PROBE_TIMEOUT_SECONDS` | `2` | Tempo limite de cada verificação. |
+| `METRICS_RETENTION_DAYS` | `14` | Retenção de amostras brutas. Agregados horários são mantidos por 400 dias. |
+
+### Recuperação de acesso administrativo
+
+1. Defina `ADMIN_PASSWORD` com a nova senha.
+2. Configure `ADMIN_FORCE_RESET=true`.
+3. Reinicie o serviço.
+4. Após recuperar o acesso, remova `ADMIN_FORCE_RESET` ou redefina-o para `false` e reinicie novamente.
+
+---
+
+## 🛡️ Segurança
+
+A aplicação incorpora mecanismos de segurança para proteger credenciais, sessões e operações de monitoramento.
+
+- **Proteção de senhas:** armazenamento utilizando Argon2 e limitação de tentativas de login por IP e usuário.
+- **Sessões seguras:** cookies `httpOnly`, `SameSite=Lax` e assinatura HS256.
+- **Proteção CSRF:** validação de origem em requisições que alteram estado.
+- **Validação de destinos:** bloqueio de loopback, link-local, endereços de metadados de nuvem, multicast e endereços reservados. O acesso a redes privadas pode ser desabilitado.
+- **Execução segura de comandos:** `ping` e `traceroute` são executados sem shell, com argumentos separados e endereços previamente resolvidos e validados.
+- **Cabeçalhos HTTP:** Content Security Policy (CSP), `X-Frame-Options`, `X-Content-Type-Options: nosniff` e HSTS em produção.
+
+Consulte também a [Política de Segurança](SECURITY.md).
+
+---
+
+## 🧪 Desenvolvimento e Testes
+
+Execute os testes e as verificações de compilação:
+
+```bash
+mvn verify
+```
+
+> O comando executa testes unitários e de integração. Os testes de integração exigem Docker.
+
+Para iniciar a aplicação durante o desenvolvimento:
+
+```bash
+mvn spring-boot:run
+```
+
+### Tipos de teste
 
 | Tipo | Classes | Comando | Requisitos |
 |---|---|---|---|
-| Unitários | `*Test` (regras puras de `core`, helpers de UI) | `mvn test` | nenhum |
-| Integração | `*IT` (API, segurança, monitor, banco) | `mvn verify` | Docker |
+| Unitários | `*Test` | `mvn test` | Nenhum serviço externo |
+| Integração | `*IT` | `mvn verify` | Docker |
 
-Os testes de integração sobem a aplicação inteira contra um **PostgreSQL real** (Testcontainers,
-imagem `postgres:16-alpine`, a mesma do `docker-compose.yml`). Um único contêiner é compartilhado por
-toda a suíte e o banco é esvaziado antes de cada teste. As sondas de rede são simuladas, então nada
-sai da máquina. Sem Docker, os `*IT` são ignorados localmente e **falham no CI** (variável `CI`).
+Os testes de integração utilizam **Testcontainers com PostgreSQL real**, usando a imagem `postgres:16-alpine`, correspondente à versão definida no `docker-compose.yml`.
 
-Para rodar uma classe: `mvn verify -Dit.test=DeviceApiIT` (e `-Dtest=NaoExiste -Dsurefire.failIfNoSpecifiedTests=false`
-para pular os unitários). Novos testes de integração estendem `dev.orbnoc.support.IntegrationTestBase`.
+Um único contêiner é compartilhado pela suíte, e o banco é limpo antes de cada teste. As verificações de rede são simuladas para evitar tráfego externo durante a execução.
 
-Estrutura:
+Sem Docker, os testes `*IT` são ignorados localmente. No CI, eles falham quando a variável `CI` está definida.
 
-```
-src/main/java/dev/orbnoc
-├── core      regras puras e testáveis (validação de hosts, sondas, máquina de estados, tokens, criptografia)
-├── domain    entidades JPA
-├── repo      repositórios Spring Data
-├── service   casos de uso, monitor, tempo real, notificações, relatórios
-├── web/api   API REST
-├── web/ui    páginas Thymeleaf, gráficos SVG e layout do mapa
-└── ws        WebSocket
-src/main/resources
-├── db/migration   migrações Flyway
-├── templates      páginas e fragmentos HTML
-└── static         CSS e JavaScript
+Para executar uma classe específica de integração:
+
+```bash
+mvn verify -Dit.test=DeviceApiIT
 ```
 
-Veja o [guia de contribuição](CONTRIBUTING.md).
+Para pular os testes unitários nesse comando:
 
-## Licença
+```bash
+mvn verify -Dit.test=DeviceApiIT \
+  -Dtest=NaoExiste \
+  -Dsurefire.failIfNoSpecifiedTests=false
+```
 
-MIT — veja [LICENSE](LICENSE).
+Novos testes de integração devem estender:
+
+```text
+dev.orbnoc.support.IntegrationTestBase
+```
+
+### 📁 Estrutura do Projeto
+
+```text
+src/main/java/dev/orbnoc/
+├── core/           # Regras puras e testáveis
+├── domain/         # Entidades JPA
+├── repo/           # Repositórios Spring Data
+├── service/        # Casos de uso, monitoramento e notificações
+├── web/
+│   ├── api/        # API REST
+│   └── ui/         # Páginas Thymeleaf, gráficos SVG e mapa
+└── ws/             # WebSocket
+
+src/main/resources/
+├── db/migration/   # Migrações Flyway
+├── templates/      # Páginas e fragmentos Thymeleaf
+└── static/         # CSS e JavaScript
+```
+
+Consulte o [Guia de Contribuição](CONTRIBUTING.md) para obter informações sobre como contribuir com o projeto.
+
+---
+
+## 📄 Licença
+
+Este projeto está licenciado sob a **MIT License**. Consulte o arquivo [LICENSE](LICENSE) para obter mais informações.
