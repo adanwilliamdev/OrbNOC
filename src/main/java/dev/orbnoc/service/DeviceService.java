@@ -16,7 +16,6 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -152,7 +151,7 @@ public class DeviceService {
         Instant since = Instant.now().minus(Duration.ofHours(hours));
         if (hours <= 24) {
             List<Dto.MetricOut> points = metrics
-                    .findByDeviceIdAndRecordedAtGreaterThanEqualOrderByRecordedAtAsc(id, since, PageRequest.of(0, 5000))
+                    .findByDeviceIdAndRecordedAtGreaterThanEqualOrderByRecordedAtAsc(id, since, 5000)
                     .stream()
                     .map(Dto.MetricOut::from)
                     .toList();

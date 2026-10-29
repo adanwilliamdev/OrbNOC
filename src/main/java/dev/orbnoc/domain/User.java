@@ -1,14 +1,9 @@
 package dev.orbnoc.domain;
 
-import jakarta.persistence.*;
 import java.time.Instant;
 
-@Entity
-@Table(name = "users")
 public class User {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     private String username;
@@ -19,7 +14,6 @@ public class User {
 
     private String role = "user";
 
-    @Column(name = "is_active")
     private boolean active = true;
 
     private Instant createdAt = Instant.now();

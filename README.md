@@ -19,6 +19,21 @@
 
 ---
 
+## 🚀 Demonstração Online
+
+O OrbNOC está hospedado no Render para fins de avaliação. Explore o painel e teste os recursos da plataforma.
+
+- **URL:** https://orbnoc-jj51.onrender.com
+- **Usuário:** `demo`
+- **Senha:** `OrbNOC@2026!`
+
+> **⚠️ Observações sobre o ambiente de demonstração**
+>
+> 1. O serviço utiliza o plano gratuito do Render e pode entrar em suspensão após 15 minutos de inatividade. Se o carregamento demorar ou ocorrer um erro 502, aguarde cerca de um minuto e recarregue a página.
+> 2. O ambiente de hospedagem bloqueia pacotes ICMP (ping). O sistema detecta essa limitação e utiliza TCP como alternativa.
+
+---
+
 ## 📡 Sobre o Projeto
 
 O OrbNOC é uma plataforma de monitoramento de infraestrutura de rede que acompanha a disponibilidade e a latência de roteadores, switches, servidores e serviços.
@@ -59,7 +74,7 @@ Navegador ── HTTP/WebSocket ──► OrbNOC (Spring Boot) ── JDBC ─�
 | Camada | Tecnologia |
 |---|---|
 | Linguagem e runtime | Java 21, threads virtuais |
-| Backend | Spring Boot 3.5, Spring Web, Spring Data JPA |
+| Backend | Spring Boot 3.5, Spring Web, Spring JDBC (`JdbcTemplate`) |
 | Interface | Thymeleaf, CSS próprio e JavaScript sem dependências |
 | Banco de dados | PostgreSQL 16 |
 | Migrações | Flyway |
@@ -194,9 +209,30 @@ A configuração é realizada por variáveis de ambiente. Consulte o arquivo [`.
 | `EXTRA_ORIGINS` | — | Origens adicionais permitidas nas requisições que alteram estado. |
 | `COOKIE_SECURE` | `true` em produção | Restringe o envio do cookie a conexões HTTPS. |
 | `ALLOW_PRIVATE_NETWORKS` | `true` | Quando `false`, bloqueia alvos em redes privadas. |
+| `ORBNOC_DEMO_SEED` | `false` | Semeia hosts de demonstração na inicialização (`SEED_DEMO_HOSTS` continua aceito). |
 | `MONITOR_CONCURRENCY` | `20` | Número de verificações simultâneas. |
 | `PROBE_TIMEOUT_SECONDS` | `2` | Tempo limite de cada verificação. |
 | `METRICS_RETENTION_DAYS` | `14` | Retenção de amostras brutas. Agregados horários são mantidos por 400 dias. |
+
+### ⚡ Otimizações de Performance
+
+- **JPA/Hibernate removido.** A persistência usa `spring-boot-starter-jdbc` e `JdbcTemplate` com SQL explícito
+  (`INSERT ... RETURNING id`, `JOIN`s no lugar de lazy loading). Menos classes carregadas, sem *bootstrap* do
+  Hibernate e sem proxies/dirty checking: o início fica mais rápido e o consumo de memória menor.
+- **`spring.main.lazy-initialization=true`.** Os beans são criados sob demanda. Flyway, os *runners*
+  (`AdminBootstrap`, `DemoSeed`) e o monitor (`ApplicationReadyEvent`) continuam sendo executados na inicialização.
+- **Seed controlado por propriedade.** `DemoSeed` só existe com `orbnoc.demo.seed=true` (`ORBNOC_DEMO_SEED`) e checa
+  `existsByUserIdAndIp` antes de inserir.
+- **Health sem banco.** `GET /health/live` responde `200` sem tocar no banco (usado pelo `HEALTHCHECK` do Docker);
+  `GET /health` continua verificando banco e monitor.
+
+| Métrica | Antes (JPA) | Depois (JDBC) |
+|---|---|---|
+| Tempo de boot | _medir_ | _medir_ |
+| Memória (RSS após o boot) | _medir_ | _medir_ |
+
+> Meça com o mesmo hardware e `JAVA_OPTS`: o tempo de boot aparece no log (`Started OrbNocApplication in X s`) e a
+> memória com `docker stats`. Preencha a tabela com os seus números.
 
 ### Recuperação de acesso administrativo
 
@@ -276,8 +312,8 @@ dev.orbnoc.support.IntegrationTestBase
 ```text
 src/main/java/dev/orbnoc/
 ├── core/           # Regras puras e testáveis
-├── domain/         # Entidades JPA
-├── repo/           # Repositórios Spring Data
+├── domain/         # Modelos de dados (POJOs simples, sem JPA)
+├── repo/           # Repositórios com JdbcTemplate (SQL explícito)
 ├── service/        # Casos de uso, monitoramento e notificações
 ├── web/
 │   ├── api/        # API REST

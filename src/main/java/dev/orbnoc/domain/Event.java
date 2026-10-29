@@ -1,14 +1,9 @@
 package dev.orbnoc.domain;
 
-import jakarta.persistence.*;
 import java.time.Instant;
 
-@Entity
-@Table(name = "events")
 public class Event {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     private Long userId;
@@ -19,7 +14,6 @@ public class Event {
 
     private String severity;
 
-    @Column(columnDefinition = "text")
     private String message;
 
     private Instant createdAt = Instant.now();

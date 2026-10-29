@@ -11,7 +11,6 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
 /** Aplica o resultado de uma sonda: estado, métrica e eventos. Usado pelo monitor e pelo ping manual. */
@@ -52,7 +51,7 @@ public class CheckService {
 
     private List<Double> recentSamples(Long deviceId) {
         List<Double> samples = new ArrayList<>();
-        for (Metric m : metrics.findByDeviceIdOrderByRecordedAtDesc(deviceId, PageRequest.of(0, DeviceStateMachine.WINDOW - 1))) {
+        for (Metric m : metrics.findByDeviceIdOrderByRecordedAtDesc(deviceId, DeviceStateMachine.WINDOW - 1)) {
             samples.add(m.isOk() && m.getLatency() != null ? m.getLatency() : null);
         }
         Collections.reverse(samples);

@@ -1,14 +1,9 @@
 package dev.orbnoc.domain;
 
-import jakarta.persistence.*;
 import java.time.Instant;
 
-@Entity
-@Table(name = "notification_channels")
 public class NotificationChannel {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     private Long userId;
@@ -17,7 +12,6 @@ public class NotificationChannel {
 
     private boolean enabled = false;
 
-    @Column(columnDefinition = "text")
     private String secretEncrypted;
 
     private String target;

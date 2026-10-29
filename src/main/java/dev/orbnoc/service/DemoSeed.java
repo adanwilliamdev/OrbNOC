@@ -2,21 +2,23 @@ package dev.orbnoc.service;
 
 import dev.orbnoc.config.OrbNocProperties;
 import dev.orbnoc.domain.User;
+import dev.orbnoc.repo.DeviceRepository;
 import dev.orbnoc.repo.UserRepository;
 import dev.orbnoc.web.api.ApiException;
 import dev.orbnoc.web.api.Dto;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 /**
- * Semeia 20 hosts de demonstração para o admin quando {@code SEED_DEMO_HOSTS=true}. É idempotente:
- * hosts que já existem (mesmo IP) são ignorados, então pode ficar ligado entre reinicializações.
+ * Semeia 20 hosts de demonstração para o admin quando {@code orbnoc.demo.seed=true}
+ * ({@code ORBNOC_DEMO_SEED=true}; {@code SEED_DEMO_HOSTS} continua aceito). Sem a propriedade, o bean nem é
+ * criado. É idempotente: hosts que já existem (mesmo usuário e IP) são ignorados, sem tentar inserir, então pode ficar ligado entre reinicializações.
  *
  * <p>Usa só IPs literais (sem DNS). Os 14 primeiros são resolvedores/serviços públicos conhecidos
  * (ficam online); os 6 últimos são IPs de rede privada que normalmente ficam offline, o que
@@ -26,6 +28,7 @@ import org.springframework.stereotype.Component;
  * <p>Atenção: os offline disparam alertas no Telegram se o canal estiver configurado.
  */
 @Component
+@ConditionalOnProperty(name = "orbnoc.demo.seed", havingValue = "true")
 @Order(2) // depois do AdminBootstrap (@Order(1)), que cria o usuário alvo
 public class DemoSeed implements ApplicationRunner {
 
@@ -55,28 +58,23 @@ public class DemoSeed implements ApplicationRunner {
             new Host("Servidor RADIUS", "10.0.0.5", "Datacenter", "tcp", 1812, 30),
             new Host("Câmera Torre 1", "10.20.0.31", "Torre 1", "tcp", 554, null));
 
-    private final boolean enabled;
     private final OrbNocProperties props;
     private final UserRepository users;
+    private final DeviceRepository deviceRepo;
     private final DeviceService devices;
 
-    public DemoSeed(
-            @Value("${orbnoc.seed-demo-hosts:false}") boolean enabled,
-            OrbNocProperties props,
-            UserRepository users,
-            DeviceService devices) {
-        this.enabled = enabled;
+    public DemoSeed(OrbNocProperties props, UserRepository users, DeviceRepository deviceRepo, DeviceService devices) {
         this.props = props;
         this.users = users;
+        this.deviceRepo = deviceRepo;
         this.devices = devices;
     }
 
     @Override
     public void run(ApplicationArguments args) {
-        if (!enabled) return;
         User admin = users.findFirstByUsernameOrEmail(props.adminUsername(), props.adminEmail().strip().toLowerCase()).orElse(null);
         if (admin == null) {
-            log.warn("SEED_DEMO_HOSTS ligado, mas o usuário '{}' não existe (defina ADMIN_PASSWORD); nada semeado",
+            log.warn("orbnoc.demo.seed ligado, mas o usuário '{}' não existe (defina ADMIN_PASSWORD); nada semeado",
                     props.adminUsername());
             return;
         }
@@ -84,6 +82,10 @@ public class DemoSeed implements ApplicationRunner {
         int created = 0;
         int skipped = 0;
         for (Host h : HOSTS) {
+            if (deviceRepo.existsByUserIdAndIp(admin.getId(), h.ip())) {
+                skipped++;
+                continue;
+            }
             try {
                 devices.create(admin.getId(), new Dto.DeviceCreateIn(
                         h.name(), h.ip(), h.location(), h.checkType(), h.port(), 30, 3, h.sla()));

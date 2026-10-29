@@ -1,18 +1,11 @@
 package dev.orbnoc.domain;
 
-import jakarta.persistence.*;
 import java.time.Instant;
 
-@Entity
-@Table(name = "metrics_hourly")
-@IdClass(MetricHourlyId.class)
 public class MetricHourly {
 
-    @Id
     private Long deviceId;
 
-    @Id
-    @Column(name = "hour")
     private Instant hourStart;
 
     private int samples;

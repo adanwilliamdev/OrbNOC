@@ -3,17 +3,10 @@ spring:
     name: orbnoc
   main:
     banner-mode: off
+    lazy-initialization: true
   threads:
     virtual:
       enabled: true
-  jpa:
-    open-in-view: false
-    hibernate:
-      ddl-auto: none
-    properties:
-      hibernate:
-        jdbc:
-          time_zone: UTC
   jackson:
     property-naming-strategy: SNAKE_CASE
     serialization:
@@ -62,7 +55,9 @@ orbnoc:
   admin-email: ${ADMIN_EMAIL:admin@example.com}
   admin-password: ${ADMIN_PASSWORD:}
   admin-force-reset: ${ADMIN_FORCE_RESET:false}
-  seed-demo-hosts: ${SEED_DEMO_HOSTS:false}
+  demo:
+    # semeia hosts de demonstração (ORBNOC_DEMO_SEED; SEED_DEMO_HOSTS continua aceito)
+    seed: ${ORBNOC_DEMO_SEED:${SEED_DEMO_HOSTS:false}}
   allow-private-networks: ${ALLOW_PRIVATE_NETWORKS:true}
   worker-enabled: ${WORKER_ENABLED:true}
   worker-tick-seconds: ${WORKER_TICK_SECONDS:2}

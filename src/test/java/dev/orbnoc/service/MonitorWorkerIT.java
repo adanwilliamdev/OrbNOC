@@ -22,7 +22,6 @@ import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.PageRequest;
 
 /**
  * Ciclo completo do monitor contra o banco real: seleção de dispositivos vencidos, máquina de
@@ -56,7 +55,7 @@ class MonitorWorkerIT extends IntegrationTestBase {
 
     /** Tipos dos eventos do usuário, do mais recente para o mais antigo. */
     private List<String> eventos() {
-        return events.findByUserIdOrderByCreatedAtDescIdDesc(dono.getId(), PageRequest.of(0, 50)).stream()
+        return events.findByUserIdOrderByCreatedAtDescIdDesc(dono.getId(), 50).stream()
                 .map(Event::getKind)
                 .toList();
     }

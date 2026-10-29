@@ -4,7 +4,6 @@ import dev.orbnoc.domain.Event;
 import dev.orbnoc.repo.EventRepository;
 import java.time.Instant;
 import java.util.List;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,10 +28,9 @@ public class EventService {
     }
 
     public List<Event> list(Long userId, boolean unreadOnly, int limit) {
-        PageRequest page = PageRequest.of(0, limit);
         return unreadOnly
-                ? events.findByUserIdAndAcknowledgedAtIsNullOrderByCreatedAtDescIdDesc(userId, page)
-                : events.findByUserIdOrderByCreatedAtDescIdDesc(userId, page);
+                ? events.findByUserIdAndAcknowledgedAtIsNullOrderByCreatedAtDescIdDesc(userId, limit)
+                : events.findByUserIdOrderByCreatedAtDescIdDesc(userId, limit);
     }
 
     public long unreadCount(Long userId) {

@@ -35,7 +35,7 @@ services:
       ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@example.com}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
       ADMIN_FORCE_RESET: ${ADMIN_FORCE_RESET:-false}
-      SEED_DEMO_HOSTS: ${SEED_DEMO_HOSTS:-false}
+      ORBNOC_DEMO_SEED: ${ORBNOC_DEMO_SEED:-${SEED_DEMO_HOSTS:-false}}
       ALLOW_PRIVATE_NETWORKS: ${ALLOW_PRIVATE_NETWORKS:-true}
     # Permite ICMP sem privilégios (o ping do sistema usa socket de datagrama).
     sysctls:
