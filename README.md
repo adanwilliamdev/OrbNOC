@@ -19,21 +19,6 @@
 
 ---
 
-## 🚀 Demonstração Online
-
-O OrbNOC está hospedado no Render para fins de avaliação. Explore o painel e teste os recursos da plataforma.
-
-- **URL:** https://orbnoc-jj51.onrender.com
-- **Usuário:** `demo`
-- **Senha:** `OrbNOC@2026!`
-
-> **⚠️ Observações sobre o ambiente de demonstração**
->
-> 1. O serviço utiliza o plano gratuito do Render e pode entrar em suspensão após 15 minutos de inatividade. Se o carregamento demorar ou ocorrer um erro 502, aguarde cerca de um minuto e recarregue a página.
-> 2. O ambiente de hospedagem bloqueia pacotes ICMP (ping). O sistema detecta essa limitação e utiliza TCP como alternativa.
-
----
-
 ## 📡 Sobre o Projeto
 
 O OrbNOC é uma plataforma de monitoramento de infraestrutura de rede que acompanha a disponibilidade e a latência de roteadores, switches, servidores e serviços.
