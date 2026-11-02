@@ -3,39 +3,55 @@
 <body>
 
 <th:block th:fragment="top">
-  <section class="kpis">
-    <article class="kpi">
-      <span class="kpi-label">Dispositivos</span>
-      <strong class="kpi-value" th:text="${stats.total()}">0</strong>
-      <span class="kpi-sub" th:text="${stats.unknown() > 0} ? ${stats.unknown()} + ' aguardando 1ª checagem' : 'monitorados'">monitorados</span>
-    </article>
-    <article class="kpi kpi-ok">
-      <span class="kpi-label">Online</span>
-      <strong class="kpi-value" th:text="${stats.online()}">0</strong>
-      <span class="kpi-sub" th:text="'latência média ' + ${@fmt.ms(stats.avgLatency())}">—</span>
-    </article>
-    <article class="kpi" th:classappend="${stats.offline() > 0} ? 'kpi-bad'">
-      <span class="kpi-label">Offline</span>
-      <strong class="kpi-value" th:text="${stats.offline()}">0</strong>
-      <span class="kpi-sub" th:text="${stats.offline() > 0} ? 'requer atenção' : 'tudo respondendo'">—</span>
-    </article>
-    <article class="kpi">
-      <span class="kpi-label">Disponibilidade</span>
-      <strong class="kpi-value" th:text="${stats.availability()} + '%'">0%</strong>
-      <span class="kpi-sub">dos dispositivos medidos</span>
-    </article>
-  </section>
-
-  <section class="fleet card" aria-label="Frota">
-    <div class="fleet-head"><h2>Frota</h2><span class="muted" th:text="${stats.total()} + ' dispositivos'">0</span></div>
-    <div class="fleet-strip" th:if="${!fleet.isEmpty()}">
-      <span th:each="d : ${fleet}" class="tick" th:classappend="'tick-' + ${@fmt.statusClass(d.status())}"
-            th:title="${d.name()} + ' · ' + ${@fmt.statusLabel(d.status())}"></span>
+  <section class="hero" aria-label="Resumo da rede">
+    <div class="hero-orb">
+      <svg class="orb" viewBox="0 0 128 128" role="img" aria-label="Distribuição de status">
+        <circle class="orb-ring" cx="64" cy="64" r="61"></circle>
+        <circle class="orb-ring" cx="64" cy="64" r="41"></circle>
+        <circle class="orb-track" cx="64" cy="64" r="51" fill="none" stroke-width="9"></circle>
+        <g transform="rotate(-90 64 64)">
+          <circle th:each="s : ${donut.segments()}" cx="64" cy="64" r="51" fill="none" stroke-width="9"
+                  th:class="${s.color()}" th:attr="stroke-dasharray=${s.dash()},stroke-dashoffset=${s.offset()}"></circle>
+        </g>
+        <text x="64" y="68" text-anchor="middle" class="orb-num" th:text="${stats.online() + stats.offline() == 0} ? '—' : ${stats.availability()} + '%'">0%</text>
+        <text x="64" y="82" text-anchor="middle" class="orb-cap">disponível</text>
+      </svg>
     </div>
-    <p class="muted empty" th:if="${fleet.isEmpty()}">Nenhum dispositivo ainda. Adicione o primeiro abaixo.</p>
+    <div class="hero-main">
+      <div class="kpis">
+        <article class="kpi">
+          <span class="kpi-label">Dispositivos</span>
+          <strong class="kpi-value" th:text="${stats.total()}">0</strong>
+          <span class="kpi-sub" th:text="${stats.unknown() > 0} ? ${stats.unknown()} + ' aguardando 1ª checagem' : 'monitorados'">monitorados</span>
+        </article>
+        <article class="kpi kpi-ok">
+          <span class="kpi-label">Online</span>
+          <strong class="kpi-value" th:text="${stats.online()}">0</strong>
+          <span class="kpi-sub">respondendo às checagens</span>
+        </article>
+        <article class="kpi" th:classappend="${stats.offline() > 0} ? 'kpi-bad'">
+          <span class="kpi-label">Offline</span>
+          <strong class="kpi-value" th:text="${stats.offline()}">0</strong>
+          <span class="kpi-sub" th:text="${stats.offline() > 0} ? 'requer atenção' : 'tudo respondendo'">—</span>
+        </article>
+        <article class="kpi">
+          <span class="kpi-label">Latência média</span>
+          <strong class="kpi-value" th:text="${@fmt.ms(stats.avgLatency())}">—</strong>
+          <span class="kpi-sub">dispositivos online</span>
+        </article>
+      </div>
+      <div class="fleet" aria-label="Frota">
+        <div class="fleet-head"><h2>Frota</h2><span class="card-sub" th:text="${stats.total()} + ' dispositivos'">0</span></div>
+        <div class="fleet-strip" th:if="${!fleet.isEmpty()}">
+          <span th:each="d : ${fleet}" class="tick" th:classappend="'tick-' + ${@fmt.statusClass(d.status())}"
+                th:title="${d.name()} + ' · ' + ${@fmt.statusLabel(d.status())}"></span>
+        </div>
+        <p class="empty" th:if="${fleet.isEmpty()}">Nenhum dispositivo ainda. Adicione o primeiro abaixo.</p>
+      </div>
+    </div>
   </section>
 
-  <section class="grid-4">
+  <section class="row-3">
     <article class="card">
       <h2>Latência por dispositivo</h2>
       <div class="bars" th:if="${!bars.isEmpty()}">
@@ -45,43 +61,21 @@
           <span class="bar-val" th:text="${b.valueText()}">0 ms</span>
         </div>
       </div>
-      <p class="muted empty" th:if="${bars.isEmpty()}">Sem medições de latência ainda.</p>
+      <p class="empty" th:if="${bars.isEmpty()}">Sem medições de latência ainda.</p>
     </article>
 
     <article class="card">
-      <h2>Status</h2>
-      <div class="donut-wrap">
-        <svg class="donut" viewBox="0 0 128 128" role="img" aria-label="Distribuição de status">
-          <circle class="donut-track" cx="64" cy="64" r="51" fill="none" stroke-width="18"></circle>
-          <g transform="rotate(-90 64 64)">
-            <circle th:each="s : ${donut.segments()}" cx="64" cy="64" r="51" fill="none" stroke-width="18"
-                    th:class="${s.color()}" th:attr="stroke-dasharray=${s.dash()},stroke-dashoffset=${s.offset()}"></circle>
-          </g>
-          <text x="64" y="62" text-anchor="middle" class="donut-num" th:text="${stats.total()}">0</text>
-          <text x="64" y="80" text-anchor="middle" class="donut-cap">dispositivos</text>
-        </svg>
-        <ul class="legend">
-          <li><i class="dot dot-ok"></i> Online <b th:text="${stats.online()}">0</b></li>
-          <li><i class="dot dot-bad"></i> Offline <b th:text="${stats.offline()}">0</b></li>
-          <li th:if="${stats.unknown() > 0}"><i class="dot dot-idle"></i> Aguardando <b th:text="${stats.unknown()}">0</b></li>
-        </ul>
-      </div>
-    </article>
-
-    <article class="card">
-      <h2>Disponibilidade (24 h)</h2>
+      <h2>Disponibilidade nas últimas 24 h</h2>
       <div class="uptime-big" th:text="${@fmt.pct(uptimeNow, 2)}">—</div>
       <svg class="spark" th:if="${!uptimeLine.empty()}" th:attr="viewBox='0 0 ' + ${uptimeLine.width()} + ' ' + ${uptimeLine.height()}" preserveAspectRatio="none" role="img" aria-label="Disponibilidade nas últimas 24 horas">
         <path class="spark-area" th:attr="d=${uptimeLine.area()}"></path>
         <path class="spark-line" th:attr="d=${uptimeLine.path()}"></path>
       </svg>
-      <p class="muted empty" th:if="${uptimeLine.empty()}">O histórico aparece após a primeira hora de coleta.</p>
+      <p class="empty" th:if="${uptimeLine.empty()}">O histórico aparece após a primeira hora de coleta.</p>
     </article>
 
-    <article class="card card-term">
-      <div class="term-head"><i></i><i></i><i></i><span>~/alertas</span></div>
-      <div class="term-body">
-      <div class="card-head"><h2><span class="term-prompt">$</span> alertas recentes</h2><a class="link" href="/alerts">ver todos</a></div>
+    <article class="card">
+      <div class="card-head"><h2>Alertas recentes</h2><a class="link" href="/alerts">Ver todos</a></div>
       <ul class="alert-mini" th:if="${!recent.isEmpty()}">
         <li th:each="a : ${recent}">
           <i class="dot" th:classappend="'dot-' + ${@fmt.severityClass(a.event().severity())}"></i>
@@ -89,11 +83,10 @@
             <b th:text="${a.deviceName()}">host</b>
             <span class="muted" th:text="${@fmt.kindLabel(a.event().kind())}">tipo</span>
           </div>
-          <time class="muted" data-localtime="rel" th:attr="data-iso=${@fmt.iso(a.event().createdAt())}" th:text="${@fmt.ago(a.event().createdAt())}">agora</time>
+          <time data-localtime="rel" th:attr="data-iso=${@fmt.iso(a.event().createdAt())}" th:text="${@fmt.ago(a.event().createdAt())}">agora</time>
         </li>
       </ul>
-      <p class="muted empty" th:if="${recent.isEmpty()}">Nenhum alerta. Tudo tranquilo.</p>
-      </div>
+      <p class="empty" th:if="${recent.isEmpty()}">Nenhum alerta. Tudo tranquilo.</p>
     </article>
   </section>
 </th:block>

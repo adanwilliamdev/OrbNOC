@@ -2,21 +2,99 @@
 <html lang="pt-BR" xmlns:th="http://www.thymeleaf.org">
 <body>
 <th:block th:fragment="board">
-  <section class="wall-stats">
-    <div class="wall-stat"><span>Dispositivos</span><b th:text="${stats.total()}">0</b></div>
-    <div class="wall-stat ok"><span>Online</span><b th:text="${stats.online()}">0</b></div>
-    <div class="wall-stat" th:classappend="${stats.offline() > 0} ? 'bad'"><span>Offline</span><b th:text="${stats.offline()}">0</b></div>
-    <div class="wall-stat"><span>Disponibilidade</span><b th:text="${stats.availability()} + '%'">0%</b></div>
-    <div class="wall-stat"><span>Latência média</span><b th:text="${@fmt.ms(stats.avgLatency())}">—</b></div>
+
+  <section class="w-state" th:classappend="'is-' + ${state}" aria-live="polite">
+    <div class="w-state-main">
+      <i class="w-state-led"></i>
+      <div>
+        <b class="w-state-title" th:if="${stats.total() == 0}">Nenhum dispositivo</b>
+        <b class="w-state-title" th:if="${stats.total() > 0 and state == 'idle'}">Aguardando checagens</b>
+        <b class="w-state-title" th:if="${state == 'bad'}" th:text="${stats.offline() == 1} ? '1 dispositivo offline' : ${stats.offline()} + ' dispositivos offline'">2 dispositivos offline</b>
+        <b class="w-state-title" th:if="${state == 'ok'}">Operação normal</b>
+
+        <span class="w-state-sub" th:if="${stats.total() == 0}">Cadastre dispositivos no painel para começar o monitoramento.</span>
+        <span class="w-state-sub" th:if="${stats.total() > 0 and state == 'idle'}" th:text="${stats.unknown()} + ' na fila da primeira checagem'">8 na fila</span>
+        <span class="w-state-sub" th:if="${state == 'bad'}" th:text="'Requer atenção · ' + ${stats.online()} + ' de ' + ${stats.online() + stats.offline()} + ' respondendo'">Requer atenção</span>
+        <span class="w-state-sub" th:if="${state == 'ok'}" th:text="${stats.online()} + ' de ' + ${stats.total()} + ' dispositivos respondendo' + (${stats.unknown() > 0} ? ' · ' + ${stats.unknown()} + ' aguardando' : '')">8 de 8 dispositivos respondendo</span>
+      </div>
+    </div>
+    <ul class="w-chips">
+      <li class="warn" th:if="${breached > 0}">Acima do limite de latência<b th:text="${breached}">1</b></li>
+      <li>Latência média<b th:text="${@fmt.ms(stats.avgLatency())}">—</b></li>
+    </ul>
   </section>
-  <section class="wall-grid" th:if="${!tiles.isEmpty()}">
-    <article class="tile" th:each="d : ${tiles}" th:classappend="'tile-' + ${@fmt.statusClass(d.status())}">
-      <b th:text="${d.name()}">nome</b>
-      <span class="mono" th:text="${d.ip()}">ip</span>
-      <span class="tile-lat" th:text="${d.status() == 'offline'} ? 'OFFLINE' : ${@fmt.ms(d.latency())}">—</span>
-    </article>
-  </section>
-  <p class="muted empty" th:if="${tiles.isEmpty()}">Nenhum dispositivo cadastrado.</p>
+
+  <div class="w-body">
+
+    <aside class="w-panel w-orb" aria-label="Resumo">
+      <svg class="orb" viewBox="0 0 128 128" role="img" aria-label="Distribuição de status">
+        <circle class="orb-ring" cx="64" cy="64" r="61"></circle>
+        <circle class="orb-ring" cx="64" cy="64" r="41"></circle>
+        <circle class="orb-track" cx="64" cy="64" r="51" fill="none" stroke-width="9"></circle>
+        <g transform="rotate(-90 64 64)">
+          <circle th:each="s : ${donut.segments()}" cx="64" cy="64" r="51" fill="none" stroke-width="9"
+                  th:class="${s.color()}" th:attr="stroke-dasharray=${s.dash()},stroke-dashoffset=${s.offset()}"></circle>
+        </g>
+        <text x="64" y="68" text-anchor="middle" class="orb-num" th:text="${state == 'idle'} ? '—' : ${stats.availability()} + '%'">100%</text>
+        <text x="64" y="82" text-anchor="middle" class="orb-cap">disponível</text>
+      </svg>
+      <ul class="w-facts">
+        <li><span>Dispositivos</span><b th:text="${stats.total()}">0</b></li>
+        <li class="ok"><span>Online</span><b th:text="${stats.online()}">0</b></li>
+        <li th:classappend="${stats.offline() > 0} ? 'bad'"><span>Offline</span><b th:text="${stats.offline()}">0</b></li>
+        <li th:if="${stats.unknown() > 0}"><span>Aguardando</span><b th:text="${stats.unknown()}">0</b></li>
+      </ul>
+    </aside>
+
+    <section class="w-tiles" th:if="${!tiles.isEmpty()}"
+             th:classappend="'dens-' + ${density}" th:style="'--cols:' + ${cols} + ';--rows:' + ${rows}">
+      <article class="tile" th:each="d : ${tiles}" th:classappend="'tile-' + ${@fmt.statusClass(d.status())}">
+        <div>
+          <div class="tile-head">
+            <i class="tile-led"></i>
+            <b class="tile-name" th:text="${d.name()}" th:title="${d.name()}">nome</b>
+          </div>
+          <div class="tile-host" th:text="${d.location() != null} ? ${d.ip()} + ' · ' + ${d.location()} : ${d.ip()}">ip</div>
+        </div>
+        <div class="tile-foot">
+          <span class="tile-lat" th:classappend="${d.status() == 'online'} ? 'lat-' + ${@fmt.latencyClass(d.latency())}"
+                th:text="${d.status() == 'offline'} ? 'OFFLINE' : (${d.status() == 'online'} ? ${@fmt.ms(d.latency())} : 'Aguardando')">12 ms</span>
+          <span class="tile-age" th:text="${d.status() == 'offline'} ? 'há ' + ${@fmt.since(d.lastStatusChange())} : ${@fmt.ago(d.lastCheck())}">agora</span>
+        </div>
+      </article>
+    </section>
+    <section class="w-tiles empty-state" th:if="${tiles.isEmpty()}"><p>Nenhum dispositivo cadastrado.</p></section>
+
+    <div class="w-side">
+      <section class="w-panel w-feed">
+        <h2>Alertas recentes</h2>
+        <ul th:if="${!recent.isEmpty()}">
+          <li th:each="a : ${recent}">
+            <i class="sev" th:classappend="'sev-' + ${@fmt.severityClass(a.event().severity())}"></i>
+            <div>
+              <b th:text="${a.deviceName()}">host</b>
+              <small th:text="${@fmt.kindLabel(a.event().kind())}">tipo</small>
+            </div>
+            <time th:text="${@fmt.ago(a.event().createdAt())}">agora</time>
+          </li>
+        </ul>
+        <p class="empty" th:if="${recent.isEmpty()}">Nenhum alerta recente.</p>
+      </section>
+
+      <section class="w-panel w-lat">
+        <h2>Maiores latências</h2>
+        <div class="bars" th:if="${!bars.isEmpty()}">
+          <div class="bar-row" th:each="b : ${bars}">
+            <span class="bar-name" th:text="${b.name()}">host</span>
+            <span class="bar-track"><span class="bar-fill" th:classappend="'bar-' + ${b.cls()}" th:style="'width:' + ${b.pct()} + '%'"></span></span>
+            <span class="bar-val" th:text="${b.valueText()}">0 ms</span>
+          </div>
+        </div>
+        <p class="empty" th:if="${bars.isEmpty()}">Sem medições ainda.</p>
+      </section>
+    </div>
+
+  </div>
 </th:block>
 </body>
 </html>

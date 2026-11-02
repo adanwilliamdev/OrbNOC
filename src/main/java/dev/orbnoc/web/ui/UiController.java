@@ -151,25 +151,10 @@ public class UiController {
         model.addAttribute("fleet", all.stream().sorted(Comparator.comparing(Dto.DeviceOut::name, String.CASE_INSENSITIVE_ORDER)).toList());
 
         // barras de latência (online com medida, maiores primeiro)
-        List<Dto.DeviceOut> measured = all.stream()
-                .filter(d -> "online".equals(d.status()) && d.latency() != null)
-                .sorted(Comparator.comparing(Dto.DeviceOut::latency).reversed())
-                .limit(15)
-                .toList();
-        double peak = measured.stream().mapToDouble(Dto.DeviceOut::latency).max().orElse(1);
-        List<BarRow> bars = new ArrayList<>();
-        for (Dto.DeviceOut d : measured) {
-            String shortName = d.name().length() > 18 ? d.name().substring(0, 15) + "..." : d.name();
-            bars.add(new BarRow(shortName, d.name(), fmt.ms(d.latency()),
-                    (int) Math.max(4, Math.round(Math.sqrt(d.latency() / peak) * 100)), fmt.latencyClass(d.latency())));
-        }
-        model.addAttribute("bars", bars);
+        model.addAttribute("bars", latencyBars(all, 10));
 
         // anel de status
-        model.addAttribute("donut", Charts.donut(List.of(
-                new Charts.Segment("Online", stats.online(), "seg-ok", "", ""),
-                new Charts.Segment("Offline", stats.offline(), "seg-bad", "", ""),
-                new Charts.Segment("Aguardando", stats.unknown(), "seg-idle", "", ""))));
+        model.addAttribute("donut", statusDonut(stats));
 
         // histórico de disponibilidade (24 h)
         List<Map<String, Object>> series = sla.uptimeSeries(user.getId(), 24);
@@ -188,6 +173,31 @@ public class UiController {
         // últimos alertas
         model.addAttribute("recent", alertRows(user.getId(), false, 6, all));
         model.addAttribute("unread", events.unreadCount(user.getId()));
+    }
+
+    /** Barras de latência: dispositivos online com medida, maiores primeiro. */
+    private List<BarRow> latencyBars(List<Dto.DeviceOut> all, int limit) {
+        List<Dto.DeviceOut> measured = all.stream()
+                .filter(d -> "online".equals(d.status()) && d.latency() != null)
+                .sorted(Comparator.comparing(Dto.DeviceOut::latency).reversed())
+                .limit(limit)
+                .toList();
+        double peak = measured.stream().mapToDouble(Dto.DeviceOut::latency).max().orElse(1);
+        List<BarRow> bars = new ArrayList<>();
+        for (Dto.DeviceOut d : measured) {
+            String shortName = d.name().length() > 18 ? d.name().substring(0, 15) + "..." : d.name();
+            bars.add(new BarRow(shortName, d.name(), fmt.ms(d.latency()),
+                    (int) Math.max(4, Math.round(Math.sqrt(d.latency() / peak) * 100)), fmt.latencyClass(d.latency())));
+        }
+        return bars;
+    }
+
+    /** Anel de status (online, offline, aguardando). */
+    private Charts.Donut statusDonut(DeviceQuery.Stats stats) {
+        return Charts.donut(List.of(
+                new Charts.Segment("Online", stats.online(), "seg-ok", "", ""),
+                new Charts.Segment("Offline", stats.offline(), "seg-bad", "", ""),
+                new Charts.Segment("Aguardando", stats.unknown(), "seg-idle", "", "")));
     }
 
     private void fillTable(Model model, User user, DeviceQuery.Params p) {
@@ -415,7 +425,21 @@ public class UiController {
 
     private void fillWall(Model model, User user) {
         List<Dto.DeviceOut> all = deviceViews(user);
-        model.addAttribute("stats", DeviceQuery.stats(all));
+        DeviceQuery.Stats stats = DeviceQuery.stats(all);
+        model.addAttribute("stats", stats);
+        // situação geral: idle = sem medições, bad = há host offline, ok = tudo respondendo
+        model.addAttribute("state", stats.online() + stats.offline() == 0 ? "idle" : stats.offline() > 0 ? "bad" : "ok");
+        model.addAttribute("breached", all.stream().filter(Dto.DeviceOut::slaBreached).count());
+        model.addAttribute("donut", statusDonut(stats));
+        model.addAttribute("bars", latencyBars(all, 5));
+        model.addAttribute("recent", alertRows(user.getId(), false, 7, all));
+
+        // grade dos cartões: colunas e linhas proporcionais à quantidade, para preencher a TV
+        int n = Math.max(1, all.size());
+        int cols = n <= 4 ? 2 : n <= 9 ? 3 : n <= 16 ? 4 : n <= 36 ? 5 : n <= 48 ? 6 : n <= 64 ? 7 : 8;
+        model.addAttribute("cols", cols);
+        model.addAttribute("rows", (n + cols - 1) / cols);
+        model.addAttribute("density", n <= 16 ? "lg" : n <= 36 ? "md" : "sm");
         model.addAttribute("tiles", all.stream()
                 .sorted(Comparator.comparingInt((Dto.DeviceOut d) -> "offline".equals(d.status()) ? 0 : "unknown".equals(d.status()) ? 1 : 2)
                         .thenComparing(Dto.DeviceOut::name, String.CASE_INSENSITIVE_ORDER))

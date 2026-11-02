@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#0b0f17">
   <title th:text="${title} + ' · OrbNOC'">OrbNOC</title>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="stylesheet" href="/css/app.css">
@@ -14,24 +15,40 @@
 <th:block th:fragment="badge"><span th:if="${unread != null and unread > 0}" class="nav-badge" th:text="${unread > 99 ? '99+' : unread}">0</span></th:block>
 
 <header class="appbar" th:fragment="appbar">
-  <div class="appbar-inner">
-    <a class="brand" href="/">
-      <img src="/favicon.svg" alt="" width="26" height="26">
-      <span>Orb<b>NOC</b></span>
+  <svg class="sprite" aria-hidden="true" focusable="false">
+    <symbol id="i-panel" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></symbol>
+    <symbol id="i-map" viewBox="0 0 24 24"><circle cx="12" cy="5" r="2.2"/><circle cx="5" cy="19" r="2.2"/><circle cx="19" cy="19" r="2.2"/><path d="M12 7.2v4.3M12 11.5 6.3 17M12 11.5l5.7 5.5"/></symbol>
+    <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 16v-5a6 6 0 1 1 12 0v5l1.5 2h-15z"/><path d="M10 21a2 2 0 0 0 4 0"/></symbol>
+    <symbol id="i-chart" viewBox="0 0 24 24"><path d="M5 20v-7M12 20V5M19 20v-10"/></symbol>
+    <symbol id="i-pulse" viewBox="0 0 24 24"><path d="M3 12h4l2.5-6 4 12 2.5-6H21"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3 19c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5"/><path d="M16.5 5a3 3 0 0 1 0 6M18 14c2 .6 3.5 2.3 3.5 5"/></symbol>
+    <symbol id="i-tv" viewBox="0 0 24 24"><rect x="2.5" y="4" width="19" height="13" rx="2"/><path d="M8 21h8M12 17v4"/></symbol>
+    <symbol id="i-out" viewBox="0 0 24 24"><path d="M9 4H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h4M16 8l4 4-4 4M20 12H9"/></symbol>
+  </svg>
+
+  <a class="brand" href="/">
+    <img src="/favicon.svg" alt="" width="30" height="30">
+    <span>Orb<b>NOC</b></span>
+  </a>
+
+  <nav class="nav" aria-label="Principal">
+    <a href="/" th:classappend="${nav == 'dashboard'} ? 'active'"><svg><use href="#i-panel"/></svg>Painel</a>
+    <a href="/network-map" th:classappend="${nav == 'network-map'} ? 'active'"><svg><use href="#i-map"/></svg>Mapa</a>
+    <a href="/alerts" th:classappend="${nav == 'alerts'} ? 'active'"><svg><use href="#i-bell"/></svg>Alertas
+      <span class="badge-slot" data-fragment="/ui/fragments/alert-badge"><th:block th:replace="~{fragments/layout :: badge}"></th:block></span>
     </a>
-    <nav class="nav" aria-label="Principal">
-      <a href="/" th:classappend="${nav == 'dashboard'} ? 'active'">Painel</a>
-      <a href="/network-map" th:classappend="${nav == 'network-map'} ? 'active'">Mapa</a>
-      <a href="/alerts" th:classappend="${nav == 'alerts'} ? 'active'">Alertas
-        <span class="badge-slot" data-fragment="/ui/fragments/alert-badge"><th:block th:replace="~{fragments/layout :: badge}"></th:block></span>
-      </a>
-      <a href="/reports" th:classappend="${nav == 'reports'} ? 'active'">Relatórios</a>
-      <a href="/diagnostic" th:classappend="${nav == 'diagnostic'} ? 'active'">Diagnóstico</a>
-      <a href="/users" th:if="${isAdmin}" th:classappend="${nav == 'users'} ? 'active'">Usuários</a>
-    </nav>
+    <a href="/reports" th:classappend="${nav == 'reports'} ? 'active'"><svg><use href="#i-chart"/></svg>Relatórios</a>
+    <a href="/diagnostic" th:classappend="${nav == 'diagnostic'} ? 'active'"><svg><use href="#i-pulse"/></svg>Diagnóstico</a>
+    <a href="/users" th:if="${isAdmin}" th:classappend="${nav == 'users'} ? 'active'"><svg><use href="#i-users"/></svg>Usuários</a>
+    <a class="nav-tv" href="/wallboard"><svg><use href="#i-tv"/></svg>Wallboard</a>
+  </nav>
+
+  <div class="appbar-foot">
+    <span class="conn" data-conn>Conectando…</span>
     <div class="appbar-user">
+      <span class="avatar" th:text="${#strings.substring(user.username, 0, 1)}">u</span>
       <span class="who" th:text="${user.username}">usuário</span>
-      <button type="button" class="btn btn-ghost btn-sm" data-action="logout">Sair</button>
+      <button type="button" class="icon-btn" data-action="logout" aria-label="Sair" title="Sair"><svg><use href="#i-out"/></svg></button>
     </div>
   </div>
 </header>

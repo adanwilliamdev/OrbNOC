@@ -9,15 +9,7 @@
     <article class="kpi"><span class="kpi-label">Avisos</span><strong class="kpi-value" th:text="${countWarnings}">0</strong><span class="kpi-sub">latência acima do limite</span></article>
   </section>
 
-  <section class="card">
-    <h2>Atividade nas últimas 24 h</h2>
-    <div class="activity" role="img" aria-label="Eventos por hora">
-      <span class="act-col" th:each="a : ${activity}" th:title="${a.count()} + ' evento(s)'">
-        <span class="act-bar" th:style="'height:' + ${a.pct()} + '%'"></span>
-      </span>
-    </div>
-  </section>
-
+  <div class="split">
   <section class="card">
     <div class="card-head">
       <div class="segmented" role="group" aria-label="Filtrar alertas">
@@ -45,6 +37,16 @@
     </ul>
     <p class="muted empty" th:if="${rows.isEmpty()}">Nenhum alerta neste filtro.</p>
   </section>
+
+  <section class="card activity-card">
+    <h2>Atividade nas últimas 24 h</h2>
+    <div class="activity" role="img" aria-label="Eventos por hora">
+      <span class="act-col" th:each="a : ${activity}" th:title="${a.count()} + ' evento(s)'">
+        <span class="act-bar" th:style="'height:' + ${a.pct()} + '%'"></span>
+      </span>
+    </div>
+  </section>
+  </div>
 </th:block>
 </body>
 </html>

@@ -518,6 +518,45 @@
     }
   });
 
+  // ------------------------------------------------------------ wallboard (TV)
+
+  function tickClock() {
+    const now = new Date();
+    $$('[data-clock="time"]').forEach((el) => {
+      el.textContent = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    });
+    $$('[data-clock="date"]').forEach((el) => {
+      const text = now.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' });
+      el.textContent = text.charAt(0).toUpperCase() + text.slice(1);
+    });
+  }
+
+  let wakeLock = null;
+  async function keepAwake() {
+    if (!('wakeLock' in navigator) || wakeLock) return;
+    try {
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', () => { wakeLock = null; });
+    } catch (e) { /* sem permissão: a TV segue as regras de energia dela */ }
+  }
+
+  function setupWall() {
+    if (!document.body.classList.contains('wall-body')) return;
+    let idle = null;
+    const wake = () => {
+      document.body.classList.remove('wall-idle');
+      clearTimeout(idle);
+      idle = setTimeout(() => document.body.classList.add('wall-idle'), 5000);
+    };
+    ['mousemove', 'pointerdown', 'keydown', 'touchstart'].forEach((name) => document.addEventListener(name, wake, { passive: true }));
+    wake();
+    keepAwake();
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') keepAwake(); });
+    document.addEventListener('keydown', (event) => {
+      if ((event.key === 'f' || event.key === 'F') && !event.ctrlKey && !event.metaKey && !event.altKey) actions.fullscreen();
+    });
+  }
+
   // ------------------------------------------------------------------- início
 
   document.addEventListener('DOMContentLoaded', async () => {
@@ -531,6 +570,8 @@
       } catch (e) { /* sem registro */ }
     }
     connect();
+    if ($('[data-clock]')) { tickClock(); setInterval(tickClock, 1000); }
+    setupWall();
     if ($$('[data-fragment]').length) setInterval(refreshFragments, 30000);
   });
 })();

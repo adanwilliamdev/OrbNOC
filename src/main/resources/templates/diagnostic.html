@@ -5,7 +5,7 @@
 <header th:replace="~{fragments/layout :: appbar}"></header>
 <main class="page">
   <div class="page-head">
-    <div><span class="eyebrow"><i class="dot dot-ok"></i> ferramentas de rede</span><h1>Diagnóstico <span class="accent">de rede</span></h1><p class="muted">Ping, traceroute, DNS e teste de portas a partir do servidor OrbNOC</p></div>
+    <div><h1>Diagnóstico de rede</h1><p class="page-sub">Ping, traceroute, DNS e teste de portas a partir do servidor OrbNOC.</p></div>
   </div>
 
   <section class="card">
@@ -30,9 +30,9 @@
     </form>
   </section>
 
-  <section class="card card-term" id="diag-result-card">
-    <div class="term-head"><i></i><i></i><i></i><span>~/diagnostico</span></div>
-    <div class="term-body"><div id="diag-result"><p class="muted empty"><span class="term-prompt">$</span> escolha uma ferramenta, informe o host e execute.</p></div></div>
+  <section class="card result-card" id="diag-result-card">
+    <div class="card-head"><h2>Resultado</h2></div>
+    <div id="diag-result"><p class="empty">Escolha uma ferramenta, informe o host e execute.</p></div>
   </section>
 </main>
 <div th:replace="~{fragments/layout :: toasts}"></div>
