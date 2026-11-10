@@ -65,7 +65,7 @@ services:
   # Métricas (opcional): docker compose --profile monitoring up -d
   # Prometheus em http://127.0.0.1:9090, raspando app:9091/actuator/prometheus.
   prometheus:
-    image: prom/prometheus:v3.5.0
+    image: prom/prometheus:v3.16.0
     profiles: ["monitoring"]
     restart: unless-stopped
     depends_on:
