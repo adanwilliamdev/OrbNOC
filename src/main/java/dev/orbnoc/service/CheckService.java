@@ -7,6 +7,7 @@ import dev.orbnoc.domain.Event;
 import dev.orbnoc.domain.Metric;
 import dev.orbnoc.repo.DeviceRepository;
 import dev.orbnoc.repo.MetricRepository;
+import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -20,11 +21,13 @@ public class CheckService {
     private final MetricRepository metrics;
     private final DeviceRepository devices;
     private final EventService events;
+    private final MeterRegistry meters;
 
-    public CheckService(MetricRepository metrics, DeviceRepository devices, EventService events) {
+    public CheckService(MetricRepository metrics, DeviceRepository devices, EventService events, MeterRegistry meters) {
         this.metrics = metrics;
         this.devices = devices;
         this.events = events;
+        this.meters = meters;
     }
 
     /** Deve rodar dentro de uma transação do chamador. Devolve os eventos criados. */
@@ -42,8 +45,15 @@ public class CheckService {
         metrics.save(metric);
         devices.save(device);
 
+        meters.counter(
+                        "orbnoc.probe.results",
+                        "method", result.method() == null ? "unknown" : result.method(),
+                        "outcome", result.ok() ? "ok" : "fail")
+                .increment();
+
         List<Event> created = new ArrayList<>();
         for (DeviceStateMachine.Transition t : transitions) {
+            meters.counter("orbnoc.events", "kind", t.kind(), "severity", t.severity()).increment();
             created.add(events.record(device.getUserId(), device.getId(), t.kind(), t.severity(), t.message()));
         }
         return created;

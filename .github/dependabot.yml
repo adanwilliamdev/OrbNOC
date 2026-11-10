@@ -24,3 +24,8 @@ updates:
     schedule:
       interval: weekly
     labels: ["dependencies"]
+  - package-ecosystem: docker-compose
+    directory: "/"
+    schedule:
+      interval: weekly
+    labels: ["dependencies"]

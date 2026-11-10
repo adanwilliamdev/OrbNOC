@@ -15,8 +15,9 @@ Requisitos: JDK 21, Maven 3.9+ e PostgreSQL (ou Docker). As instruções de exec
 
 ## Padrões
 
-- Java 21, formatação padrão do IntelliJ/Google Java Style, sem imports não usados.
+- Java 21, 4 espaços e linhas de até 120 colunas. O Spotless (`mvn spotless:check`) barra imports não usados, espaços no fim da linha e arquivo sem quebra final; `mvn spotless:apply` corrige.
+- A cobertura de linhas tem piso (`jacoco.line.minimum` no `pom.xml`); código novo vem com testes.
 - Mensagens para o usuário em português do Brasil.
-- Alterações no banco entram como nova migração em `src/main/resources/db/migration` (nunca edite uma migração já publicada).
+- Alterações no banco entram como nova migração em `src/main/resources/db/migration` (`V2__...`, `V3__...`, em sequência). Nunca edite uma migração já publicada (a `V1` já está); ao publicar uma nova, registre o hash dela em `MigrationConventionsTest.PUBLICADAS`.
 - Entradas externas (hosts, portas, corpo de requisições) sempre validadas; comandos do sistema só com argumentos em lista, sem shell.
 - Não registre segredos (tokens, senhas) em logs.

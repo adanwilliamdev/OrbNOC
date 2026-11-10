@@ -67,7 +67,9 @@ Navegador ── HTTP/WebSocket ──► OrbNOC (Spring Boot) ── JDBC ─�
 | Segurança | Argon2, cookies de sessão assinados com HS256 e AES-256-GCM |
 | Exportação | Apache POI (XLSX) |
 | Testes | Testcontainers e testes unitários e de integração |
-| Infraestrutura | Docker, Docker Compose e Caddy |
+| Observabilidade | Actuator, Micrometer e Prometheus |
+| Qualidade | JaCoCo (gate de cobertura), Spotless, OWASP Dependency-Check e Dependabot |
+| Infraestrutura | Docker (jar em camadas), Docker Compose e Caddy |
 
 ---
 
@@ -291,6 +293,42 @@ Novos testes de integração devem estender:
 ```text
 dev.orbnoc.support.IntegrationTestBase
 ```
+
+### ✅ Qualidade no CI
+
+O workflow `.github/workflows/ci.yml` roda, a cada push e pull request:
+
+- **Formatação**: `mvn spotless:check` (corrija com `mvn spotless:apply`).
+- **Build e testes**: `mvn verify`, com **gate de cobertura**: o build falha se a cobertura de linhas ficar abaixo de `jacoco.line.minimum` (no `pom.xml`). O relatório fica em `target/site/jacoco` e como artefato do CI; suba o piso aos poucos.
+- **Vulnerabilidades**: OWASP Dependency-Check (falha com CVSS ≥ 7), semanal e na `main`. Precisa do segredo `NVD_API_KEY` no repositório; sem ele o job apenas avisa.
+- **Imagem Docker**: build do jar em camadas e verificação de usuário não-root.
+- **Dependabot**: Maven, GitHub Actions, Docker e Compose, semanalmente.
+
+### 🔄 Migrações de banco
+
+O schema é controlado só pelo Flyway. A `V1` está publicada e **não pode mais ser editada**: toda mudança vira `V2__descricao.sql`, `V3__...` e assim por diante. O teste `MigrationConventionsTest` garante nomes no padrão, versões sem buracos e hash fixo das migrações publicadas; ao publicar uma nova, registre o hash dela em `PUBLICADAS`.
+
+### 📈 Métricas (Prometheus)
+
+O Actuator roda numa porta de gestão separada (`MANAGEMENT_PORT`, padrão `9091`), que o compose **não publica**. Endpoints: `/actuator/health` (com probes), `/actuator/info` e `/actuator/prometheus`. Métricas próprias:
+
+| Métrica | Descrição |
+|---|---|
+| `orbnoc_devices{status}` | dispositivos por status (online, offline, unknown) |
+| `orbnoc_monitor_heartbeat_age_seconds` | idade do último ciclo do monitor |
+| `orbnoc_monitor_last_round_devices` | dispositivos checados na última rodada |
+| `orbnoc_probe_results_total{method,outcome}` | sondas por método e resultado (ok/fail) |
+| `orbnoc_events_total{kind,severity}` | eventos gerados (quedas, recuperações, SLA...) |
+
+Para subir um Prometheus com regras de alerta de exemplo: `docker compose --profile monitoring up -d` (UI em `http://127.0.0.1:9090`; arquivos em `ops/`).
+
+### 🚀 Produção com Docker Compose
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.prod.yml --profile https up -d
+```
+
+O arquivo `docker-compose.prod.yml` recusa subir sem `ENCRYPTION_KEY` e `PUBLIC_URL`, força cookie `Secure` e mantém demo, cadastro aberto e reset de senha desligados.
 
 ### 📁 Estrutura do Projeto
 

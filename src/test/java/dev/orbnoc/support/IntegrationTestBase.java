@@ -56,7 +56,8 @@ import org.testcontainers.containers.PostgreSQLContainer;
             "orbnoc.jwt-secret=integration-tests-jwt-secret-0123456789abcdef",
             "orbnoc.worker-enabled=false",
             "orbnoc.public-url=http://localhost:8080",
-            "orbnoc.allow-private-networks=true"
+            "orbnoc.allow-private-networks=true",
+            "management.server.port=-1"
         })
 @AutoConfigureMockMvc
 public abstract class IntegrationTestBase {

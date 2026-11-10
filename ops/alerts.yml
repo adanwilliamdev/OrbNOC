@@ -1,0 +1,26 @@
+groups:
+  - name: orbnoc
+    rules:
+      - alert: OrbNocInstanciaFora
+        expr: up{job="orbnoc"} == 0
+        for: 2m
+        labels: { severity: critical }
+        annotations:
+          summary: "OrbNOC não responde ao Prometheus há 2 minutos"
+
+      - alert: OrbNocMonitorParado
+        # o ciclo do monitor deveria concluir a cada poucos segundos (WORKER_TICK_SECONDS)
+        expr: orbnoc_monitor_heartbeat_age_seconds > 60
+        for: 2m
+        labels: { severity: critical }
+        annotations:
+          summary: "O monitor do OrbNOC não conclui um ciclo há mais de 60 s"
+
+      - alert: OrbNocTaxaAltaDeFalhasDeSonda
+        expr: |
+          sum(rate(orbnoc_probe_results_total{outcome="fail"}[5m]))
+            / sum(rate(orbnoc_probe_results_total[5m])) > 0.5
+        for: 10m
+        labels: { severity: warning }
+        annotations:
+          summary: "Mais da metade das sondas falha: confira a conectividade do próprio servidor do OrbNOC"

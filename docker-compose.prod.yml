@@ -1,0 +1,36 @@
+# Perfil de PRODUÇÃO: sobrepõe o docker-compose.yml e recusa subir com valores de exemplo ou omitidos.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml --profile https up -d
+#
+# Diferenças em relação ao compose base:
+#   - ENCRYPTION_KEY e PUBLIC_URL passam a ser obrigatórias (o base cai no JWT_SECRET e em localhost);
+#   - cookie de sessão sempre Secure (exige HTTPS, ex.: perfil "https" com Caddy);
+#   - demo, cadastro aberto e reset forçado de senha do admin sempre desligados;
+#   - sem privilégios extras no processo e com rotação dos logs do Docker.
+# A senha do banco e o JWT_SECRET já são obrigatórios no base. Nunca reutilize o mesmo valor
+# em JWT_SECRET e ENCRYPTION_KEY, e não versione o .env.
+services:
+  db:
+    restart: always
+    logging: &logs
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  app:
+    restart: always
+    environment:
+      ENVIRONMENT: production
+      PUBLIC_URL: ${PUBLIC_URL:?defina PUBLIC_URL com a URL https pública}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:?defina ENCRYPTION_KEY (openssl rand -base64 48), diferente do JWT_SECRET}
+      COOKIE_SECURE: "true"
+      REGISTRATION_ENABLED: "false"
+      ORBNOC_DEMO_SEED: "false"
+      ADMIN_FORCE_RESET: "false"
+    security_opt:
+      - no-new-privileges:true
+    logging: *logs
+
+  caddy:
+    logging: *logs

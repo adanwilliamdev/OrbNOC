@@ -4,9 +4,12 @@ import dev.orbnoc.domain.Device;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowCallbackHandler;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -130,6 +133,15 @@ public class DeviceRepository {
     public boolean existsByUserIdAndIp(Long userId, String ip) {
         return Boolean.TRUE.equals(jdbc.queryForObject(
                 "SELECT EXISTS (SELECT 1 FROM devices WHERE user_id = ? AND ip = ?)", Boolean.class, userId, ip));
+    }
+
+    /** Quantidade de dispositivos por status (online, offline, unknown); usado nas métricas. */
+    public Map<String, Long> countByStatus() {
+        Map<String, Long> counts = new LinkedHashMap<>();
+        jdbc.query(
+                "SELECT status, count(*) AS total FROM devices GROUP BY status",
+                (RowCallbackHandler) rs -> counts.put(rs.getString("status"), rs.getLong("total")));
+        return counts;
     }
 
     public long count() {

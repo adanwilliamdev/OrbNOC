@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Falsos positivos do OWASP Dependency-Check. Cada supressão precisa de justificativa e de uma data
+  de revisão; não suprima uma vulnerabilidade real só para o build passar.
+-->
+<suppressions xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.3.xsd">
+</suppressions>

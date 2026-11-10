@@ -11,6 +11,10 @@ spring:
     property-naming-strategy: SNAKE_CASE
     serialization:
       write-dates-as-timestamps: false
+  flyway:
+    # Todo ajuste de schema vira uma nova migração (V2, V3, ...); nunca edite uma já publicada.
+    clean-disabled: true
+    out-of-order: false
   thymeleaf:
     cache: true
     prefix: classpath:/templates/
@@ -32,6 +36,25 @@ server:
   servlet:
     session:
       tracking-modes: cookie
+
+# Actuator/Micrometer em porta própria (não publicada no compose): o Prometheus raspa
+# http://app:9091/actuator/prometheus dentro da rede interna. Fora do Docker o padrão é só loopback.
+management:
+  server:
+    port: ${MANAGEMENT_PORT:9091}
+    address: ${MANAGEMENT_ADDRESS:127.0.0.1}
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: never
+  metrics:
+    tags:
+      application: ${spring.application.name}
 
 logging:
   level:

@@ -37,6 +37,8 @@ services:
       ADMIN_FORCE_RESET: ${ADMIN_FORCE_RESET:-false}
       ORBNOC_DEMO_SEED: ${ORBNOC_DEMO_SEED:-${SEED_DEMO_HOSTS:-false}}
       ALLOW_PRIVATE_NETWORKS: ${ALLOW_PRIVATE_NETWORKS:-true}
+      # Métricas (Actuator) em porta própria, visível só na rede interna do compose (não é publicada).
+      MANAGEMENT_ADDRESS: 0.0.0.0
     # Permite ICMP sem privilégios (o ping do sistema usa socket de datagrama).
     sysctls:
       net.ipv4.ping_group_range: "0 2147483647"
@@ -60,7 +62,23 @@ services:
       - caddy_data:/data
       - caddy_config:/config
 
+  # Métricas (opcional): docker compose --profile monitoring up -d
+  # Prometheus em http://127.0.0.1:9090, raspando app:9091/actuator/prometheus.
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    profiles: ["monitoring"]
+    restart: unless-stopped
+    depends_on:
+      - app
+    volumes:
+      - ./ops/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./ops/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "127.0.0.1:9090:9090"
+
 volumes:
   pgdata:
+  prometheus_data:
   caddy_data:
   caddy_config:
