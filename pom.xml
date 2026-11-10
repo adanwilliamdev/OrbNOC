@@ -24,7 +24,7 @@
     <bouncycastle.version>1.86</bouncycastle.version>
     <jacoco.version>0.8.16</jacoco.version>
     <testcontainers.version>1.21.4</testcontainers.version>
-    <spotless.version>3.4.0</spotless.version>
+    <spotless.version>3.11.0</spotless.version>
     <dependency-check.version>12.2.2</dependency-check.version>
     <!-- Piso de cobertura de LINHAS (0.00 a 1.00) aplicado no "mvn verify". Ajuste conforme o
          relatório do CI e vá subindo aos poucos; nunca reduza sem justificar no PR. -->
