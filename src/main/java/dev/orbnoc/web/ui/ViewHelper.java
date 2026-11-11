@@ -117,12 +117,12 @@ public class ViewHelper {
     // ---- links que preservam filtros e ordenação ----------------------------------------------------
 
     public String filterUrl(DeviceQuery.Params p, String status) {
-        return build(p.q(), status, p.min(), p.max(), p.sort(), p.dir());
+        return buildUrl(p.q(), status, p.min(), p.max(), p.sort(), p.dir());
     }
 
     public String sortUrl(DeviceQuery.Params p, String field) {
         String dir = field.equals(p.sort()) && "asc".equals(p.dir()) ? "desc" : "asc";
-        return build(p.q(), p.status(), p.min(), p.max(), field, dir);
+        return buildUrl(p.q(), p.status(), p.min(), p.max(), field, dir);
     }
 
     public String sortMark(DeviceQuery.Params p, String field) {
@@ -130,7 +130,7 @@ public class ViewHelper {
         return "asc".equals(p.dir()) ? "▲" : "▼";
     }
 
-    private static String build(String q, String status, String min, String max, String sort, String dir) {
+    static String buildUrl(String q, String status, String min, String max, String sort, String dir) {
         UriComponentsBuilder b = UriComponentsBuilder.fromPath("/");
         if (!q.isEmpty()) b.queryParam("q", q);
         if (!"all".equals(status)) b.queryParam("status", status);

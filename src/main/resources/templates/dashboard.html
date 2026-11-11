@@ -55,10 +55,10 @@
       <input type="hidden" name="status" th:value="${p.status()}">
       <input class="input" type="search" name="q" th:value="${p.q()}" placeholder="Buscar por nome, host ou local" aria-label="Buscar">
       <div class="segmented" role="group" aria-label="Filtrar por status">
-        <a th:href="${@fmt.filterUrl(p, 'all')}" th:classappend="${p.status() == 'all'} ? 'on'">Todos</a>
-        <a th:href="${@fmt.filterUrl(p, 'online')}" th:classappend="${p.status() == 'online'} ? 'on'">Online</a>
-        <a th:href="${@fmt.filterUrl(p, 'offline')}" th:classappend="${p.status() == 'offline'} ? 'on'">Offline</a>
-        <a th:href="${@fmt.filterUrl(p, 'unknown')}" th:classappend="${p.status() == 'unknown'} ? 'on'">Aguardando</a>
+        <a th:href="${p.filterUrl('all')}" th:classappend="${p.status() == 'all'} ? 'on'">Todos</a>
+        <a th:href="${p.filterUrl('online')}" th:classappend="${p.status() == 'online'} ? 'on'">Online</a>
+        <a th:href="${p.filterUrl('offline')}" th:classappend="${p.status() == 'offline'} ? 'on'">Offline</a>
+        <a th:href="${p.filterUrl('unknown')}" th:classappend="${p.status() == 'unknown'} ? 'on'">Aguardando</a>
       </div>
       <details class="advanced" th:open="${p.hasAdvancedFilters()}">
         <summary>Filtros avançados</summary>

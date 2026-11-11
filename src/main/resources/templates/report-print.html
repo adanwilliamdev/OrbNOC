@@ -6,7 +6,7 @@
   <div class="print-head">
     <div>
       <h1>OrbNOC — Relatório de SLA</h1>
-      <p>Janela: <b th:text="${window}">24h</b> · Gerado em <time data-localtime="datetime" th:attr="data-iso=${@fmt.iso(generatedAt)}" th:text="${@fmt.utc(generatedAt)}">—</time> · <span th:text="${user.username}">usuário</span></p>
+      <p>Janela: <b th:text="${window}">24h</b> · Gerado em <time data-localtime="datetime" th:attr="data-iso=${generatedAt}" th:text="${@fmt.utc(generatedAt)}">—</time> · <span th:text="${user.username}">usuário</span></p>
     </div>
     <button type="button" class="btn btn-primary btn-sm no-print" data-action="print">Imprimir / salvar PDF</button>
   </div>

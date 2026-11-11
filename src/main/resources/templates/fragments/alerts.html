@@ -30,7 +30,7 @@
             <span class="muted small" th:text="${@fmt.kindLabel(a.event().kind())}">tipo</span>
           </div>
           <p th:text="${a.event().message()}">mensagem</p>
-          <time class="muted small" data-localtime="datetime" th:attr="data-iso=${@fmt.iso(a.event().createdAt())}" th:text="${@fmt.utc(a.event().createdAt())}">data</time>
+          <time class="muted small" data-localtime="datetime" th:attr="data-iso=${a.event().createdAt()}" th:text="${@fmt.utc(a.event().createdAt())}">data</time>
         </div>
         <button type="button" class="btn btn-ghost btn-xs" th:if="${a.event().acknowledgedAt() == null}" data-action="ack" th:attr="data-id=${a.event().id()}">Marcar como lido</button>
       </li>

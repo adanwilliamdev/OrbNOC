@@ -24,6 +24,17 @@ public final class DeviceQuery {
         public boolean active() {
             return !q.isEmpty() || !"all".equals(status) || hasAdvancedFilters();
         }
+
+        /** Link que preserva busca, faixa e ordenação trocando só o filtro de status. */
+        public String filterUrl(String newStatus) {
+            return ViewHelper.buildUrl(q, newStatus, min, max, sort, dir);
+        }
+
+        /** Link de ordenação por coluna; clicar de novo na coluna ativa inverte a direção. */
+        public String sortUrl(String field) {
+            String d = field.equals(sort) && "asc".equals(dir) ? "desc" : "asc";
+            return ViewHelper.buildUrl(q, status, min, max, field, d);
+        }
     }
 
     public record Stats(int total, int online, int offline, int unknown, int availability, Double avgLatency) {}

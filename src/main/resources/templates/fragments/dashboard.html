@@ -83,7 +83,7 @@
             <b th:text="${a.deviceName()}">host</b>
             <span class="muted" th:text="${@fmt.kindLabel(a.event().kind())}">tipo</span>
           </div>
-          <time data-localtime="rel" th:attr="data-iso=${@fmt.iso(a.event().createdAt())}" th:text="${@fmt.ago(a.event().createdAt())}">agora</time>
+          <time data-localtime="rel" th:attr="data-iso=${a.event().createdAt()}" th:text="${@fmt.ago(a.event().createdAt())}">agora</time>
         </li>
       </ul>
       <p class="empty" th:if="${recent.isEmpty()}">Nenhum alerta. Tudo tranquilo.</p>
@@ -97,12 +97,12 @@
     <table class="table">
       <thead>
         <tr>
-          <th><a th:href="${@fmt.sortUrl(p, 'status')}">Status <span th:text="${@fmt.sortMark(p, 'status')}"></span></a></th>
-          <th><a th:href="${@fmt.sortUrl(p, 'name')}">Dispositivo <span th:text="${@fmt.sortMark(p, 'name')}"></span></a></th>
-          <th><a th:href="${@fmt.sortUrl(p, 'ip')}">Host <span th:text="${@fmt.sortMark(p, 'ip')}"></span></a></th>
-          <th class="num"><a th:href="${@fmt.sortUrl(p, 'latency')}">Latência <span th:text="${@fmt.sortMark(p, 'latency')}"></span></a></th>
+          <th><a th:href="${p.sortUrl('status')}">Status <span th:text="${@fmt.sortMark(p, 'status')}"></span></a></th>
+          <th><a th:href="${p.sortUrl('name')}">Dispositivo <span th:text="${@fmt.sortMark(p, 'name')}"></span></a></th>
+          <th><a th:href="${p.sortUrl('ip')}">Host <span th:text="${@fmt.sortMark(p, 'ip')}"></span></a></th>
+          <th class="num"><a th:href="${p.sortUrl('latency')}">Latência <span th:text="${@fmt.sortMark(p, 'latency')}"></span></a></th>
           <th class="num">Perda</th>
-          <th><a th:href="${@fmt.sortUrl(p, 'checked')}">Checagem <span th:text="${@fmt.sortMark(p, 'checked')}"></span></a></th>
+          <th><a th:href="${p.sortUrl('checked')}">Checagem <span th:text="${@fmt.sortMark(p, 'checked')}"></span></a></th>
           <th class="actions-col">Ações</th>
         </tr>
       </thead>
@@ -122,7 +122,7 @@
             <td class="mono"><span th:text="${d.ip()}">0.0.0.0</span><span class="muted small" th:if="${d.checkType() == 'tcp'}" th:text="' :' + ${d.port()}"></span></td>
             <td class="num"><span class="lat" th:classappend="'lat-' + ${@fmt.latencyClass(d.latency())}" th:text="${@fmt.ms(d.latency())}">—</span></td>
             <td class="num" th:text="${@fmt.pct(d.packetLoss(), 0)}">—</td>
-            <td class="muted"><time data-localtime="rel" th:attr="data-iso=${@fmt.iso(d.lastCheck())}" th:text="${@fmt.ago(d.lastCheck())}">—</time></td>
+            <td class="muted"><time data-localtime="rel" th:attr="data-iso=${d.lastCheck()}" th:text="${@fmt.ago(d.lastCheck())}">—</time></td>
             <td class="actions-col">
               <button type="button" class="btn btn-outline btn-xs" data-action="ping" th:attr="data-id=${d.id()}">Ping</button>
               <button type="button" class="btn btn-outline btn-xs" data-action="sla"

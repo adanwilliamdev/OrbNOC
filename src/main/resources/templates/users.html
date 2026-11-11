@@ -19,7 +19,7 @@
             <td th:text="${u.email()}">email</td>
             <td th:text="${@fmt.roleLabel(u.role())}">Usuário</td>
             <td><span class="pill" th:classappend="${u.active()} ? 'pill-ok' : 'pill-idle'" th:text="${u.active()} ? 'Ativo' : 'Desativado'">Ativo</span></td>
-            <td class="muted"><time data-localtime="datetime" th:attr="data-iso=${@fmt.iso(u.lastLogin())}" th:text="${u.lastLogin() != null} ? ${@fmt.utc(u.lastLogin())} : 'nunca'">—</time></td>
+            <td class="muted"><time data-localtime="datetime" th:attr="data-iso=${u.lastLogin()}" th:text="${u.lastLogin() != null} ? ${@fmt.utc(u.lastLogin())} : 'nunca'">—</time></td>
             <td class="actions-col">
               <button type="button" class="btn btn-outline btn-xs" data-action="user-toggle" th:attr="data-id=${u.id()},data-active=${!u.active()}" th:text="${u.active()} ? 'Desativar' : 'Ativar'">Desativar</button>
               <button type="button" class="btn btn-outline btn-xs" data-action="user-role" th:attr="data-id=${u.id()},data-role=${u.role() == 'admin' ? 'user' : 'admin'}" th:text="${u.role() == 'admin'} ? 'Tornar usuário' : 'Tornar admin'">Tornar admin</button>
