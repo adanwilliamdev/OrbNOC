@@ -68,7 +68,7 @@
         </div>
       </details>
       <button type="submit" class="btn btn-outline btn-sm">Filtrar</button>
-      <a class="btn btn-ghost btn-sm" href="/" th:if="${p.active()}">Limpar</a>
+      <a class="btn btn-ghost btn-sm" href="/" data-clear th:classappend="${!p.active()} ? 'is-off'">Limpar</a>
     </form>
 
     <div id="live-table" data-fragment="/ui/fragments/dashboard-table"><th:block th:replace="~{fragments/dashboard :: table}"></th:block></div>

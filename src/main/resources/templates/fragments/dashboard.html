@@ -3,7 +3,7 @@
 <body>
 
 <th:block th:fragment="top">
-  <section class="hero" aria-label="Resumo da rede">
+  <section class="hero" aria-label="Resumo da rede" th:attr="data-offline=${stats.offline()}">
     <div class="hero-orb">
       <svg class="orb" viewBox="0 0 128 128" role="img" aria-label="Distribuição de status">
         <circle class="orb-ring" cx="64" cy="64" r="61"></circle>
