@@ -21,7 +21,7 @@
     <java.version>21</java.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <poi.version>5.4.0</poi.version>
-    <bouncycastle.version>1.86</bouncycastle.version>
+    <bouncycastle.version>1.87</bouncycastle.version>
     <jacoco.version>0.8.16</jacoco.version>
     <testcontainers.version>1.21.4</testcontainers.version>
     <spotless.version>3.4.0</spotless.version>
