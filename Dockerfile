@@ -14,7 +14,7 @@ RUN --mount=type=cache,target=/root/.m2 \
     && java -Djarmode=tools -jar target/orbnoc.jar extract --layers --destination /build/extracted
 
 # ---- runtime ----
-FROM eclipse-temurin:21-jre-noble
+FROM eclipse-temurin:25-jre-noble
 # ping/traceroute: checagens ICMP e diagnóstico; curl: healthcheck
 RUN apt-get update \
     && apt-get install -y --no-install-recommends iputils-ping traceroute curl \
