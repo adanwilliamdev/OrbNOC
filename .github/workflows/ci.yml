@@ -166,6 +166,10 @@ jobs:
             | sudo tee /etc/apt/sources.list.d/pgdg.list > /dev/null
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends postgresql-client-16
+          # O wrapper /usr/bin/pg_* escolhe a versão MAIS NOVA instalada quando o servidor é
+          # remoto/em container; por isso colocamos os binários 16 na frente do PATH.
+          echo "/usr/lib/postgresql/16/bin" >> "$GITHUB_PATH"
+          export PATH="/usr/lib/postgresql/16/bin:$PATH"
           pg_dump --version
           pg_restore --version
           psql --version
@@ -202,7 +206,7 @@ jobs:
           docker run --rm --entrypoint sh "$IMAGE" -c 'test -f orbnoc.jar && test -d lib && test "$(id -u)" != 0'
       # SBOM (CycloneDX) da imagem, anexado como artefato.
       - name: Gerar SBOM (CycloneDX)
-        uses: aquasecurity/trivy-action@0.31.0 # TODO(sha): fixar por SHA de commit completo (tag 0.31.0)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0 (release imutável)
         with:
           image-ref: ${{ env.IMAGE }}
           format: cyclonedx
@@ -214,7 +218,7 @@ jobs:
           path: sbom.cdx.json
       # Falha o job com vulnerabilidades HIGH/CRITICAL que já têm correção disponível.
       - name: Varrer imagem (Trivy)
-        uses: aquasecurity/trivy-action@0.31.0 # TODO(sha): fixar por SHA de commit completo (tag 0.31.0)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0 (release imutável)
         with:
           image-ref: ${{ env.IMAGE }}
           severity: HIGH,CRITICAL
