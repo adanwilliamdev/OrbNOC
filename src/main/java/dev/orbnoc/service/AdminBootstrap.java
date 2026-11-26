@@ -55,6 +55,7 @@ public class AdminBootstrap implements ApplicationRunner {
             existing.setRole("admin");
             existing.setActive(true);
             users.save(existing);
+            users.bumpTokenVersion(existing.getId()); // a recuperação de acesso também derruba sessões antigas
             log.warn("Senha do admin '{}' redefinida (ADMIN_FORCE_RESET). Remova a variável após o uso.", existing.getUsername());
         } else if (!existing.getUsername().equals(props.adminUsername())) {
             log.warn("O e-mail '{}' já pertence ao usuário '{}' (ADMIN_USERNAME='{}'); nenhum admin criado. "

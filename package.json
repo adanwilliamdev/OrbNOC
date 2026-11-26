@@ -1,0 +1,8 @@
+{
+  "name": "orbnoc-frontend-lint",
+  "private": true,
+  "description": "Só para o lint do JavaScript do navegador; o frontend não tem etapa de build.",
+  "scripts": {
+    "lint": "npx --yes eslint@9 src/main/resources/static/js/live.js"
+  }
+}

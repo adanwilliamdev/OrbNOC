@@ -18,10 +18,34 @@ public final class DeviceStateMachine {
     /** Amostras usadas em média/jitter/perda. */
     public static final int WINDOW = 10;
 
+    /** Sucessos seguidos necessários para sair de offline (evita "recuperou" a cada resposta isolada). */
+    public static final int RECOVERY_SUCCESSES = 2;
+
+    /** Amostras seguidas acima/abaixo do limite para abrir/fechar um alerta de latência. */
+    public static final int SLA_CONFIRMATIONS = 2;
+
+    /** Histerese: a latência só "normaliza" abaixo deste percentual do limite (evita oscilar na borda). */
+    public static final double SLA_RECOVERY_RATIO = 0.9;
+
     /** kind: offline | recovered | sla_breach | sla_recovered; severity: error | success | warning | info. */
     public record Transition(String kind, String severity, String message) {}
 
     private DeviceStateMachine() {}
+
+    /** Quantas amostras válidas (não nulas) há no fim da lista, contando a partir da mais recente. */
+    private static int trailingSuccesses(List<Double> samples) {
+        return trailingMatching(samples, v -> true);
+    }
+
+    private static int trailingMatching(List<Double> samples, java.util.function.Predicate<Double> test) {
+        int n = 0;
+        for (int i = samples.size() - 1; i >= 0; i--) {
+            Double v = samples.get(i);
+            if (v == null || !test.test(v)) break;
+            n++;
+        }
+        return n;
+    }
 
     /** Atualiza {@code device} in-place. {@code recent} = amostras anteriores (cronológicas), sem esta. */
     public static List<Transition> apply(Device device, ProbeResult result, List<Double> recent, Instant now) {
@@ -49,12 +73,16 @@ public final class DeviceStateMachine {
 
         if (result.ok()) {
             device.setConsecutiveFailures(0);
-            if (!"online".equals(previous)) {
-                device.setStatus("online");
-                device.setLastStatusChange(now);
-                if ("offline".equals(previous)) {
+            if ("offline".equals(previous)) {
+                // Só volta depois de RECOVERY_SUCCESSES sucessos seguidos (esta amostra + as anteriores).
+                if (trailingSuccesses(samples) >= RECOVERY_SUCCESSES) {
+                    device.setStatus("online");
+                    device.setLastStatusChange(now);
                     transitions.add(new Transition("recovered", "success", "Host voltou a responder normalmente."));
                 }
+            } else if (!"online".equals(previous)) {
+                device.setStatus("online");
+                device.setLastStatusChange(now);
             }
         } else {
             device.setConsecutiveFailures(device.getConsecutiveFailures() + 1);
@@ -73,7 +101,10 @@ public final class DeviceStateMachine {
         Integer threshold = device.getSlaThresholdMs();
         Double latency = device.getLatency();
         if (threshold != null && threshold > 0 && result.ok() && latency != null) {
-            if (latency > threshold && !device.isSlaBreached()) {
+            double recoveryLimit = threshold * SLA_RECOVERY_RATIO;
+            boolean confirmedAbove = trailingMatching(samples, v -> v > threshold) >= SLA_CONFIRMATIONS;
+            boolean confirmedBelow = trailingMatching(samples, v -> v <= recoveryLimit) >= SLA_CONFIRMATIONS;
+            if (confirmedAbove && !device.isSlaBreached()) {
                 device.setSlaBreached(true);
                 transitions.add(new Transition(
                         "sla_breach",
@@ -82,7 +113,7 @@ public final class DeviceStateMachine {
                                 Locale.ROOT,
                                 "Limite de latência excedido: %.0f ms (limite %d ms, excedente %.0f ms).",
                                 latency, threshold, latency - threshold)));
-            } else if (latency <= threshold && device.isSlaBreached()) {
+            } else if (confirmedBelow && device.isSlaBreached()) {
                 device.setSlaBreached(false);
                 transitions.add(new Transition(
                         "sla_recovered",

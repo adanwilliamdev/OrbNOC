@@ -1,0 +1,6 @@
+# Logs em JSON (uma linha por evento, no formato Logstash), para coletores como Loki/ELK.
+# Ative com SPRING_PROFILES_ACTIVE=json (o docker-compose.prod.yml já faz isso).
+logging:
+  structured:
+    format:
+      console: logstash

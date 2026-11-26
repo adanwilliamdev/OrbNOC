@@ -82,7 +82,7 @@ public final class DiagnosticsService {
         List<String> command = List.of(
                 "traceroute", "-n", "-q", "1", "-w", "2", "-m", String.valueOf(maxHops), "--", address);
         try {
-            Process process = new ProcessBuilder(command).redirectErrorStream(false).start();
+            Process process = localeNeutral(new ProcessBuilder(command).redirectErrorStream(false)).start();
             process.getErrorStream().close();
             if (!process.waitFor(timeoutSeconds, TimeUnit.SECONDS)) {
                 process.destroyForcibly();
@@ -195,5 +195,12 @@ public final class DiagnosticsService {
             }
         }
         return results;
+    }
+
+    /** Força a saída em formato "C" (inglês, ponto decimal), independente do idioma do servidor. */
+    static ProcessBuilder localeNeutral(ProcessBuilder builder) {
+        builder.environment().put("LC_ALL", "C");
+        builder.environment().put("LANG", "C");
+        return builder;
     }
 }

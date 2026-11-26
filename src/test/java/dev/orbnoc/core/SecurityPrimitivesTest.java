@@ -71,4 +71,58 @@ class SecurityPrimitivesTest {
         limiter.clear("k");
         assertFalse(limiter.isBlocked("k", 1));
     }
+
+    @Test
+    void tokenCarregaAVersaoDoUsuario() {
+        TokenService tokens = new TokenService("segredo-de-teste-com-mais-de-32-caracteres", 3600);
+        assertEquals(7, tokens.parse(tokens.create(1, 7)).tokenVersion());
+        assertEquals(0, tokens.parse(tokens.create(1)).tokenVersion());
+    }
+
+    @Test
+    void rotacaoDeSegredoDoTokenAceitaAChaveAnteriorSoParaVerificar() {
+        TokenService velho = new TokenService("segredo-velho-com-mais-de-32-caracteres-x", 3600);
+        TokenService novo = new TokenService(
+                "segredo-novo-com-mais-de-32-caracteres-xx", "segredo-velho-com-mais-de-32-caracteres-x", 3600);
+        TokenService.Session s = novo.parse(velho.create(5, 3));
+        assertNotNull(s);
+        assertEquals(5, s.userId());
+        assertNull(velho.parse(novo.create(5, 3)), "tokens novos só saem com a chave atual");
+        assertNull(new TokenService("terceiro-segredo-com-mais-de-32-caracteres", 3600).parse(novo.create(5)));
+    }
+
+    @Test
+    void secretBoxRotacionaChaves() {
+        String antigo = new SecretBox("chave-velha").encrypt("token");
+        SecretBox novo = new SecretBox("chave-nova", "chave-velha");
+        assertEquals("token", novo.decrypt(antigo));
+        assertTrue(novo.needsRotation(antigo));
+        String recifrado = novo.encrypt("token");
+        assertFalse(novo.needsRotation(recifrado));
+        assertEquals("token", novo.decrypt(recifrado));
+        assertNull(new SecretBox("chave-nova").decrypt(antigo), "sem a chave anterior não há como ler");
+        assertTrue(recifrado.startsWith("v1."));
+    }
+
+    @Test
+    void secretBoxAindaLeFormatoAntigoSemPrefixo() throws Exception {
+        // valor gerado pelo formato antigo: base64url(iv + cifrado), sem "v1.<kid>."
+        SecretBox box = new SecretBox("chave");
+        String atual = box.encrypt("segredo");
+        String semPrefixo = atual.substring(atual.indexOf('.', 3) + 1);
+        assertEquals("segredo", box.decrypt(semPrefixo));
+    }
+
+    @Test
+    void totpBateComOsVetoresDaRfc6238() {
+        String segredo = "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ"; // "12345678901234567890"
+        assertEquals("287082", Totp.code(segredo, Instant.ofEpochSecond(59)));
+        assertEquals("081804", Totp.code(segredo, Instant.ofEpochSecond(1111111109L)));
+        assertTrue(Totp.verify(segredo, "287082", Instant.ofEpochSecond(70)), "tolera um passo de relógio");
+        assertFalse(Totp.verify(segredo, "287082", Instant.ofEpochSecond(200)));
+        assertFalse(Totp.verify(segredo, "abc", Instant.ofEpochSecond(59)));
+        assertFalse(Totp.verify(null, "287082", Instant.ofEpochSecond(59)));
+        String novo = Totp.newSecret();
+        assertTrue(Totp.verify(novo, Totp.code(novo, Instant.now()), Instant.now()));
+    }
 }

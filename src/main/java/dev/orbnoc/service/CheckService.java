@@ -10,8 +10,8 @@ import dev.orbnoc.repo.MetricRepository;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import org.springframework.stereotype.Service;
 
 /** Aplica o resultado de uma sonda: estado, métrica e eventos. Usado pelo monitor e pelo ping manual. */
@@ -32,39 +32,48 @@ public class CheckService {
 
     /** Deve rodar dentro de uma transação do chamador. Devolve os eventos criados. */
     public List<Event> apply(Device device, ProbeResult result, Instant now) {
-        List<Double> recent = recentSamples(device.getId());
-        List<DeviceStateMachine.Transition> transitions = DeviceStateMachine.apply(device, result, recent, now);
-
-        Metric metric = new Metric();
-        metric.setDeviceId(device.getId());
-        metric.setRecordedAt(now);
-        metric.setOk(result.ok());
-        metric.setLatency(result.ok() ? result.latencyMs() : null);
-        metric.setJitter(device.getJitter());
-        metric.setPacketLoss(device.getPacketLoss());
-        metrics.save(metric);
-        devices.save(device);
-
-        meters.counter(
-                        "orbnoc.probe.results",
-                        "method", result.method() == null ? "unknown" : result.method(),
-                        "outcome", result.ok() ? "ok" : "fail")
-                .increment();
-
-        List<Event> created = new ArrayList<>();
-        for (DeviceStateMachine.Transition t : transitions) {
-            meters.counter("orbnoc.events", "kind", t.kind(), "severity", t.severity()).increment();
-            created.add(events.record(device.getUserId(), device.getId(), t.kind(), t.severity(), t.message()));
-        }
-        return created;
+        return applyAll(List.of(device), Map.of(device.getId(), result), now);
     }
 
-    private List<Double> recentSamples(Long deviceId) {
-        List<Double> samples = new ArrayList<>();
-        for (Metric m : metrics.findByDeviceIdOrderByRecordedAtDesc(deviceId, DeviceStateMachine.WINDOW - 1)) {
-            samples.add(m.isOk() && m.getLatency() != null ? m.getLatency() : null);
+    /**
+     * Aplica vários resultados de uma vez (uma rodada do monitor): busca o histórico recente de
+     * todos numa consulta e grava métricas e estados em lote. Deve rodar dentro de uma transação
+     * do chamador. Devolve os eventos criados, na ordem dos dispositivos.
+     */
+    public List<Event> applyAll(List<Device> list, Map<Long, ProbeResult> results, Instant now) {
+        if (list.isEmpty()) return List.of();
+        Map<Long, List<Double>> history = metrics.recentSamples(
+                list.stream().map(Device::getId).toList(), DeviceStateMachine.WINDOW - 1);
+
+        List<Metric> newMetrics = new ArrayList<>(list.size());
+        List<Event> created = new ArrayList<>();
+        for (Device device : list) {
+            ProbeResult result = results.getOrDefault(device.getId(), ProbeResult.fail("icmp", null, "sem resultado"));
+            List<Double> recent = history.getOrDefault(device.getId(), List.of());
+            List<DeviceStateMachine.Transition> transitions = DeviceStateMachine.apply(device, result, recent, now);
+
+            Metric metric = new Metric();
+            metric.setDeviceId(device.getId());
+            metric.setRecordedAt(now);
+            metric.setOk(result.ok());
+            metric.setLatency(result.ok() ? result.latencyMs() : null);
+            metric.setJitter(device.getJitter());
+            metric.setPacketLoss(device.getPacketLoss());
+            newMetrics.add(metric);
+
+            meters.counter(
+                            "orbnoc.probe.results",
+                            "method", result.method() == null ? "unknown" : result.method(),
+                            "outcome", result.ok() ? "ok" : "fail")
+                    .increment();
+
+            for (DeviceStateMachine.Transition t : transitions) {
+                meters.counter("orbnoc.events", "kind", t.kind(), "severity", t.severity()).increment();
+                created.add(events.record(device.getUserId(), device.getId(), t.kind(), t.severity(), t.message()));
+            }
         }
-        Collections.reverse(samples);
-        return samples;
+        metrics.saveAll(newMetrics);
+        devices.updateStateBatch(list);
+        return created;
     }
 }

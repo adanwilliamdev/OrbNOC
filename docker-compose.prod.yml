@@ -6,7 +6,8 @@
 #   - ENCRYPTION_KEY e PUBLIC_URL passam a ser obrigatórias (o base cai no JWT_SECRET e em localhost);
 #   - cookie de sessão sempre Secure (exige HTTPS, ex.: perfil "https" com Caddy);
 #   - demo, cadastro aberto e reset forçado de senha do admin sempre desligados;
-#   - sem privilégios extras no processo e com rotação dos logs do Docker.
+#   - app sem capabilities, com sistema de arquivos somente leitura (só /tmp gravável), logs JSON
+#     e rotação dos logs do Docker.
 # A senha do banco e o JWT_SECRET já são obrigatórios no base. Nunca reutilize o mesmo valor
 # em JWT_SECRET e ENCRYPTION_KEY, e não versione o .env.
 services:
@@ -26,10 +27,31 @@ services:
       ENCRYPTION_KEY: ${ENCRYPTION_KEY:?defina ENCRYPTION_KEY (openssl rand -base64 48), diferente do JWT_SECRET}
       COOKIE_SECURE: "true"
       REGISTRATION_ENABLED: "false"
+      MIN_INTERVAL_SECONDS: ${MIN_INTERVAL_SECONDS:-10}
       ORBNOC_DEMO_SEED: "false"
       ADMIN_FORCE_RESET: "false"
+      # Logs em JSON (perfil "json", application-json.yml), prontos para coletores de log.
+      SPRING_PROFILES_ACTIVE: json
+      USER_ALLOWED_CIDRS: ${USER_ALLOWED_CIDRS:-}
+      ENCRYPTION_KEY_PREVIOUS: ${ENCRYPTION_KEY_PREVIOUS:-}
+      JWT_SECRET_PREVIOUS: ${JWT_SECRET_PREVIOUS:-}
     security_opt:
       - no-new-privileges:true
+    # Sem capabilities: o ICMP não precisa de CAP_NET_RAW, pois o compose base libera sockets de
+    # datagrama ICMP via sysctl net.ipv4.ping_group_range e o Prober usa o ping do sistema.
+    # Se o ICMP falhar no seu host (o app cai para sondas TCP), troque por: cap_add: [NET_RAW].
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp
+    logging: *logs
+
+  # db e caddy ficam SEM cap_drop de propósito: o postgres precisa de CHOWN/SETUID/SETGID/DAC_OVERRIDE
+  # etc. no entrypoint, e o caddy (root) precisa de NET_BIND_SERVICE e escreve nos volumes
+  # /data e /config. Sem como testar aqui, preferimos não arriscar quebrar a subida.
+  backup:
+    restart: always
     logging: *logs
 
   caddy:

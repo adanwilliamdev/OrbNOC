@@ -3,7 +3,7 @@ package dev.orbnoc.ws;
 import dev.orbnoc.config.OrbNocProperties;
 import dev.orbnoc.core.TokenService;
 import dev.orbnoc.domain.User;
-import dev.orbnoc.repo.UserRepository;
+import dev.orbnoc.service.AuthService;
 import java.util.Map;
 import org.springframework.http.HttpCookie;
 import org.springframework.http.server.ServerHttpRequest;
@@ -25,12 +25,12 @@ public class LiveHandshakeInterceptor implements HandshakeInterceptor {
 
     private final OrbNocProperties props;
     private final TokenService tokens;
-    private final UserRepository users;
+    private final AuthService auth;
 
-    public LiveHandshakeInterceptor(OrbNocProperties props, TokenService tokens, UserRepository users) {
+    public LiveHandshakeInterceptor(OrbNocProperties props, TokenService tokens, AuthService auth) {
         this.props = props;
         this.tokens = tokens;
-        this.users = users;
+        this.auth = auth;
     }
 
     @Override
@@ -49,7 +49,7 @@ public class LiveHandshakeInterceptor implements HandshakeInterceptor {
             }
         }
         TokenService.Session session = tokens.parse(token);
-        User user = session == null ? null : users.findById(session.userId()).filter(User::isActive).orElse(null);
+        User user = auth.userFromSession(session);
         if (user == null) {
             attributes.put(CLOSE_CODE, 4401);
             return true;

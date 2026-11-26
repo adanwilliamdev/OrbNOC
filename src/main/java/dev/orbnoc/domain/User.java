@@ -20,6 +20,13 @@ public class User {
 
     private Instant lastLogin;
 
+    /** Versão dos tokens de sessão; incrementar invalida todos os tokens emitidos antes. */
+    private int tokenVersion;
+
+    private String totpSecretEncrypted;
+
+    private boolean totpEnabled;
+
     public User() {}
 
     public Long getId() { return id; }
@@ -45,5 +52,14 @@ public class User {
 
     public Instant getLastLogin() { return lastLogin; }
     public void setLastLogin(Instant lastLogin) { this.lastLogin = lastLogin; }
+
+    public int getTokenVersion() { return tokenVersion; }
+    public void setTokenVersion(int tokenVersion) { this.tokenVersion = tokenVersion; }
+
+    public String getTotpSecretEncrypted() { return totpSecretEncrypted; }
+    public void setTotpSecretEncrypted(String totpSecretEncrypted) { this.totpSecretEncrypted = totpSecretEncrypted; }
+
+    public boolean isTotpEnabled() { return totpEnabled; }
+    public void setTotpEnabled(boolean totpEnabled) { this.totpEnabled = totpEnabled; }
 
 }

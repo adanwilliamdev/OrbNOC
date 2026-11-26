@@ -26,13 +26,19 @@ public class DeviceService {
     private final MetricRepository metrics;
     private final MetricHourlyRepository hourly;
     private final OrbNocProperties props;
+    private final TargetPolicy policy;
 
     public DeviceService(
-            DeviceRepository devices, MetricRepository metrics, MetricHourlyRepository hourly, OrbNocProperties props) {
+            DeviceRepository devices,
+            MetricRepository metrics,
+            MetricHourlyRepository hourly,
+            OrbNocProperties props,
+            TargetPolicy policy) {
         this.devices = devices;
         this.metrics = metrics;
         this.hourly = hourly;
         this.props = props;
+        this.policy = policy;
     }
 
     public List<Device> list(Long userId) {
@@ -43,11 +49,11 @@ public class DeviceService {
         return devices.findByIdAndUserId(id, userId).orElseThrow(() -> ApiException.notFound("Dispositivo não encontrado"));
     }
 
-    /** Valida a sintaxe e o endereço-alvo; devolve o host normalizado. */
-    public String checkTarget(String host) {
+    /** Valida a sintaxe e o endereço-alvo conforme o papel do usuário; devolve o host normalizado. */
+    public String checkTarget(Long userId, String host) {
         String parsed = NetGuard.parseHost(host);
         try {
-            NetGuard.resolveAndCheck(parsed, props.allowPrivateNetworks(), 5000);
+            policy.resolveForUser(parsed, userId);
         } catch (HostRejectedException e) {
             throw ApiException.unprocessable(e.getMessage());
         }
@@ -56,7 +62,10 @@ public class DeviceService {
 
     public Device create(Long userId, Dto.DeviceCreateIn in) {
         String name = Validate.text(in.name(), "Nome", 1, 255);
-        String ip = checkTarget(in.ip());
+        if (devices.countByUserId(userId) >= props.maxDevicesPerUser()) {
+            throw ApiException.unprocessable("Limite de " + props.maxDevicesPerUser() + " dispositivos por usuário atingido");
+        }
+        String ip = checkTarget(userId, in.ip());
         String location = Validate.optionalText(in.location(), "Local", 255);
         String checkType = in.checkType() == null ? "icmp" : in.checkType();
         Validate.require("icmp".equals(checkType) || "tcp".equals(checkType), "Tipo de checagem inválido");
@@ -65,7 +74,7 @@ public class DeviceService {
             Validate.require(port != null, "Informe a porta para checagem TCP");
         }
         if (port != null) Validate.range(port, "Porta", 1, 65535);
-        int interval = in.intervalSeconds() == null ? 30 : Validate.range(in.intervalSeconds(), "Intervalo", 5, 3600);
+        int interval = in.intervalSeconds() == null ? 30 : Validate.range(in.intervalSeconds(), "Intervalo", props.minIntervalSeconds(), 3600);
         int threshold = in.failureThreshold() == null ? 3 : Validate.range(in.failureThreshold(), "Limite de falhas", 1, 20);
         Integer sla = in.slaThresholdMs();
         if (sla != null) Validate.range(sla, "Limite de latência", 1, 60000);
@@ -93,7 +102,7 @@ public class DeviceService {
         Device d = get(userId, id);
         if (body.containsKey("name")) d.setName(Validate.text(str(body.get("name")), "Nome", 1, 255));
         if (body.containsKey("location")) d.setLocation(Validate.optionalText(str(body.get("location")), "Local", 255));
-        if (body.containsKey("ip")) d.setIp(checkTarget(str(body.get("ip"))));
+        if (body.containsKey("ip")) d.setIp(checkTarget(userId, str(body.get("ip"))));
         if (body.containsKey("check_type")) {
             String type = str(body.get("check_type"));
             Validate.require("icmp".equals(type) || "tcp".equals(type), "Tipo de checagem inválido");
@@ -105,7 +114,7 @@ public class DeviceService {
             d.setPort(port);
         }
         if (body.containsKey("interval_seconds")) {
-            d.setIntervalSeconds(Validate.range(integer(body.get("interval_seconds")), "Intervalo", 5, 3600));
+            d.setIntervalSeconds(Validate.range(integer(body.get("interval_seconds")), "Intervalo", props.minIntervalSeconds(), 3600));
         }
         if (body.containsKey("failure_threshold")) {
             d.setFailureThreshold(Validate.range(integer(body.get("failure_threshold")), "Limite de falhas", 1, 20));
@@ -115,6 +124,17 @@ public class DeviceService {
             if (sla != null) Validate.range(sla, "Limite de latência", 1, 60000);
             d.setSlaThresholdMs(sla);
             if (sla == null) d.setSlaBreached(false);
+        }
+        if (body.containsKey("parent_id")) {
+            Long parent = body.get("parent_id") == null ? null : longValue(body.get("parent_id"));
+            if (parent != null) {
+                get(userId, parent); // o pai precisa ser do mesmo usuário
+                Validate.require(!devices.createsCycle(d.getId(), parent), "A dependência criaria um ciclo na topologia");
+            }
+            d.setParentId(parent);
+        }
+        if (body.containsKey("maintenance_until")) {
+            d.setMaintenanceUntil(maintenance(body.get("maintenance_until")));
         }
         if ("tcp".equals(d.getCheckType())) {
             Validate.require(d.getPort() != null, "Informe a porta para checagem TCP");
@@ -172,6 +192,30 @@ public class DeviceService {
         p.put("min_latency", h.getMinLatency());
         p.put("max_latency", h.getMaxLatency());
         return p;
+    }
+
+    /** {@code null} encerra a manutenção; senão um instante ISO-8601 no futuro, de até 30 dias. */
+    private static Instant maintenance(Object value) {
+        if (value == null) return null;
+        Instant until;
+        try {
+            until = Instant.parse(String.valueOf(value));
+        } catch (java.time.format.DateTimeParseException e) {
+            throw ApiException.unprocessable("Manutenção: use data/hora ISO-8601, ex.: 2026-12-01T03:00:00Z");
+        }
+        Instant now = Instant.now();
+        Validate.require(until.isAfter(now), "Manutenção: o fim deve estar no futuro");
+        Validate.require(until.isBefore(now.plus(Duration.ofDays(30))), "Manutenção: no máximo 30 dias");
+        return until;
+    }
+
+    private static Long longValue(Object value) {
+        if (value instanceof Number n) return n.longValue();
+        try {
+            return Long.parseLong(String.valueOf(value));
+        } catch (NumberFormatException e) {
+            throw ApiException.unprocessable("Valor numérico inválido");
+        }
     }
 
     private static String str(Object value) {

@@ -50,6 +50,12 @@ public class Device {
 
     private Instant createdAt = Instant.now();
 
+    /** Dispositivo "acima" na topologia: se ele cair, os alertas dos filhos são suprimidos. */
+    private Long parentId;
+
+    /** Alertas silenciados (manutenção) até este instante; a checagem continua normalmente. */
+    private Instant maintenanceUntil;
+
     public Device() {}
 
     public Long getId() { return id; }
@@ -120,5 +126,15 @@ public class Device {
 
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
+
+    public Long getParentId() { return parentId; }
+    public void setParentId(Long parentId) { this.parentId = parentId; }
+
+    public Instant getMaintenanceUntil() { return maintenanceUntil; }
+    public void setMaintenanceUntil(Instant maintenanceUntil) { this.maintenanceUntil = maintenanceUntil; }
+
+    public boolean inMaintenance(Instant now) {
+        return maintenanceUntil != null && maintenanceUntil.isAfter(now);
+    }
 
 }

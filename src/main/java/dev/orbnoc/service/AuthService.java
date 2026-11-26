@@ -40,9 +40,19 @@ public class AuthService {
     }
 
     public User userFromToken(String token) {
-        TokenService.Session session = tokens.parse(token);
+        return userFromSession(tokens.parse(token));
+    }
+
+    /**
+     * Usuário ativo dono da sessão, desde que a versão do token ainda seja a do banco: trocar a
+     * senha ou encerrar as sessões incrementa {@code token_version} e derruba os tokens antigos.
+     */
+    public User userFromSession(TokenService.Session session) {
         if (session == null) return null;
-        return users.findById(session.userId()).filter(User::isActive).orElse(null);
+        return users.findById(session.userId())
+                .filter(User::isActive)
+                .filter(u -> u.getTokenVersion() == session.tokenVersion())
+                .orElse(null);
     }
 
     public User requireUser(HttpServletRequest request) {
@@ -67,7 +77,7 @@ public class AuthService {
     }
 
     public void setSessionCookie(HttpServletResponse response, User user) {
-        ResponseCookie cookie = ResponseCookie.from(props.cookieName(), tokens.create(user.getId()))
+        ResponseCookie cookie = ResponseCookie.from(props.cookieName(), tokens.create(user.getId(), user.getTokenVersion()))
                 .maxAge(Duration.ofSeconds(tokens.ttlSeconds()))
                 .httpOnly(true)
                 .secure(props.secureCookie())

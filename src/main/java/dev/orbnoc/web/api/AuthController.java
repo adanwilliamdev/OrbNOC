@@ -34,7 +34,7 @@ public class AuthController {
 
     @PostMapping("/login")
     Dto.AuthOut login(@RequestBody Dto.LoginIn body, HttpServletRequest request, HttpServletResponse response) {
-        User user = users.login(body.username(), body.password(), AuthService.clientIp(request));
+        User user = users.login(body.username(), body.password(), body.totpCode(), AuthService.clientIp(request));
         auth.setSessionCookie(response, user);
         return Dto.AuthOut.of(user);
     }
@@ -51,6 +51,40 @@ public class AuthController {
         User user = auth.currentUserOrNull(request);
         if (user != null) users.logout(user, AuthService.clientIp(request));
         auth.clearSessionCookie(response);
+        return Map.of("success", true);
+    }
+
+    /** Troca da própria senha: encerra as demais sessões e mantém esta (cookie reemitido). */
+    @PostMapping("/password")
+    Map<String, Object> changePassword(
+            @RequestBody Dto.PasswordChangeIn body, HttpServletRequest request, HttpServletResponse response) {
+        User user = auth.requireUser(request);
+        User updated = users.changePassword(user, body.currentPassword(), body.newPassword(), AuthService.clientIp(request));
+        auth.setSessionCookie(response, updated);
+        return Map.of("success", true);
+    }
+
+    @PostMapping("/2fa/setup")
+    Map<String, Object> totpSetup(HttpServletRequest request) {
+        User user = auth.requireUser(request);
+        return users.startTotpSetup(user, AuthService.clientIp(request));
+    }
+
+    @PostMapping("/2fa/enable")
+    Map<String, Object> totpEnable(
+            @RequestBody Dto.TotpCodeIn body, HttpServletRequest request, HttpServletResponse response) {
+        User user = auth.requireUser(request);
+        users.enableTotp(user, body.code(), AuthService.clientIp(request));
+        auth.setSessionCookie(response, users.reload(user.getId()));
+        return Map.of("success", true);
+    }
+
+    @PostMapping("/2fa/disable")
+    Map<String, Object> totpDisable(
+            @RequestBody Dto.TotpCodeIn body, HttpServletRequest request, HttpServletResponse response) {
+        User user = auth.requireUser(request);
+        users.disableTotp(user, body.password(), body.code(), AuthService.clientIp(request));
+        auth.setSessionCookie(response, users.reload(user.getId()));
         return Map.of("success", true);
     }
 

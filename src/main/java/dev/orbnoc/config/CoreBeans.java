@@ -26,7 +26,10 @@ public class CoreBeans {
         config.setJdbcUrl(db.jdbcUrl());
         if (db.username() != null) config.setUsername(db.username());
         if (db.password() != null) config.setPassword(db.password());
-        config.setMaximumPoolSize(10);
+        config.setMaximumPoolSize(props.dbPoolSize());
+        config.setConnectionTimeout(props.dbConnectionTimeoutMs());
+        // Conexão emprestada por mais tempo que isto vira um aviso com o stack de quem a pegou.
+        if (props.dbLeakDetectionMs() > 0) config.setLeakDetectionThreshold(props.dbLeakDetectionMs());
         config.setPoolName("orbnoc");
         config.addDataSourceProperty("options", "-c timezone=UTC");
         return new HikariDataSource(config);
@@ -44,7 +47,7 @@ public class CoreBeans {
 
     @Bean
     TokenService tokenService(OrbNocProperties props) {
-        return new TokenService(props.jwtSecret(), props.sessionTtlHours() * 3600L);
+        return new TokenService(props.jwtSecret(), props.jwtSecretPrevious(), props.sessionTtlHours() * 3600L);
     }
 
     @Bean
@@ -52,7 +55,7 @@ public class CoreBeans {
         String secret = props.encryptionKey() == null || props.encryptionKey().isBlank()
                 ? props.jwtSecret()
                 : props.encryptionKey();
-        return new SecretBox(secret);
+        return new SecretBox(secret, props.encryptionKeyPrevious());
     }
 
     @Bean

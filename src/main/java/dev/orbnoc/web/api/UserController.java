@@ -39,9 +39,11 @@ public class UserController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     Dto.UserAdminOut create(@RequestBody Dto.UserCreateIn body, HttpServletRequest request) {
-        auth.requireAdmin(request);
+        User admin = auth.requireAdmin(request);
         String role = body.role() == null ? "user" : body.role();
-        return Dto.UserAdminOut.from(users.create(body.username(), body.email(), body.password(), role));
+        User created = users.create(body.username(), body.email(), body.password(), role);
+        users.audit(admin.getId(), "admin.user_create", "usuário " + created.getId() + " (" + role + ")", AuthService.clientIp(request));
+        return Dto.UserAdminOut.from(created);
     }
 
     @PatchMapping("/{id}")
@@ -50,13 +52,21 @@ public class UserController {
         Boolean active = body.get("is_active") instanceof Boolean b ? b : null;
         String role = body.get("role") == null ? null : String.valueOf(body.get("role"));
         String password = body.get("password") == null ? null : String.valueOf(body.get("password"));
-        return Dto.UserAdminOut.from(users.patch(admin.getId(), id, active, role, password));
+        User patched = users.patch(admin.getId(), id, active, role, password);
+        // Registra o que mudou, nunca a senha em si.
+        String detail = "usuário " + id
+                + (active != null ? " ativo=" + active : "")
+                + (role != null ? " perfil=" + role : "")
+                + (password != null ? " senha redefinida" : "");
+        users.audit(admin.getId(), "admin.user_update", detail, AuthService.clientIp(request));
+        return Dto.UserAdminOut.from(patched);
     }
 
     @DeleteMapping("/{id}")
     Map<String, Object> delete(@PathVariable Long id, HttpServletRequest request) {
         User admin = auth.requireAdmin(request);
         users.delete(admin.getId(), id);
+        users.audit(admin.getId(), "admin.user_delete", "usuário " + id, AuthService.clientIp(request));
         return Map.of("success", true);
     }
 }

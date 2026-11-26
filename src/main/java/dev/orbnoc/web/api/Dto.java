@@ -62,14 +62,16 @@ public final class Dto {
             String lastError,
             Instant lastCheck,
             Instant lastStatusChange,
-            Instant createdAt) {
+            Instant createdAt,
+            Long parentId,
+            Instant maintenanceUntil) {
         public static DeviceOut from(Device d) {
             return new DeviceOut(
                     d.getId(), d.getName(), d.getIp(), d.getLocation(), d.getCheckType(), d.getPort(),
                     d.getIntervalSeconds(), d.getFailureThreshold(), d.getSlaThresholdMs(), d.isSlaBreached(),
                     d.getStatus(), d.getLatency(), d.getAvgLatency(), d.getMinLatency(), d.getMaxLatency(),
                     d.getJitter(), d.getPacketLoss(), d.getLastError(), d.getLastCheck(), d.getLastStatusChange(),
-                    d.getCreatedAt());
+                    d.getCreatedAt(), d.getParentId(), d.getMaintenanceUntil());
         }
     }
 
@@ -96,7 +98,11 @@ public final class Dto {
 
     // ---- entrada -----------------------------------------------------------------------------
 
-    public record LoginIn(String username, String password) {}
+    public record LoginIn(String username, String password, String totpCode) {}
+
+    public record PasswordChangeIn(String currentPassword, String newPassword) {}
+
+    public record TotpCodeIn(String code, String password) {}
 
     public record RegisterIn(String username, String email, String password) {}
 

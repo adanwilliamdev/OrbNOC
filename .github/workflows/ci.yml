@@ -1,8 +1,14 @@
 name: CI
 
+# Pinagem de actions: o ideal é SHA completo de commit com o comentário "# vX.Y.Z". Os SHAs não
+# puderam ser verificados (sem acesso à API do GitHub ao escrever este arquivo) e NÃO foram
+# inventados: as actions seguem pela tag, marcadas com "TODO(sha)". Para fixar, rode por action:
+#   gh api repos/<dono>/<repo>/git/ref/tags/<tag> --jq .object   (se type=tag, desreferencie com git/tags/<sha>)
+# O Dependabot (github-actions) mantém os SHAs atualizados depois de fixados.
 on:
   push:
     branches: [main]
+    tags: ["v*"]
   pull_request:
   # varredura semanal: vulnerabilidades novas aparecem mesmo sem mudança no código
   schedule:
@@ -21,8 +27,8 @@ jobs:
     name: Formatação (Spotless)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v6
+      - uses: actions/checkout@v4 # TODO(sha): fixar por SHA de commit completo (tag v4)
+      - uses: actions/setup-java@v6 # TODO(sha): fixar por SHA de commit completo (tag v6)
         with:
           distribution: temurin
           java-version: "21"
@@ -34,8 +40,8 @@ jobs:
     name: Build, testes e cobertura
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v6
+      - uses: actions/checkout@v4 # TODO(sha): fixar por SHA de commit completo (tag v4)
+      - uses: actions/setup-java@v6 # TODO(sha): fixar por SHA de commit completo (tag v6)
         with:
           distribution: temurin
           java-version: "21"
@@ -56,14 +62,14 @@ jobs:
           fi
       - name: Anexar relatório de cobertura (JaCoCo)
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v7 # TODO(sha): fixar por SHA de commit completo (tag v7)
         with:
           name: cobertura-jacoco
           path: target/site/jacoco
           if-no-files-found: ignore
       - name: Anexar relatórios de teste (em caso de falha)
         if: failure()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v7 # TODO(sha): fixar por SHA de commit completo (tag v7)
         with:
           name: relatorios-de-teste
           path: |
@@ -78,15 +84,15 @@ jobs:
     env:
       NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v6
+      - uses: actions/checkout@v4 # TODO(sha): fixar por SHA de commit completo (tag v4)
+      - uses: actions/setup-java@v6 # TODO(sha): fixar por SHA de commit completo (tag v6)
         with:
           distribution: temurin
           java-version: "21"
           cache: maven
       - name: Cache da base NVD
         if: env.NVD_API_KEY != ''
-        uses: actions/cache@v4
+        uses: actions/cache@v4 # TODO(sha): fixar por SHA de commit completo (tag v4)
         with:
           path: ~/.m2/repository/org/owasp/dependency-check-data
           key: nvd-${{ github.run_id }}
@@ -101,20 +107,135 @@ jobs:
         run: echo "::warning::NVD_API_KEY não configurado; varredura de vulnerabilidades ignorada."
       - name: Anexar relatório
         if: always() && env.NVD_API_KEY != ''
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v7 # TODO(sha): fixar por SHA de commit completo (tag v7)
         with:
           name: dependency-check
           path: target/dependency-check-report.html
           if-no-files-found: ignore
 
+  frontend-lint:
+    name: Lint do frontend (ESLint)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4 # TODO(sha): fixar por SHA de commit completo (tag v4)
+      # Node já vem no runner; eslint@9 é baixado pelo npx (config manual em eslint.config.js).
+      # Regras são avisos; só erro de sintaxe falha o job.
+      - name: ESLint em live.js
+        run: npx --yes eslint@9 src/main/resources/static/js/live.js
+
+  backup-restore:
+    name: Backup e restauração (PostgreSQL)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: orbnoc
+          POSTGRES_USER: orbnoc
+          POSTGRES_PASSWORD: ci-senha-descartavel
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U orbnoc -d orbnoc"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: "5432"
+      PGUSER: orbnoc
+      PGPASSWORD: ci-senha-descartavel
+      PGDATABASE: orbnoc
+    steps:
+      - uses: actions/checkout@v4 # TODO(sha): fixar por SHA de commit completo (tag v4)
+      # Cliente na mesma versão major do servidor (pg_dump mais antigo que o servidor recusa o dump).
+      - name: Instalar cliente PostgreSQL 16
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends postgresql-client-16
+      # Sem subir o app: o schema vem direto das migrações, em ordem de versão.
+      - name: Aplicar migrações
+        run: |
+          for f in $(ls src/main/resources/db/migration/V*.sql | sort -V); do
+            echo "aplicando $f"
+            psql -X -v ON_ERROR_STOP=1 -f "$f"
+          done
+      - name: Inserir usuário de teste
+        run: |
+          psql -X -v ON_ERROR_STOP=1 -c \
+            "INSERT INTO users (username, email, password_hash) VALUES ('ci-user', 'ci@example.com', 'hash-de-teste')"
+      - name: Backup
+        run: BACKUP_DIR="$RUNNER_TEMP/backups" sh ops/backup.sh
+      - name: Teste de restauração
+        run: BACKUP_DIR="$RUNNER_TEMP/backups" sh ops/restore-test.sh
+      - name: Conferir que não sobrou arquivo parcial
+        run: test -z "$(find "$RUNNER_TEMP/backups" -name '*.tmp')"
+
   docker:
     name: Imagem Docker
     runs-on: ubuntu-latest
     needs: build
+    env:
+      IMAGE: orbnoc:${{ github.sha }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4 # TODO(sha): fixar por SHA de commit completo (tag v4)
       - name: Construir imagem (jar em camadas)
-        run: docker build -t orbnoc:ci .
+        run: docker build -t "$IMAGE" -t orbnoc:ci .
       - name: Conferir camadas e usuário não-root
         run: |
-          docker run --rm --entrypoint sh orbnoc:ci -c 'test -f orbnoc.jar && test -d lib && test "$(id -u)" != 0'
+          docker run --rm --entrypoint sh "$IMAGE" -c 'test -f orbnoc.jar && test -d lib && test "$(id -u)" != 0'
+      # SBOM (CycloneDX) da imagem, anexado como artefato.
+      - name: Gerar SBOM (CycloneDX)
+        uses: aquasecurity/trivy-action@0.33.1 # TODO(sha): fixar por SHA de commit completo (tag 0.33.1)
+        with:
+          image-ref: ${{ env.IMAGE }}
+          format: cyclonedx
+          output: sbom.cdx.json
+      - name: Anexar SBOM
+        uses: actions/upload-artifact@v7 # TODO(sha): fixar por SHA de commit completo (tag v7)
+        with:
+          name: sbom-cyclonedx
+          path: sbom.cdx.json
+      # Falha o job com vulnerabilidades HIGH/CRITICAL que já têm correção disponível.
+      - name: Varrer imagem (Trivy)
+        uses: aquasecurity/trivy-action@0.33.1 # TODO(sha): fixar por SHA de commit completo (tag 0.33.1)
+        with:
+          image-ref: ${{ env.IMAGE }}
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+
+  # Só em tags v*: publica a imagem versionada no GHCR. É o único job com permissão de escrita.
+  publish:
+    name: Publicar imagem (GHCR)
+    runs-on: ubuntu-latest
+    needs: [format, build, frontend-lint, backup-restore, docker]
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4 # TODO(sha): fixar por SHA de commit completo (tag v4)
+      - name: Login no GHCR
+        uses: docker/login-action@v3 # TODO(sha): fixar por SHA de commit completo (tag v3)
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Metadados da imagem
+        id: meta
+        uses: docker/metadata-action@v5 # TODO(sha): fixar por SHA de commit completo (tag v5)
+        with:
+          images: ghcr.io/${{ github.repository }}
+          # v1.2.3 gera as tags 1.2.3, 1.2 e 1
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}},enable=${{ !startsWith(github.ref, 'refs/tags/v0.') }}
+      - name: Construir e publicar
+        uses: docker/build-push-action@v6 # TODO(sha): fixar por SHA de commit completo (tag v6)
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}

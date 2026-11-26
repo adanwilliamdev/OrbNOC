@@ -12,7 +12,7 @@ class UiHelpersTest {
 
     private static Dto.DeviceOut device(long id, String name, String ip, String status, Double latency) {
         return new Dto.DeviceOut(id, name, ip, null, "icmp", null, 30, 3, null, false, status, latency,
-                null, null, null, null, null, null, null, null, null);
+                null, null, null, null, null, null, null, null, null, null, null);
     }
 
     private static final List<Dto.DeviceOut> DEVICES = List.of(

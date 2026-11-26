@@ -39,6 +39,10 @@
           <span>Senha</span>
           <input class="input" type="password" name="password" autocomplete="current-password" required maxlength="256">
         </label>
+        <label class="field">
+          <span>Código de verificação <small>(só se a verificação em duas etapas estiver ativa)</small></span>
+          <input class="input" name="totp_code" inputmode="numeric" autocomplete="one-time-code" maxlength="8" pattern="[0-9 ]*">
+        </label>
         <p id="login-error" class="form-error" role="alert" hidden></p>
         <button class="btn btn-primary btn-block" type="submit">Entrar</button>
       </form>

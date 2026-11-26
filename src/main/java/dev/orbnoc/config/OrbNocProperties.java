@@ -1,5 +1,6 @@
 package dev.orbnoc.config;
 
+import dev.orbnoc.core.CidrList;
 import java.util.LinkedHashSet;
 import java.util.Set;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -35,7 +36,18 @@ public record OrbNocProperties(
         int accessLogRetentionDays,
         int healthWorkerMaxAgeSeconds,
         int loginMaxAttempts,
-        int loginWindowSeconds) {
+        int loginWindowSeconds,
+        String userAllowedCidrs,
+        String jwtSecretPrevious,
+        String encryptionKeyPrevious,
+        int maxDevicesPerUser,
+        int minIntervalSeconds,
+        int dbPoolSize,
+        int dbConnectionTimeoutMs,
+        int dbLeakDetectionMs,
+        int wsMaxConnectionsPerUser,
+        boolean leaderLockEnabled,
+        int notificationAttempts) {
 
     public static final String DEV_JWT_SECRET = "dev-only-insecure-secret-change-me-0123456789";
 
@@ -53,6 +65,21 @@ public record OrbNocProperties(
         }
         if (workerTickSeconds <= 0) throw new IllegalStateException("WORKER_TICK_SECONDS deve ser maior que zero");
         if (monitorConcurrency < 1) throw new IllegalStateException("MONITOR_CONCURRENCY deve ser pelo menos 1");
+        if (maxDevicesPerUser < 1) throw new IllegalStateException("MAX_DEVICES_PER_USER deve ser pelo menos 1");
+        if (minIntervalSeconds < 1) throw new IllegalStateException("MIN_INTERVAL_SECONDS deve ser pelo menos 1");
+        if (dbPoolSize < 2) throw new IllegalStateException("DB_POOL_SIZE deve ser pelo menos 2");
+        if (wsMaxConnectionsPerUser < 1) throw new IllegalStateException("WS_MAX_CONNECTIONS_PER_USER deve ser pelo menos 1");
+        if (notificationAttempts < 1) throw new IllegalStateException("NOTIFICATION_ATTEMPTS deve ser pelo menos 1");
+        try {
+            CidrList.parse(userAllowedCidrs); // falha cedo se a lista de CIDRs estiver malformada
+        } catch (IllegalArgumentException e) {
+            throw new IllegalStateException("USER_ALLOWED_CIDRS inválido: " + e.getMessage());
+        }
+    }
+
+    /** Faixas privadas que usuários comuns podem monitorar (vazio = sem restrição além de ALLOW_PRIVATE_NETWORKS). */
+    public CidrList userCidrs() {
+        return CidrList.parse(userAllowedCidrs);
     }
 
     public boolean isProduction() {

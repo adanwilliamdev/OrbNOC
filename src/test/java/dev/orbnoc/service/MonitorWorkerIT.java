@@ -103,12 +103,14 @@ class MonitorWorkerIT extends IntegrationTestBase {
 
     @Test
     void recuperacaoGeraEventoERezeraFalhas() {
-        probeReturns(down(), down(), up(8.0));
+        probeReturns(down(), down(), up(8.0), up(8.0));
         Device d = novoDispositivo("10.0.0.3", 2, null);
 
         worker.runRound(T0);
         worker.runRound(T0.plusSeconds(30));
         worker.runRound(T0.plusSeconds(60));
+        assertEquals("offline", recarregar(d).getStatus(), "um único sucesso não recupera (anti-flapping)");
+        worker.runRound(T0.plusSeconds(90));
 
         Device depois = recarregar(d);
         assertEquals("online", depois.getStatus());
@@ -132,14 +134,18 @@ class MonitorWorkerIT extends IntegrationTestBase {
 
     @Test
     void limiteDeLatenciaGeraEventoDeViolacaoEDeRecuperacao() {
-        probeReturns(up(120.0), up(10.0));
+        probeReturns(up(120.0), up(120.0), up(10.0), up(10.0));
         Device d = novoDispositivo("10.0.0.5", 3, 50);
 
         worker.runRound(T0);
+        assertEquals(List.of(), eventos(), "uma amostra alta isolada não alerta");
+        worker.runRound(T0.plusSeconds(30));
         assertEquals(List.of("sla_breach"), eventos());
         assertEquals(true, recarregar(d).isSlaBreached());
 
-        worker.runRound(T0.plusSeconds(30));
+        worker.runRound(T0.plusSeconds(60));
+        assertEquals(List.of("sla_breach"), eventos(), "uma amostra boa isolada não normaliza");
+        worker.runRound(T0.plusSeconds(90));
         assertEquals(List.of("sla_recovered", "sla_breach"), eventos());
         assertEquals(false, recarregar(d).isSlaBreached());
     }

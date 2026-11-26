@@ -93,3 +93,18 @@ orbnoc:
   health-worker-max-age-seconds: ${HEALTH_WORKER_MAX_AGE_SECONDS:30}
   login-max-attempts: ${LOGIN_MAX_ATTEMPTS:8}
   login-window-seconds: ${LOGIN_WINDOW_SECONDS:900}
+  # Faixas privadas (CIDR, separadas por vírgula) que usuários COMUNS podem monitorar; admins não
+  # são limitados. Vazio = sem restrição além de ALLOW_PRIVATE_NETWORKS. Ex.: 10.20.0.0/16,192.168.50.0/24
+  user-allowed-cidrs: ${USER_ALLOWED_CIDRS:}
+  # Rotação de chaves: o valor anterior continua válido só para verificar/decifrar.
+  jwt-secret-previous: ${JWT_SECRET_PREVIOUS:}
+  encryption-key-previous: ${ENCRYPTION_KEY_PREVIOUS:}
+  max-devices-per-user: ${MAX_DEVICES_PER_USER:500}
+  min-interval-seconds: ${MIN_INTERVAL_SECONDS:5}
+  db-pool-size: ${DB_POOL_SIZE:12}
+  db-connection-timeout-ms: ${DB_CONNECTION_TIMEOUT_MS:5000}
+  db-leak-detection-ms: ${DB_LEAK_DETECTION_MS:30000}
+  ws-max-connections-per-user: ${WS_MAX_CONNECTIONS_PER_USER:10}
+  # Com várias réplicas, só a que obtém o advisory lock do PostgreSQL executa o monitor.
+  leader-lock-enabled: ${LEADER_LOCK_ENABLED:true}
+  notification-attempts: ${NOTIFICATION_ATTEMPTS:3}

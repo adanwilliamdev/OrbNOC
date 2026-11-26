@@ -16,13 +16,17 @@ public class AccessLogRepository {
 
     public AccessLog save(AccessLog a) {
         Long id = jdbc.queryForObject(
-                "INSERT INTO access_logs (user_id, action, ip_address, created_at) VALUES (?, ?, ?, ?) RETURNING id",
-                Long.class, a.getUserId(), a.getAction(), a.getIpAddress(), Rows.ts(a.getCreatedAt()));
+                "INSERT INTO access_logs (user_id, action, ip_address, detail, created_at) VALUES (?, ?, ?, ?, ?) "
+                        + "RETURNING id",
+                Long.class, a.getUserId(), a.getAction(), a.getIpAddress(), a.getDetail(), Rows.ts(a.getCreatedAt()));
         a.setId(id);
         return a;
     }
 
     public int deleteOlderThan(Instant cutoff) {
-        return jdbc.update("DELETE FROM access_logs WHERE created_at < ?", Rows.ts(cutoff));
+        return Rows.deleteInBatches(
+                jdbc,
+                "DELETE FROM access_logs WHERE id IN (SELECT id FROM access_logs WHERE created_at < ? ORDER BY id LIMIT ?)",
+                Rows.ts(cutoff));
     }
 }

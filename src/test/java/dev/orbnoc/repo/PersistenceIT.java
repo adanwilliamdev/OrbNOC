@@ -135,16 +135,25 @@ class PersistenceIT extends IntegrationTestBase {
     // ---- queries dos repositórios ----------------------------------------------------------------
 
     @Test
-    void findMonitorableIgnoraUsuariosDesativados() {
+    void findDueIgnoraUsuariosDesativadosEFiltraVencimentoNoSql() {
         User ativo = createUser("ativo", SENHA, "user");
         User inativo = createUser("inativo", SENHA, "user");
         Device doAtivo = dispositivo(ativo, "10.0.0.1");
         dispositivo(inativo, "10.0.0.2");
         jdbc.update("UPDATE users SET is_active = false WHERE id = ?", inativo.getId());
 
-        List<Device> monitoraveis = deviceRepository.findMonitorable();
+        Instant agora = Instant.now();
+        List<DeviceRepository.DueTarget> vencidos = deviceRepository.findDue(agora, 2.0);
 
-        assertEquals(List.of(doAtivo.getId()), monitoraveis.stream().map(Device::getId).toList());
+        assertEquals(List.of(doAtivo.getId()), vencidos.stream().map(DeviceRepository.DueTarget::id).toList());
+
+        // recém-checado (intervalo padrão de 30 s): não vence; checado há 31 s: vence
+        jdbc.update("UPDATE devices SET last_check = ? WHERE id = ?",
+                java.sql.Timestamp.from(agora.minusSeconds(5)), doAtivo.getId());
+        assertEquals(0, deviceRepository.findDue(agora, 2.0).size());
+        jdbc.update("UPDATE devices SET last_check = ? WHERE id = ?",
+                java.sql.Timestamp.from(agora.minusSeconds(31)), doAtivo.getId());
+        assertEquals(1, deviceRepository.findDue(agora, 2.0).size());
     }
 
     @Test

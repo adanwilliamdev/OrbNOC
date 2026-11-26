@@ -2,11 +2,13 @@ package dev.orbnoc.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.orbnoc.config.OrbNocProperties;
 import dev.orbnoc.core.SecretBox;
 import dev.orbnoc.domain.Device;
 import dev.orbnoc.domain.Event;
 import dev.orbnoc.domain.NotificationChannel;
 import dev.orbnoc.repo.NotificationChannelRepository;
+import io.micrometer.core.instrument.MeterRegistry;
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -38,13 +40,22 @@ public class Notifier {
     private final NotificationChannelRepository channels;
     private final SecretBox secretBox;
     private final ObjectMapper mapper;
+    private final MeterRegistry meters;
+    private final int attempts;
     private final HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build();
     private final ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
 
-    public Notifier(NotificationChannelRepository channels, SecretBox secretBox, ObjectMapper mapper) {
+    public Notifier(
+            NotificationChannelRepository channels,
+            SecretBox secretBox,
+            ObjectMapper mapper,
+            MeterRegistry meters,
+            OrbNocProperties props) {
         this.channels = channels;
         this.secretBox = secretBox;
         this.mapper = mapper;
+        this.meters = meters;
+        this.attempts = props.notificationAttempts();
     }
 
     /** Destino do Telegram do usuário (ou {@code null} se ausente, ilegível ou — com onlyEnabled — desligado). */
@@ -53,7 +64,21 @@ public class Notifier {
         if (ch == null || (onlyEnabled && !ch.isEnabled())) return null;
         if (ch.getSecretEncrypted() == null || ch.getTarget() == null) return null;
         String token = secretBox.decrypt(ch.getSecretEncrypted());
-        return token == null ? null : new Target(token, ch.getTarget());
+        if (token == null) {
+            // Chave trocada sem ENCRYPTION_KEY_PREVIOUS (ou dado corrompido): antes isso era silencioso.
+            log.error("Não foi possível decifrar o token do Telegram do usuário {}; confira ENCRYPTION_KEY/ENCRYPTION_KEY_PREVIOUS", userId);
+            meters.counter("orbnoc.notifications", "outcome", "undecryptable").increment();
+            return null;
+        }
+        if (secretBox.needsRotation(ch.getSecretEncrypted())) {
+            try { // recifra com a chave atual para poder aposentar a anterior
+                ch.setSecretEncrypted(secretBox.encrypt(token));
+                channels.save(ch);
+            } catch (RuntimeException e) {
+                log.warn("Falha ao recifrar o token do usuário {}: {}", userId, e.getClass().getSimpleName());
+            }
+        }
+        return new Target(token, ch.getTarget());
     }
 
     public SendResult send(Target target, String html) {
@@ -82,8 +107,34 @@ public class Notifier {
         }
     }
 
+    /**
+     * Envio em segundo plano com novas tentativas (espera 1 s, 2 s, ... entre elas). Falhas
+     * definitivas ficam no log (sem o token) e na métrica {@code orbnoc_notifications_total{outcome="failed"}}.
+     */
     public void sendAsync(Target target, String html) {
-        executor.submit(() -> send(target, html));
+        executor.submit(() -> sendWithRetry(target, html));
+    }
+
+    SendResult sendWithRetry(Target target, String html) {
+        SendResult result = new SendResult(false, "não enviado");
+        for (int attempt = 1; attempt <= attempts; attempt++) {
+            result = send(target, html);
+            if (result.ok()) {
+                meters.counter("orbnoc.notifications", "outcome", "ok").increment();
+                return result;
+            }
+            if (attempt < attempts) {
+                try {
+                    Thread.sleep(1000L * attempt);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+            }
+        }
+        log.warn("Notificação do Telegram não entregue após {} tentativa(s): {}", attempts, result.error());
+        meters.counter("orbnoc.notifications", "outcome", "failed").increment();
+        return result;
     }
 
     public static String testMessage() {

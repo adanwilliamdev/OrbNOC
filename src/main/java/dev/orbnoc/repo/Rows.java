@@ -31,4 +31,21 @@ final class Rows {
     static Double doubleOrNull(ResultSet rs, String column) throws SQLException {
         return rs.getObject(column, Double.class);
     }
+
+    /** Tamanho do lote nas remoções de retenção. */
+    static final int RETENTION_BATCH = 5_000;
+
+    /**
+     * Executa um DELETE com {@code LIMIT ?} (o último parâmetro) repetidamente, até um lote sair
+     * incompleto. Devolve o total removido.
+     */
+    static int deleteInBatches(org.springframework.jdbc.core.JdbcTemplate jdbc, String sql, Object cutoff) {
+        int total = 0;
+        int removed;
+        do {
+            removed = jdbc.update(sql, cutoff, RETENTION_BATCH);
+            total += removed;
+        } while (removed >= RETENTION_BATCH);
+        return total;
+    }
 }

@@ -27,6 +27,11 @@ services:
       DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
       JWT_SECRET: ${JWT_SECRET:?defina JWT_SECRET no .env}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY:-}
+      # Rotação de chaves: a chave anterior continua valendo só para ler/validar o que já existe.
+      JWT_SECRET_PREVIOUS: ${JWT_SECRET_PREVIOUS:-}
+      ENCRYPTION_KEY_PREVIOUS: ${ENCRYPTION_KEY_PREVIOUS:-}
+      # CIDRs privados que usuários comuns podem monitorar (vazio = sem restrição extra).
+      USER_ALLOWED_CIDRS: ${USER_ALLOWED_CIDRS:-}
       PUBLIC_URL: ${PUBLIC_URL:-http://localhost:8080}
       EXTRA_ORIGINS: ${EXTRA_ORIGINS:-}
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
@@ -37,6 +42,14 @@ services:
       ADMIN_FORCE_RESET: ${ADMIN_FORCE_RESET:-false}
       ORBNOC_DEMO_SEED: ${ORBNOC_DEMO_SEED:-${SEED_DEMO_HOSTS:-false}}
       ALLOW_PRIVATE_NETWORKS: ${ALLOW_PRIVATE_NETWORKS:-true}
+      # Limites e pool (valores padrão do application.yml quando vazios).
+      MAX_DEVICES_PER_USER: ${MAX_DEVICES_PER_USER:-500}
+      MIN_INTERVAL_SECONDS: ${MIN_INTERVAL_SECONDS:-5}
+      DB_POOL_SIZE: ${DB_POOL_SIZE:-12}
+      DB_CONNECTION_TIMEOUT_MS: ${DB_CONNECTION_TIMEOUT_MS:-5000}
+      DB_LEAK_DETECTION_MS: ${DB_LEAK_DETECTION_MS:-30000}
+      WS_MAX_CONNECTIONS_PER_USER: ${WS_MAX_CONNECTIONS_PER_USER:-10}
+      LEADER_LOCK_ENABLED: ${LEADER_LOCK_ENABLED:-true}
       # Métricas (Actuator) em porta própria, visível só na rede interna do compose (não é publicada).
       MANAGEMENT_ADDRESS: 0.0.0.0
     # Permite ICMP sem privilégios (o ping do sistema usa socket de datagrama).
@@ -44,6 +57,38 @@ services:
       net.ipv4.ping_group_range: "0 2147483647"
     ports:
       - "127.0.0.1:8080:8080"
+
+  # Backup periódico do PostgreSQL (pg_dump -Fc) para o volume "backups", com rotação.
+  # Sem portas publicadas: só fala com o db pela rede interna do compose.
+  # Restauração de teste: docker compose exec backup sh /ops/restore-test.sh
+  backup:
+    image: postgres:16-alpine # mesma versão do serviço db (pg_dump não pode ser mais antigo que o servidor)
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGHOST: db
+      PGUSER: orbnoc
+      PGDATABASE: orbnoc
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      BACKUP_DIR: /backups
+      BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-14}
+      BACKUP_INTERVAL_HOURS: ${BACKUP_INTERVAL_HOURS:-24}
+    # Uma falha de backup não derruba o contêiner: registra e tenta de novo no próximo intervalo.
+    command:
+      - sh
+      - -c
+      - |
+        while true; do
+          sh /ops/backup.sh || echo "backup: FALHOU, nova tentativa em $${BACKUP_INTERVAL_HOURS}h" >&2
+          sleep "$$((BACKUP_INTERVAL_HOURS * 3600))"
+        done
+    volumes:
+      - ./ops:/ops:ro
+      - backups:/backups
+    security_opt:
+      - no-new-privileges:true
 
   # HTTPS automático (opcional): docker compose --profile https up -d
   caddy:
@@ -79,6 +124,7 @@ services:
 
 volumes:
   pgdata:
+  backups:
   prometheus_data:
   caddy_data:
   caddy_config:

@@ -92,6 +92,9 @@ public class EventRepository {
     }
 
     public int deleteOlderThan(Instant cutoff) {
-        return jdbc.update("DELETE FROM events WHERE created_at < ?", Rows.ts(cutoff));
+        return Rows.deleteInBatches(
+                jdbc,
+                "DELETE FROM events WHERE id IN (SELECT id FROM events WHERE created_at < ? ORDER BY id LIMIT ?)",
+                Rows.ts(cutoff));
     }
 }

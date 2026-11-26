@@ -127,20 +127,78 @@ public final class NetGuard {
     }
 
     public static void checkAddress(InetAddress ip, boolean allowPrivate) {
+        checkAddress(ip, allowPrivate, CidrList.EMPTY);
+    }
+
+    /**
+     * Como {@link #checkAddress(InetAddress, boolean)}, mas, se {@code privateAllowlist} não estiver
+     * vazia, endereços privados só passam quando estão dentro dela (política para usuários comuns).
+     */
+    public static void checkAddress(InetAddress ip, boolean allowPrivate, CidrList privateAllowlist) {
+        InetAddress embedded = embeddedIpv4(ip);
+        if (embedded != null) {
+            // NAT64 / 6to4: o tráfego sai para o IPv4 embutido, então ele segue as mesmas regras.
+            checkAddress(embedded, allowPrivate, privateAllowlist);
+        }
+        if (isTeredo(ip)) throw new HostRejectedException("Endereço de túnel Teredo bloqueado");
+        if (isLocalNat64(ip)) throw new HostRejectedException("Endereço NAT64 local bloqueado");
         if (METADATA.contains(ip)) throw new HostRejectedException("Endereço de metadata de nuvem bloqueado");
         if (ip.isLoopbackAddress()) throw new HostRejectedException("Endereço de loopback bloqueado");
         if (ip.isLinkLocalAddress()) throw new HostRejectedException("Endereço link-local bloqueado");
         if (ip.isAnyLocalAddress() || ip.isMulticastAddress() || isReserved(ip)) {
             throw new HostRejectedException("Endereço reservado bloqueado");
         }
-        if (!allowPrivate && !isGlobal(ip)) {
-            throw new HostRejectedException("Redes privadas estão desativadas neste servidor");
+        if (!isGlobal(ip)) {
+            if (!allowPrivate) throw new HostRejectedException("Redes privadas estão desativadas neste servidor");
+            if (!privateAllowlist.isEmpty() && !privateAllowlist.contains(ip)) {
+                throw new HostRejectedException("Este endereço privado não está liberado para o seu perfil");
+            }
         }
+    }
+
+    /**
+     * IPv4 embutido em endereços de tradução/túnel: NAT64 {@code 64:ff9b::/96} (RFC 6052, últimos
+     * 32 bits) e 6to4 {@code 2002::/16} (RFC 3056, bytes 2 a 5). {@code null} nos demais.
+     */
+    static InetAddress embeddedIpv4(InetAddress ip) {
+        if (!(ip instanceof Inet6Address)) return null;
+        byte[] a = ip.getAddress();
+        byte[] v4 = null;
+        if (a[0] == 0x00 && a[1] == 0x64 && (a[2] & 0xff) == 0xff && (a[3] & 0xff) == 0x9b && onlyZero(a, 4, 12)) {
+            v4 = new byte[] {a[12], a[13], a[14], a[15]};
+        } else if ((a[0] & 0xff) == 0x20 && a[1] == 0x02) {
+            v4 = new byte[] {a[2], a[3], a[4], a[5]};
+        }
+        try {
+            return v4 == null ? null : InetAddress.getByAddress(v4);
+        } catch (UnknownHostException e) {
+            return null;
+        }
+    }
+
+    private static boolean onlyZero(byte[] a, int from, int to) {
+        for (int i = from; i < to; i++) if (a[i] != 0) return false;
+        return true;
+    }
+
+    /** Teredo {@code 2001:0::/32} (RFC 4380): túnel que esconde o IPv4 do cliente; sempre bloqueado. */
+    private static boolean isTeredo(InetAddress ip) {
+        if (!(ip instanceof Inet6Address)) return false;
+        byte[] a = ip.getAddress();
+        return a[0] == 0x20 && a[1] == 0x01 && a[2] == 0 && a[3] == 0;
+    }
+
+    /** NAT64 de uso local {@code 64:ff9b:1::/48} (RFC 8215): não tem destino público definido. */
+    private static boolean isLocalNat64(InetAddress ip) {
+        if (!(ip instanceof Inet6Address)) return false;
+        byte[] a = ip.getAddress();
+        return a[0] == 0x00 && a[1] == 0x64 && (a[2] & 0xff) == 0xff && (a[3] & 0xff) == 0x9b && a[4] == 0 && a[5] == 1;
     }
 
     private static boolean isReserved(InetAddress ip) {
         byte[] a = ip.getAddress();
         if (ip instanceof Inet4Address) return (a[0] & 0xff) >= 240; // 240.0.0.0/4 (inclui broadcast)
+        if (embeddedIpv4(ip) != null && a[0] == 0) return false; // NAT64: o IPv4 embutido já foi validado
         return (a[0] & 0xff) == 0; // ::/8
     }
 
@@ -160,11 +218,17 @@ public final class NetGuard {
             return !(b0 == 203 && b1 == 0 && b2 == 113);
         }
         if ((b0 & 0xfe) == 0xfc) return false; // fc00::/7
+        if (b0 == 0xfe && (b1 & 0xc0) == 0xc0) return false; // fec0::/10 (site-local, obsoleto)
         return !(b0 == 0x20 && b1 == 0x01 && b2 == 0x0d && (a[3] & 0xff) == 0xb8); // 2001:db8::/32
     }
 
     /** Resolve o host e valida TODOS os endereços. Devolve os IPs (use-os para conectar). */
     public static List<String> resolveAndCheck(String host, boolean allowPrivate, long timeoutMillis) {
+        return resolveAndCheck(host, allowPrivate, CidrList.EMPTY, timeoutMillis);
+    }
+
+    public static List<String> resolveAndCheck(
+            String host, boolean allowPrivate, CidrList privateAllowlist, long timeoutMillis) {
         String parsed = parseHost(host);
         Set<InetAddress> addresses = new LinkedHashSet<>();
         InetAddress literal = parseIpLiteral(parsed);
@@ -183,7 +247,7 @@ public final class NetGuard {
             }
         }
         if (addresses.isEmpty()) throw new HostRejectedException("Não foi possível resolver o host");
-        for (InetAddress ip : addresses) checkAddress(ip, allowPrivate);
+        for (InetAddress ip : addresses) checkAddress(ip, allowPrivate, privateAllowlist);
         List<InetAddress> ordered = new ArrayList<>(addresses);
         ordered.sort((x, y) -> Integer.compare(x instanceof Inet6Address ? 6 : 4, y instanceof Inet6Address ? 6 : 4));
         return ordered.stream().map(NetGuard::format).toList();

@@ -2,6 +2,7 @@ package dev.orbnoc.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import dev.orbnoc.config.OrbNocProperties;
 import dev.orbnoc.domain.Event;
 import dev.orbnoc.repo.DeviceRepository;
 import dev.orbnoc.web.api.Dto;
@@ -29,20 +30,22 @@ public class RealtimeHub {
 
     private static final Logger log = LoggerFactory.getLogger(RealtimeHub.class);
 
-    private record Client(long userId, long expiresAt, WebSocketSession session) {}
+    private record Client(long userId, long expiresAt, WebSocketSession session, long openedAt) {}
 
     private final Map<String, Client> clients = new ConcurrentHashMap<>();
     private final DeviceRepository devices;
     private final ObjectMapper mapper;
+    private final int maxPerUser;
     private final ScheduledExecutorService keepalive = Executors.newSingleThreadScheduledExecutor(r -> {
         Thread t = new Thread(r, "orbnoc-ws-keepalive");
         t.setDaemon(true);
         return t;
     });
 
-    public RealtimeHub(DeviceRepository devices, ObjectMapper mapper) {
+    public RealtimeHub(DeviceRepository devices, ObjectMapper mapper, OrbNocProperties props) {
         this.devices = devices;
         this.mapper = mapper;
+        this.maxPerUser = props.wsMaxConnectionsPerUser();
     }
 
     @PostConstruct
@@ -56,10 +59,29 @@ public class RealtimeHub {
     }
 
     public void register(WebSocketSession raw, long userId, long expiresAtEpochSeconds) {
+        evictExcess(userId);
         WebSocketSession safe = new ConcurrentWebSocketSessionDecorator(raw, 5000, 256 * 1024);
-        Client client = new Client(userId, expiresAtEpochSeconds, safe);
+        Client client = new Client(userId, expiresAtEpochSeconds, safe, System.nanoTime());
         clients.put(raw.getId(), client);
         send(client, devicesPayload(userId)); // estado inicial
+    }
+
+    /** Mantém no máximo {@code maxPerUser - 1} conexões antigas: ao passar do limite, fecha as mais velhas. */
+    private void evictExcess(long userId) {
+        List<Client> mine = new java.util.ArrayList<>();
+        for (Client c : clients.values()) if (c.userId() == userId) mine.add(c);
+        int excess = mine.size() - (maxPerUser - 1);
+        if (excess <= 0) return;
+        mine.sort(java.util.Comparator.comparingLong(Client::openedAt));
+        for (int i = 0; i < excess; i++) {
+            Client old = mine.get(i);
+            clients.remove(old.session().getId());
+            try {
+                old.session().close(new CloseStatus(4429, "limite de conexões por usuário"));
+            } catch (IOException ignored) {
+                // já fechada
+            }
+        }
     }
 
     public void unregister(String sessionId) {

@@ -12,6 +12,8 @@ public class AccessLog {
 
     private String ipAddress;
 
+    private String detail;
+
     private Instant createdAt = Instant.now();
 
     public AccessLog() {}
@@ -27,6 +29,9 @@ public class AccessLog {
 
     public String getIpAddress() { return ipAddress; }
     public void setIpAddress(String ipAddress) { this.ipAddress = ipAddress; }
+
+    public String getDetail() { return detail; }
+    public void setDetail(String detail) { this.detail = detail; }
 
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }

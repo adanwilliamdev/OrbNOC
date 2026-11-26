@@ -129,7 +129,7 @@ public final class Prober {
     ProbeResult systemPing(String address, double timeout) {
         List<String> command = pingCommand(address, timeout);
         try {
-            Process process = new ProcessBuilder(command).redirectErrorStream(true).start();
+            Process process = localeNeutral(new ProcessBuilder(command).redirectErrorStream(true)).start();
             long limit = (long) Math.ceil(timeout) + 3;
             if (!process.waitFor(limit, TimeUnit.SECONDS)) {
                 process.destroyForcibly();
@@ -183,5 +183,12 @@ public final class Prober {
     private static String shorten(String message, String fallback) {
         if (message == null || message.isBlank()) return fallback;
         return message.length() > 200 ? message.substring(0, 200) : message;
+    }
+
+    /** Força a saída em formato "C" (inglês, ponto decimal), independente do idioma do servidor. */
+    static ProcessBuilder localeNeutral(ProcessBuilder builder) {
+        builder.environment().put("LC_ALL", "C");
+        builder.environment().put("LANG", "C");
+        return builder;
     }
 }

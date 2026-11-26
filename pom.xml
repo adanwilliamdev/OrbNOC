@@ -29,6 +29,8 @@
     <!-- Piso de cobertura de LINHAS (0.00 a 1.00) aplicado no "mvn verify". Ajuste conforme o
          relatório do CI e vá subindo aos poucos; nunca reduza sem justificar no PR. -->
     <jacoco.line.minimum>0.55</jacoco.line.minimum>
+    <archunit.version>1.4.0</archunit.version>
+    <pitest.version>1.17.4</pitest.version>
   </properties>
 
   <dependencies>
@@ -107,6 +109,13 @@
       <groupId>org.testcontainers</groupId>
       <artifactId>postgresql</artifactId>
       <version>${testcontainers.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <!-- Regras de arquitetura (ArchitectureTest): core sem Spring, camadas só dependem "para dentro". -->
+    <dependency>
+      <groupId>com.tngtech.archunit</groupId>
+      <artifactId>archunit-junit5</artifactId>
+      <version>${archunit.version}</version>
       <scope>test</scope>
     </dependency>
   </dependencies>
@@ -228,4 +237,38 @@
       </plugin>
     </plugins>
   </build>
+
+  <profiles>
+    <!-- Mutation testing (PIT) sobre o núcleo puro, que é rápido e não precisa de Docker:
+         mvn -Ppit test-compile org.pitest:pitest-maven:mutationCoverage
+         Fora do build padrão de propósito (é lento); rode antes de mexer em core/. -->
+    <profile>
+      <id>pit</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.pitest</groupId>
+            <artifactId>pitest-maven</artifactId>
+            <version>${pitest.version}</version>
+            <dependencies>
+              <dependency>
+                <groupId>org.pitest</groupId>
+                <artifactId>pitest-junit5-plugin</artifactId>
+                <version>1.2.1</version>
+              </dependency>
+            </dependencies>
+            <configuration>
+              <targetClasses>
+                <param>dev.orbnoc.core.*</param>
+              </targetClasses>
+              <targetTests>
+                <param>dev.orbnoc.core.*</param>
+              </targetTests>
+              <mutationThreshold>60</mutationThreshold>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
 </project>

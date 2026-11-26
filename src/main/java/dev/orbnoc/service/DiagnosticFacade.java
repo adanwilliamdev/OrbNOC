@@ -1,6 +1,5 @@
 package dev.orbnoc.service;
 
-import dev.orbnoc.config.OrbNocProperties;
 import dev.orbnoc.core.DiagnosticsService;
 import dev.orbnoc.core.NetGuard;
 import dev.orbnoc.core.RateLimiter;
@@ -21,12 +20,12 @@ public class DiagnosticFacade {
 
     private final DiagnosticsService diagnostics;
     private final RateLimiter limiter;
-    private final OrbNocProperties props;
+    private final TargetPolicy policy;
 
-    public DiagnosticFacade(DiagnosticsService diagnostics, RateLimiter limiter, OrbNocProperties props) {
+    public DiagnosticFacade(DiagnosticsService diagnostics, RateLimiter limiter, TargetPolicy policy) {
         this.diagnostics = diagnostics;
         this.limiter = limiter;
-        this.props = props;
+        this.policy = policy;
     }
 
     private void throttle(Long userId) {
@@ -35,14 +34,14 @@ public class DiagnosticFacade {
         }
     }
 
-    private String target(String host) {
-        return NetGuard.resolveAndCheck(host, props.allowPrivateNetworks(), 5000).get(0);
+    private String target(Long userId, String host) {
+        return policy.resolveForUser(host, userId).get(0);
     }
 
     public Map<String, Object> ping(Long userId, String host, Integer count) {
         throttle(userId);
         int n = count == null ? 4 : Validate.range(count, "Quantidade", 1, 10);
-        String address = target(host);
+        String address = target(userId, host);
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("host", NetGuard.parseHost(host));
         out.put("address", address);
@@ -53,7 +52,7 @@ public class DiagnosticFacade {
     public Map<String, Object> traceroute(Long userId, String host, Integer maxHops) {
         throttle(userId);
         int hops = maxHops == null ? 20 : Validate.range(maxHops, "Saltos", 1, 30);
-        String address = target(host);
+        String address = target(userId, host);
         try {
             Map<String, Object> out = new LinkedHashMap<>();
             out.put("host", NetGuard.parseHost(host));
@@ -73,7 +72,7 @@ public class DiagnosticFacade {
     public Map<String, Object> ports(Long userId, String host, List<Integer> ports) {
         throttle(userId);
         List<Integer> list = validatePorts(ports, false);
-        String address = target(host);
+        String address = target(userId, host);
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("host", NetGuard.parseHost(host));
         out.put("address", address);
@@ -85,7 +84,7 @@ public class DiagnosticFacade {
         throttle(userId);
         List<Integer> list = validatePorts(ports, true);
         String parsed = NetGuard.parseHost(host);
-        String address = target(host);
+        String address = target(userId, host);
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("host", parsed);
         out.put("address", address);

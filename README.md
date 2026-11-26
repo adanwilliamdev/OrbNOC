@@ -245,6 +245,16 @@ Consulte também a [Política de Segurança](SECURITY.md).
 
 ---
 
+### 🔐 Sessões, 2FA, alvos e alertas
+
+- **Sessões revogáveis**: o JWT leva `tv` (`users.token_version`). Logout, troca de senha, redefinição por admin, desativação e ativação/remoção do 2FA incrementam a versão e derrubam os tokens antigos (inclusive o WebSocket). Novo: `POST /api/auth/password` (`current_password`, `new_password`).
+- **2FA (TOTP)**: `POST /api/auth/2fa/setup` → `enable` (`code`) → `disable` (`password`, `code`). Com 2FA ativo, o login exige `totp_code`.
+- **Alvos por papel**: `USER_ALLOWED_CIDRS` limita as redes privadas que usuários comuns monitoram (monitores, `/ports`, `/traceroute`, ping); admins não são limitados. `MAX_DEVICES_PER_USER` e `MIN_INTERVAL_SECONDS` limitam abuso. O `NetGuard` agora trata NAT64, 6to4, Teredo e `fec0::/10`.
+- **Rotação de chaves**: defina a nova `JWT_SECRET`/`ENCRYPTION_KEY` e mova a antiga para `JWT_SECRET_PREVIOUS`/`ENCRYPTION_KEY_PREVIOUS`. Segredos cifrados passam a ter versão e `kid` (`v1.<kid>.…`) e são recifrados ao serem lidos.
+- **Alertas**: recuperação só após 2 sucessos seguidos; alerta de latência após 2 amostras acima do limite e normalização abaixo de 90% dele (histerese); o envio ao Telegram tem novas tentativas, log e a métrica `orbnoc_notifications_total{outcome}`. Silêncio de manutenção: `PATCH /api/devices/{id}` com `maintenance_until` (ISO-8601, até 30 dias). Supressão por dependência: `parent_id` (se o pai está offline, queda e latência dos filhos não notificam; o evento continua registrado).
+- **Escala**: vencimento filtrado no SQL, histórico e gravações em lote, rodada fora do tick (ticks pulados contados), métrica `orbnoc_monitor_round_duration_seconds`, e `pg_try_advisory_lock` para só uma réplica monitorar. Teste de carga: `mvn verify -Dit.test=MonitorLoadIT -Dorbnoc.load=true -Dorbnoc.load.devices=5000`.
+- **Auditoria**: `access_logs` registra também ações de admin (`admin.user_*`) e eventos de conta (senha, 2FA), com `detail`.
+
 ## 🧪 Desenvolvimento e Testes
 
 Execute os testes e as verificações de compilação:
@@ -329,6 +339,19 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml --profile https 
 ```
 
 O arquivo `docker-compose.prod.yml` recusa subir sem `ENCRYPTION_KEY` e `PUBLIC_URL`, força cookie `Secure` e mantém demo, cadastro aberto e reset de senha desligados.
+
+### 💾 Backup e restauração
+
+O serviço `backup` do `docker-compose.yml` gera um dump do PostgreSQL (`pg_dump -Fc`) a cada `BACKUP_INTERVAL_HOURS` (padrão 24) no volume `backups`, com escrita atômica e rotação de `BACKUP_KEEP_DAYS` dias (padrão 14). Scripts em `ops/backup.sh` e `ops/restore-test.sh`.
+
+```bash
+# dumps existentes
+docker compose exec backup ls -lh /backups
+# restaura o dump mais recente num banco temporário e confere as tabelas e a contagem de usuários
+docker compose exec backup sh /ops/restore-test.sh
+```
+
+O CI executa esse mesmo fluxo (job `backup-restore`). Copie os dumps para fora do host; detalhes em [SECURITY.md](SECURITY.md).
 
 ### 📁 Estrutura do Projeto
 

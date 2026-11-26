@@ -72,16 +72,30 @@ class DeviceStateMachineTest {
     }
 
     @Test
-    void recuperacao() {
+    void recuperacaoExigeDoisSucessosSeguidos() {
         Device d = device("offline");
         d.setConsecutiveFailures(7);
         List<Double> recent = new ArrayList<>();
         recent.add(null);
         recent.add(null);
+        // primeiro sucesso: ainda offline (evita "recuperou" a cada resposta isolada)
+        assertTrue(DeviceStateMachine.apply(d, OK, recent, NOW).isEmpty());
+        assertEquals("offline", d.getStatus());
+        assertEquals(0, d.getConsecutiveFailures());
+        recent.add(20.0);
         List<Transition> out = DeviceStateMachine.apply(d, OK, recent, NOW);
         assertEquals(List.of("recovered"), kinds(out));
         assertEquals("online", d.getStatus());
-        assertEquals(0, d.getConsecutiveFailures());
+    }
+
+    @Test
+    void sucessoIsoladoSeguidoDeFalhaNaoRecupera() {
+        Device d = device("offline");
+        List<Double> recent = new ArrayList<>();
+        recent.add(20.0);
+        recent.add(null); // houve falha depois do último sucesso
+        assertTrue(DeviceStateMachine.apply(d, OK, recent, NOW).isEmpty());
+        assertEquals("offline", d.getStatus());
     }
 
     @Test
@@ -92,15 +106,35 @@ class DeviceStateMachineTest {
     }
 
     @Test
-    void violacaoDeSlaAvisaUmaVezEDepoisNormaliza() {
+    void violacaoDeSlaExigeConfirmacaoEAvisaUmaVezEDepoisNormaliza() {
         Device d = device("online");
         d.setSlaThresholdMs(50);
         ProbeResult slow = new ProbeResult(true, 120.0, "icmp", null, null);
         ProbeResult fast = new ProbeResult(true, 30.0, "icmp", null, null);
-        assertEquals(List.of("sla_breach"), kinds(DeviceStateMachine.apply(d, slow, List.of(), NOW)));
-        assertTrue(DeviceStateMachine.apply(d, slow, List.of(), NOW).isEmpty());
-        assertEquals(List.of("sla_recovered"), kinds(DeviceStateMachine.apply(d, fast, List.of(), NOW)));
+        List<Double> history = new ArrayList<>();
+        // uma amostra alta isolada não alerta (anti-flapping)
+        assertTrue(DeviceStateMachine.apply(d, slow, history, NOW).isEmpty());
+        history.add(120.0);
+        assertEquals(List.of("sla_breach"), kinds(DeviceStateMachine.apply(d, slow, history, NOW)));
+        history.add(120.0);
+        assertTrue(DeviceStateMachine.apply(d, slow, history, NOW).isEmpty());
+        history.add(120.0);
+        // uma amostra boa isolada não normaliza
+        assertTrue(DeviceStateMachine.apply(d, fast, history, NOW).isEmpty());
+        history.add(30.0);
+        assertEquals(List.of("sla_recovered"), kinds(DeviceStateMachine.apply(d, fast, history, NOW)));
         assertFalse(d.isSlaBreached());
+    }
+
+    @Test
+    void latenciaPertoDoLimiteNaoNormalizaPorHisterese() {
+        Device d = device("online");
+        d.setSlaThresholdMs(50);
+        d.setSlaBreached(true);
+        ProbeResult edge = new ProbeResult(true, 48.0, "icmp", null, null); // abaixo de 50, acima de 45 (90%)
+        List<Double> history = new ArrayList<>(List.of(48.0, 48.0));
+        assertTrue(DeviceStateMachine.apply(d, edge, history, NOW).isEmpty());
+        assertTrue(d.isSlaBreached());
     }
 
     @Test

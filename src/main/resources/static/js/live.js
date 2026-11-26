@@ -764,7 +764,7 @@
       showError('login-error', '');
       const v = formValues(form);
       try {
-        await api('/api/auth/login', { method: 'POST', body: { username: v.username, password: v.password } });
+        await api('/api/auth/login', { method: 'POST', body: { username: v.username, password: v.password, totp_code: v.totp_code || null } });
         location.href = '/';
       } catch (e) { showError('login-error', errorText(e)); }
     } else if (form.id === 'register-form') {

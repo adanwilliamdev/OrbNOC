@@ -24,3 +24,38 @@ groups:
         labels: { severity: warning }
         annotations:
           summary: "Mais da metade das sondas falha: confira a conectividade do próprio servidor do OrbNOC"
+
+      - alert: OrbNocPoolDeConexoesComFila
+        # há threads esperando conexão do pool Hikari
+        expr: hikaricp_connections_pending{job="orbnoc"} > 0
+        for: 2m
+        labels: { severity: warning }
+        annotations:
+          summary: "Há requisições esperando conexão do pool do banco há mais de 2 minutos"
+
+      - alert: OrbNocPoolDeConexoesSaturado
+        expr: hikaricp_connections_active{job="orbnoc"} / hikaricp_connections_max{job="orbnoc"} > 0.9
+        for: 5m
+        labels: { severity: warning }
+        annotations:
+          summary: "Mais de 90% do pool de conexões do banco em uso há 5 minutos (considere aumentar DB_POOL_SIZE)"
+
+      - alert: OrbNocRodadaDoMonitorLenta
+        # a rodada deveria caber no intervalo do tick (WORKER_TICK_SECONDS); acima disso o monitor atrasa
+        expr: orbnoc_monitor_round_duration_seconds_max{job="orbnoc"} > 10
+        for: 5m
+        labels: { severity: warning }
+        annotations:
+          summary: "Rodadas do monitor demorando mais de 10 s: aumente MONITOR_CONCURRENCY ou reduza os dispositivos"
+
+      - alert: OrbNocTicksPulados
+        expr: increase(orbnoc_monitor_ticks_skipped_total{job="orbnoc"}[10m]) > 5
+        labels: { severity: warning }
+        annotations:
+          summary: "O monitor pulou mais de 5 ticks nos últimos 10 minutos (rodadas anteriores ainda em andamento)"
+
+      - alert: OrbNocFalhasDeNotificacao
+        expr: increase(orbnoc_notifications_total{job="orbnoc",outcome="failed"}[15m]) > 3
+        labels: { severity: warning }
+        annotations:
+          summary: "Mais de 3 notificações falharam nos últimos 15 minutos: confira os canais (Telegram etc.)"

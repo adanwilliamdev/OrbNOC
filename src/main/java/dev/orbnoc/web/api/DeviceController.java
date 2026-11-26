@@ -2,7 +2,6 @@ package dev.orbnoc.web.api;
 
 import dev.orbnoc.config.OrbNocProperties;
 import dev.orbnoc.core.HostRejectedException;
-import dev.orbnoc.core.NetGuard;
 import dev.orbnoc.core.ProbeResult;
 import dev.orbnoc.core.Prober;
 import dev.orbnoc.domain.Device;
@@ -14,6 +13,7 @@ import dev.orbnoc.service.CheckService;
 import dev.orbnoc.service.DeviceService;
 import dev.orbnoc.service.Notifier;
 import dev.orbnoc.service.RealtimeHub;
+import dev.orbnoc.service.TargetPolicy;
 import jakarta.servlet.http.HttpServletRequest;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -44,6 +44,7 @@ public class DeviceController {
     private final RealtimeHub hub;
     private final Notifier notifier;
     private final OrbNocProperties props;
+    private final TargetPolicy policy;
     private final TransactionTemplate tx;
 
     public DeviceController(
@@ -55,6 +56,7 @@ public class DeviceController {
             RealtimeHub hub,
             Notifier notifier,
             OrbNocProperties props,
+            TargetPolicy policy,
             TransactionTemplate tx) {
         this.auth = auth;
         this.service = service;
@@ -64,6 +66,7 @@ public class DeviceController {
         this.hub = hub;
         this.notifier = notifier;
         this.props = props;
+        this.policy = policy;
         this.tx = tx;
     }
 
@@ -118,7 +121,7 @@ public class DeviceController {
         Device snapshot = service.get(user.getId(), id);
         ProbeResult result;
         try {
-            String address = NetGuard.resolveAndCheck(snapshot.getIp(), props.allowPrivateNetworks(), 5000).get(0);
+            String address = policy.resolveForUser(snapshot.getIp(), user.getId()).get(0);
             result = prober.probe(address, snapshot.getCheckType(), snapshot.getPort());
         } catch (HostRejectedException e) {
             result = ProbeResult.fail(snapshot.getCheckType(), snapshot.getPort(), e.getMessage());
@@ -151,7 +154,7 @@ public class DeviceController {
         int port = Validate.range(body.port(), "Porta", 1, 65535);
         String address;
         try {
-            address = NetGuard.resolveAndCheck(d.getIp(), props.allowPrivateNetworks(), 5000).get(0);
+            address = policy.resolveForUser(d.getIp(), user.getId()).get(0);
         } catch (HostRejectedException e) {
             throw ApiException.unprocessable(e.getMessage());
         }

@@ -71,6 +71,9 @@ public class MetricHourlyRepository {
     }
 
     public int deleteOlderThan(Instant cutoff) {
-        return jdbc.update("DELETE FROM metrics_hourly WHERE hour < ?", Rows.ts(cutoff));
+        return Rows.deleteInBatches(
+                jdbc,
+                "DELETE FROM metrics_hourly WHERE ctid IN (SELECT ctid FROM metrics_hourly WHERE hour < ? LIMIT ?)",
+                Rows.ts(cutoff));
     }
 }

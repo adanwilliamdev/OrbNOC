@@ -13,7 +13,8 @@ import org.springframework.stereotype.Repository;
 public class UserRepository {
 
     private static final String COLUMNS =
-            "id, username, email, password_hash, role, is_active, created_at, last_login";
+            "id, username, email, password_hash, role, is_active, created_at, last_login, "
+                    + "token_version, totp_secret_encrypted, totp_enabled";
 
     private static final RowMapper<User> MAPPER = UserRepository::map;
 
@@ -33,6 +34,9 @@ public class UserRepository {
         u.setActive(rs.getBoolean("is_active"));
         u.setCreatedAt(Rows.instant(rs, "created_at"));
         u.setLastLogin(Rows.instant(rs, "last_login"));
+        u.setTokenVersion(rs.getInt("token_version"));
+        u.setTotpSecretEncrypted(rs.getString("totp_secret_encrypted"));
+        u.setTotpEnabled(rs.getBoolean("totp_enabled"));
         return u;
     }
 
@@ -70,20 +74,35 @@ public class UserRepository {
     public User save(User u) {
         if (u.getId() == null) {
             Long id = jdbc.queryForObject(
-                    "INSERT INTO users (username, email, password_hash, role, is_active, created_at, last_login) "
-                            + "VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id",
+                    "INSERT INTO users (username, email, password_hash, role, is_active, created_at, last_login, "
+                            + "token_version, totp_secret_encrypted, totp_enabled) "
+                            + "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id",
                     Long.class,
                     u.getUsername(), u.getEmail(), u.getPasswordHash(), u.getRole(), u.isActive(),
-                    Rows.ts(u.getCreatedAt()), Rows.ts(u.getLastLogin()));
+                    Rows.ts(u.getCreatedAt()), Rows.ts(u.getLastLogin()), u.getTokenVersion(),
+                    u.getTotpSecretEncrypted(), u.isTotpEnabled());
             u.setId(id);
         } else {
             jdbc.update(
                     "UPDATE users SET username = ?, email = ?, password_hash = ?, role = ?, is_active = ?, "
-                            + "created_at = ?, last_login = ? WHERE id = ?",
+                            + "created_at = ?, last_login = ?, totp_secret_encrypted = ?, totp_enabled = ? WHERE id = ?",
+                    // token_version fica de fora de propósito: só bumpTokenVersion() o altera (atômico)
                     u.getUsername(), u.getEmail(), u.getPasswordHash(), u.getRole(), u.isActive(),
-                    Rows.ts(u.getCreatedAt()), Rows.ts(u.getLastLogin()), u.getId());
+                    Rows.ts(u.getCreatedAt()), Rows.ts(u.getLastLogin()),
+                    u.getTotpSecretEncrypted(), u.isTotpEnabled(), u.getId());
         }
         return u;
+    }
+
+    /**
+     * Incrementa a versão dos tokens de forma atômica (invalida as sessões) e devolve a nova versão.
+     * Atômico no banco: duas trocas simultâneas de senha não perdem incremento.
+     */
+    public int bumpTokenVersion(Long userId) {
+        Integer v = jdbc.queryForObject(
+                "UPDATE users SET token_version = token_version + 1 WHERE id = ? RETURNING token_version",
+                Integer.class, userId);
+        return v == null ? 0 : v;
     }
 
     public User saveAndFlush(User u) {

@@ -23,9 +23,28 @@ public class SecurityFilters extends OncePerRequestFilter {
     private static final Set<String> SAFE_METHODS = Set.of("GET", "HEAD", "OPTIONS");
 
     private final OrbNocProperties props;
+    private final String csp;
 
     public SecurityFilters(OrbNocProperties props) {
         this.props = props;
+        this.csp = buildCsp(props);
+    }
+
+    /**
+     * CSP sem curingas: o WebSocket só pode falar com a própria origem e com as origens públicas
+     * configuradas (http→ws, https→wss), não com qualquer host. {@code style-src} não aceita mais
+     * {@code <style>} inline; só atributos {@code style} (barras de progresso geradas no servidor).
+     */
+    static String buildCsp(OrbNocProperties props) {
+        Set<String> connect = new java.util.LinkedHashSet<>();
+        connect.add("'self'");
+        for (String origin : props.allowedOrigins()) {
+            if (origin.startsWith("https://")) connect.add("wss://" + origin.substring("https://".length()));
+            else if (origin.startsWith("http://")) connect.add("ws://" + origin.substring("http://".length()));
+        }
+        return "default-src 'self'; style-src 'self'; style-src-attr 'unsafe-inline'; img-src 'self' data:; "
+                + "connect-src " + String.join(" ", connect) + "; frame-ancestors 'none'; base-uri 'self'; "
+                + "form-action 'self'";
     }
 
     @Override
@@ -35,10 +54,7 @@ public class SecurityFilters extends OncePerRequestFilter {
         response.setHeader("X-Frame-Options", "DENY");
         response.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
         response.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
-        response.setHeader(
-                "Content-Security-Policy",
-                "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; "
-                        + "connect-src 'self' ws: wss:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'");
+        response.setHeader("Content-Security-Policy", csp);
         if (props.isProduction()) {
             response.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
         }
