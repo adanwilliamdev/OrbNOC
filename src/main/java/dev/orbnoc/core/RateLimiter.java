@@ -37,4 +37,9 @@ public final class RateLimiter {
     public void clear(String key) {
         windows.remove(key);
     }
+
+    /** Zera todas as janelas (usado pelos testes, que compartilham o mesmo bean entre classes). */
+    public void clearAll() {
+        windows.clear();
+    }
 }

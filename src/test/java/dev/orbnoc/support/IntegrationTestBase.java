@@ -12,6 +12,7 @@ import com.jayway.jsonpath.JsonPath;
 import dev.orbnoc.config.OrbNocProperties;
 import dev.orbnoc.core.ProbeResult;
 import dev.orbnoc.core.Prober;
+import dev.orbnoc.core.RateLimiter;
 import dev.orbnoc.domain.User;
 import dev.orbnoc.service.UserService;
 import jakarta.servlet.http.Cookie;
@@ -94,11 +95,15 @@ public abstract class IntegrationTestBase {
     @Autowired protected JdbcTemplate jdbc;
     @Autowired protected UserService users;
     @Autowired protected OrbNocProperties props;
+    @Autowired protected RateLimiter rateLimiter;
 
     @MockitoBean protected Prober prober;
 
     @BeforeEach
     void limparBanco() {
+        // O RateLimiter é um bean único e o contexto é reaproveitado: sem isto, as falhas de login de um
+        // teste (por usuário e por IP) bloqueariam os testes seguintes.
+        rateLimiter.clearAll();
         jdbc.execute("TRUNCATE TABLE metrics_hourly, metrics, events, notification_channels, devices, "
                 + "access_logs, users RESTART IDENTITY CASCADE");
     }
