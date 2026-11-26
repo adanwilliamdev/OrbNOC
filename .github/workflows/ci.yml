@@ -148,13 +148,27 @@ jobs:
       PGDATABASE: orbnoc
     steps:
       - uses: actions/checkout@v4 # TODO(sha): fixar por SHA de commit completo (tag v4)
-      # O runner atual (Ubuntu 26.04) não tem o pacote postgresql-client-16. O pg_dump pode ser MAIS
-      # NOVO que o servidor (16), só não mais antigo; por isso basta o cliente padrão da distribuição.
-      - name: Instalar cliente PostgreSQL
+      # O cliente PRECISA ser da MESMA versão maior do servidor para RESTAURAR. A garantia do
+      # PostgreSQL de que "pg_dump pode ser mais novo que o servidor" vale só para GERAR o dump,
+      # não para restaurá-lo: um pg_dump 17+ emite "SET transaction_timeout = 0;" no início do
+      # arquivo, e o servidor 16 rejeita esse GUC, fazendo o pg_restore sair com exit 1.
+      # Por isso NÃO usamos o pacote postgresql-client padrão da distribuição (no ubuntu-latest
+      # atual ele já é 17/18). Instalamos a versão 16 via repositório PGDG, alinhada ao serviço.
+      # Ao subir o serviço para outra versão maior, troque "postgresql-client-16" pela
+      # versão correspondente.
+      - name: Instalar cliente PostgreSQL 16 (alinhado ao serviço)
         run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
+            https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] \
+            https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" \
+            | sudo tee /etc/apt/sources.list.d/pgdg.list > /dev/null
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends postgresql-client
+          sudo apt-get install -y --no-install-recommends postgresql-client-16
           pg_dump --version
+          pg_restore --version
+          psql --version
       # Sem subir o app: o schema vem direto das migrações, em ordem de versão.
       - name: Aplicar migrações
         run: |
