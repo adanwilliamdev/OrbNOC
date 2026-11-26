@@ -1,6 +1,6 @@
 services:
   db:
-    image: postgres:16-alpine
+    image: postgres:19-alpine
     restart: unless-stopped
     environment:
       POSTGRES_DB: orbnoc
@@ -62,7 +62,7 @@ services:
   # Sem portas publicadas: só fala com o db pela rede interna do compose.
   # Restauração de teste: docker compose exec backup sh /ops/restore-test.sh
   backup:
-    image: postgres:16-alpine # mesma versão do serviço db (pg_dump não pode ser mais antigo que o servidor)
+    image: postgres:19-alpine # mesma versão do serviço db (pg_dump não pode ser mais antigo que o servidor)
     restart: unless-stopped
     depends_on:
       db:
