@@ -223,6 +223,7 @@ jobs:
           image-ref: ${{ env.IMAGE }}
           severity: HIGH,CRITICAL
           ignore-unfixed: true
+          trivyignores: .trivyignore
           exit-code: "1"
 
   # Só em tags v*: publica a imagem versionada no GHCR. É o único job com permissão de escrita.

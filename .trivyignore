@@ -1,0 +1,9 @@
+# Exceções do Trivy. Cada linha precisa de justificativa e data de expiração (exp:).
+# Não adicione uma CVE real só para o build passar.
+
+# spring-webmvc 6.2.19: a correção open source só existe no Spring Framework 7.0.9 (Spring Boot 4);
+# na linha 6.2.x (6.2.20) ela é restrita ao suporte comercial. O OrbNOC não usa os recursos afetados
+# (verificado em src/: sem XsltView, sem SseEmitter/ServerResponse.sse/event-stream).
+# Revisar ao migrar para Spring Boot 4 ou se 6.2.x corrigida virar pública.
+CVE-2026-47884 exp:2027-02-26
+CVE-2026-47890 exp:2027-02-26
