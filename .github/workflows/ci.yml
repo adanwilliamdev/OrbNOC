@@ -202,7 +202,7 @@ jobs:
           docker run --rm --entrypoint sh "$IMAGE" -c 'test -f orbnoc.jar && test -d lib && test "$(id -u)" != 0'
       # SBOM (CycloneDX) da imagem, anexado como artefato.
       - name: Gerar SBOM (CycloneDX)
-        uses: aquasecurity/trivy-action@0.33.1 # TODO(sha): fixar por SHA de commit completo (tag 0.33.1)
+        uses: aquasecurity/trivy-action@0.31.0 # TODO(sha): fixar por SHA de commit completo (tag 0.31.0)
         with:
           image-ref: ${{ env.IMAGE }}
           format: cyclonedx
@@ -214,7 +214,7 @@ jobs:
           path: sbom.cdx.json
       # Falha o job com vulnerabilidades HIGH/CRITICAL que já têm correção disponível.
       - name: Varrer imagem (Trivy)
-        uses: aquasecurity/trivy-action@0.33.1 # TODO(sha): fixar por SHA de commit completo (tag 0.33.1)
+        uses: aquasecurity/trivy-action@0.31.0 # TODO(sha): fixar por SHA de commit completo (tag 0.31.0)
         with:
           image-ref: ${{ env.IMAGE }}
           severity: HIGH,CRITICAL
